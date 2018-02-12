@@ -289,4 +289,6 @@ __pycache__/
 /client/Lykke.Job.CandlesHistoryWriter.Client/Job.CandlesHistoryWriter.json
 
 **/appsettings.*.json
+**/launchSettings.json
 /src/Lykke.Job.CandlesHistoryWriter/env.json
+/src/Lykke.Job.CandlesHistoryWriter/appsettings.json
