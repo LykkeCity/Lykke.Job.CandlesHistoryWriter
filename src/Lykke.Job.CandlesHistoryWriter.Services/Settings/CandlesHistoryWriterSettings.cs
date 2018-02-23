@@ -1,6 +1,6 @@
 ﻿namespace Lykke.Job.CandlesHistoryWriter.Services.Settings
 {
-    public class CandlesHistorySettings
+    public class CandlesHistoryWriterSettings
     {        
         public AssetsCacheSettings AssetsCache { get; set; }
         public RabbitSettings Rabbit { get; set; }

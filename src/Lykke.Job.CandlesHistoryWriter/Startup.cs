@@ -61,13 +61,13 @@ namespace Lykke.Job.CandlesHistoryWriter
 
                 var builder = new ContainerBuilder();
                 var settings = Configuration.LoadSettings<AppSettings>();
-                var marketType = settings.CurrentValue.CandlesHistory != null
+                var marketType = settings.CurrentValue.CandlesHistoryWriter != null
                     ? MarketType.Spot
                     : MarketType.Mt;
 
-                var candlesHistory = settings.CurrentValue.CandlesHistory != null
-                    ? settings.Nested(x => x.CandlesHistory)
-                    : settings.Nested(x => x.MtCandlesHistory);
+                var candlesHistoryWriter = settings.CurrentValue.CandlesHistoryWriter != null
+                    ? settings.Nested(x => x.CandlesHistoryWriter)
+                    : settings.Nested(x => x.MtCandlesHistoryWriter);
                 var candleHistoryAssetConnection = settings.CurrentValue.CandleHistoryAssetConnections != null
                     ? settings.Nested(x => x.CandleHistoryAssetConnections)
                     : settings.Nested(x => x.MtCandleHistoryAssetConnections);
@@ -75,15 +75,15 @@ namespace Lykke.Job.CandlesHistoryWriter
                 Log = CreateLogWithSlack(
                     services,
                     settings.CurrentValue.SlackNotifications,
-                    candlesHistory.ConnectionString(x => x.Db.LogsConnectionString));
+                    candlesHistoryWriter.ConnectionString(x => x.Db.LogsConnectionString));
 
                 builder.RegisterModule(new JobModule(
                     marketType,
-                    candlesHistory.CurrentValue,
+                    candlesHistoryWriter.CurrentValue,
                     settings.CurrentValue.Assets,
                     settings.CurrentValue.RedisSettings,
                     candleHistoryAssetConnection,
-                    candlesHistory.Nested(x => x.Db),
+                    candlesHistoryWriter.Nested(x => x.Db),
                     Log));
                 builder.Populate(services);
                 ApplicationContainer = builder.Build();
@@ -204,7 +204,7 @@ namespace Lykke.Job.CandlesHistoryWriter
             if (!string.IsNullOrEmpty(dbLogConnectionString) && !(dbLogConnectionString.StartsWith("${") && dbLogConnectionString.EndsWith("}")))
             {
                 var persistenceManager = new LykkeLogToAzureStoragePersistenceManager(
-                    AzureTableStorage<LogEntity>.Create(dbLogConnectionStringManager, "CandlesHistoryServiceLogs", consoleLogger),
+                    AzureTableStorage<LogEntity>.Create(dbLogConnectionStringManager, "CandlesHistoryWriterLogs", consoleLogger),
                     consoleLogger);
 
                 var slackNotificationsManager = new LykkeLogToAzureSlackNotificationsManager(slackService, consoleLogger);

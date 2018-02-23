@@ -81,7 +81,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                 {
                     // May be it would be better to move the next line outside the loop and check only the first candle in batch,
                     // but not sure we always will obtain only a single-pairID batches.
-                    if (!_candlesChecker.CanHandleAssetPair(candleUpdate.AssetPairId)) continue; 
+                    if (!_candlesChecker.CanHandleAssetPair(candleUpdate.AssetPairId))
+                        continue; 
 
                     await _candlesManager.ProcessCandleAsync(Candle.Create(
                         assetPair: candleUpdate.AssetPairId,

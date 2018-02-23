@@ -6,27 +6,33 @@ using Lykke.Job.CandlesHistoryWriter.Services.Settings;
 using System;
 using System.Collections.Generic;
 
-namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
+namespace Lykke.Service.CandlesHistory.Services.Candles
 {
-    public class CandlesChecker : ICandlesChecker
+    public class CandlesChecker : CandlesCheckerSilent
     {
-        private readonly ILog _log;
         private readonly IClock _clock;
-        private readonly ICandlesHistoryRepository _candlesHistoryRepository;
-        private readonly ErrorManagementSettings _errorSettings;
+        private readonly TimeSpan _notificationTimeout;
 
         private Dictionary<string, DateTime> _knownUnsupportedAssetPairs;
 
+        /// <summary>
+        /// Constructor.
+        /// </summary>
+        /// <param name="log">The <see cref="ILog"/> instance.</param>
+        /// <param name="clock">The <see cref="IClock"/> instance.</param>
+        /// <param name="historyRep">The <see cref="ICandlesHistoryRepository"/> instance.</param>
+        /// <param name="notificationTimeout">The timeout in seconds between log notifications for the same asset pair.</param>
         public CandlesChecker(
             ILog log,
             IClock clock,
-            ICandlesHistoryRepository _historyRep,
-            ErrorManagementSettings settings)
+            ICandlesHistoryRepository historyRep,
+            TimeSpan notificationTimeout) : base(
+                log,
+                historyRep)
         {
-            _log = log;
+
             _clock = clock;
-            _candlesHistoryRepository = _historyRep;
-            _errorSettings = settings;
+            _notificationTimeout = notificationTimeout;
 
             _knownUnsupportedAssetPairs = new Dictionary<string, DateTime>();
         }
@@ -36,22 +42,23 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         /// </summary>
         /// <param name="assetPairId">Asset pair ID.</param>
         /// <returns>True if repository is able to store such a pair, and false otherwise.</returns>
-        public bool CanHandleAssetPair(string assetPairId)
+        public override bool CanHandleAssetPair(string assetPairId)
         {
-            if (_candlesHistoryRepository.CanStoreAssetPair(assetPairId)) return true; // It's Ok, we can store this asset pair
-            if (!_errorSettings.NotifyOnCantStoreAssetPair) return false; // We just can not store, and no notification on that is required in settings
+            if (base.CanHandleAssetPair(assetPairId))
+                return true; // It's Ok, we can store this asset pair
 
             // If we can't store and need to notify others...
             bool needToLog = false;
-            if (!_knownUnsupportedAssetPairs.ContainsKey(assetPairId))
+            DateTime lastLogMoment;
+
+            if (!_knownUnsupportedAssetPairs.TryGetValue(assetPairId, out lastLogMoment))
             {
                 _knownUnsupportedAssetPairs.Add(assetPairId, _clock.UtcNow);
                 needToLog = true;
             }
             else
             {
-                var lastLogDT = _knownUnsupportedAssetPairs[assetPairId];
-                if (_clock.UtcNow.Subtract(lastLogDT).TotalSeconds > _errorSettings.NotifyOnCantStoreAssetPairTimeout)
+                if (_clock.UtcNow.Subtract(lastLogMoment) > _notificationTimeout)
                 {
                     needToLog = true;
                     _knownUnsupportedAssetPairs[assetPairId] = _clock.UtcNow;
@@ -60,9 +67,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
             if (needToLog)
                 _log?.WriteErrorAsync(nameof(CandlesChecker),
-                    nameof(CanHandleAssetPair),
-                    null,
-                    new ArgumentOutOfRangeException($"Incomptible candle batch recieved. Connection string for asset pair {assetPairId} not configured. Skipping..."));
+                    assetPairId,
+                    new ArgumentOutOfRangeException($"Incomptible candle batch recieved: connection string for asset pair not configured. Skipping..."));
 
             return false; // Finally
         }

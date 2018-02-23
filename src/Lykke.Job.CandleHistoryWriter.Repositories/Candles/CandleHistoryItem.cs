@@ -43,6 +43,7 @@ namespace Lykke.Service.CandleHistory.Repositories.Candles
             int tick, 
             double tradingVolume, 
             double tradingOppositeVolume,
+            double lastTradePrice,
             DateTime lastUpdateTimestamp)
         {
             Open = open;
@@ -52,6 +53,7 @@ namespace Lykke.Service.CandleHistory.Repositories.Candles
             Tick = tick;
             TradingVolume = tradingVolume;
             TradingOppositeVolume = tradingOppositeVolume;
+            LastTradePrice = lastTradePrice;
             LastUpdateTimestamp = lastUpdateTimestamp;
         }
 

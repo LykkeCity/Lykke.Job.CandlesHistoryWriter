@@ -9,9 +9,9 @@ namespace Lykke.Job.CandlesHistoryWriter
     public class AppSettings
     {
         [Optional]
-        public CandlesHistorySettings CandlesHistory { get; set; }
+        public CandlesHistoryWriterSettings CandlesHistoryWriter { get; set; }
         [Optional]
-        public CandlesHistorySettings MtCandlesHistory { get; set; }
+        public CandlesHistoryWriterSettings MtCandlesHistoryWriter { get; set; }
         public SlackNotificationsSettings SlackNotifications { get; set; }
 
         [Optional]

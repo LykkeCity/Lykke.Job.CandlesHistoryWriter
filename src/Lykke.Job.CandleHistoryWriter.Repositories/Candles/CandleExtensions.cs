@@ -15,6 +15,7 @@ namespace Lykke.Service.CandleHistory.Repositories.Candles
                 tick: tick,
                 tradingVolume: candle.TradingVolume,
                 tradingOppositeVolume:  candle.TradingOppositeVolume,
+                lastTradePrice: candle.LastTradePrice,
                 lastUpdateTimestamp: candle.LastUpdateTimestamp
             );
         }

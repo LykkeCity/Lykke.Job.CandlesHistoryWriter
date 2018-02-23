@@ -1,4 +1,5 @@
 ﻿using Lykke.SettingsReader.Attributes;
+using System;
 
 namespace Lykke.Job.CandlesHistoryWriter.Services.Settings
 {
@@ -7,8 +8,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Settings
         [AmqpCheck]
         public bool NotifyOnCantStoreAssetPair { get; set; }
         /// <summary>
-        /// Log notification timeout in seconds.
+        /// Log notification timeout.
         /// </summary>
-        public int NotifyOnCantStoreAssetPairTimeout { get; set; }
+        public TimeSpan NotifyOnCantStoreAssetPairTimeout { get; set; }
     }
 }
