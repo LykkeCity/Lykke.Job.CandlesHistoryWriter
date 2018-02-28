@@ -4,6 +4,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Settings
 {
     public class DbSettings
     {
+        [AzureTableCheck]
         public string LogsConnectionString { get; set; }
 
         public string SnapshotsConnectionString { get; set; }

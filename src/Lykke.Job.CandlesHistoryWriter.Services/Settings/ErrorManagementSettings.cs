@@ -5,7 +5,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Settings
 {
     public class ErrorManagementSettings
     {
-        [AmqpCheck]
         public bool NotifyOnCantStoreAssetPair { get; set; }
         /// <summary>
         /// Log notification timeout.
