@@ -6,12 +6,12 @@ using AzureStorage;
 using AzureStorage.Tables;
 using Common.Log;
 using JetBrains.Annotations;
-using Lykke.Job.CandlesProducer.Contract;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services;
+using Lykke.Job.CandlesProducer.Contract;
 using Lykke.SettingsReader;
 
-namespace Lykke.Service.CandleHistory.Repositories.Candles
+namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 {
     [UsedImplicitly(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature)]
     public class CandlesHistoryRepository : ICandlesHistoryRepository

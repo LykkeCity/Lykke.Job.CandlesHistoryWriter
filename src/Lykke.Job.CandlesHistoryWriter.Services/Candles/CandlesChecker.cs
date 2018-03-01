@@ -1,13 +1,13 @@
-﻿using Common.Log;
+﻿using System;
+using System.Collections.Generic;
+using Common.Log;
+using JetBrains.Annotations;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services;
-using Lykke.Job.CandlesHistoryWriter.Core.Services.Candles;
-using Lykke.Job.CandlesHistoryWriter.Services.Settings;
-using System;
-using System.Collections.Generic;
 
-namespace Lykke.Service.CandlesHistory.Services.Candles
+namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 {
+    [UsedImplicitly]
     public class CandlesChecker : CandlesCheckerSilent
     {
         private readonly IClock _clock;
@@ -15,12 +15,13 @@ namespace Lykke.Service.CandlesHistory.Services.Candles
 
         private readonly Dictionary<string, DateTime> _knownUnsupportedAssetPairs;
 
+        /// <inheritdoc />
         /// <summary>
         /// Constructor.
         /// </summary>
-        /// <param name="log">The <see cref="ILog"/> instance.</param>
-        /// <param name="clock">The <see cref="IClock"/> instance.</param>
-        /// <param name="historyRep">The <see cref="ICandlesHistoryRepository"/> instance.</param>
+        /// <param name="log">The <see cref="T:Common.Log.ILog" /> instance.</param>
+        /// <param name="clock">The <see cref="T:Lykke.Job.CandlesHistoryWriter.Core.Services.IClock" /> instance.</param>
+        /// <param name="historyRep">The <see cref="T:Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles.ICandlesHistoryRepository" /> instance.</param>
         /// <param name="notificationTimeout">The timeout in seconds between log notifications for the same asset pair.</param>
         public CandlesChecker(
             ILog log,
@@ -37,6 +38,7 @@ namespace Lykke.Service.CandlesHistory.Services.Candles
             _knownUnsupportedAssetPairs = new Dictionary<string, DateTime>();
         }
 
+        /// <inheritdoc />
         /// <summary>
         /// Checks if we can handle/store the given asset pair. Also, writes an error to log according to timeout from settings.
         /// </summary>
@@ -65,7 +67,7 @@ namespace Lykke.Service.CandlesHistory.Services.Candles
             }
 
             if (needToLog)
-                _log?.WriteErrorAsync(nameof(CandlesChecker),
+                Log?.WriteErrorAsync(nameof(CandlesChecker),
                     assetPairId,
                     new ArgumentOutOfRangeException($"Incomptible candle batch recieved: connection string for asset pair not configured. Skipping..."));
 

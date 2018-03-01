@@ -2,23 +2,24 @@
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Candles;
 
-namespace Lykke.Service.CandlesHistory.Services.Candles
+namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 {
     public class CandlesCheckerSilent : ICandlesChecker
     {
-        protected readonly ILog _log;
-        protected readonly ICandlesHistoryRepository _candlesHistoryRepository;
+        protected readonly ILog Log;
+        private readonly ICandlesHistoryRepository _candlesHistoryRepository;
 
         /// <summary>
         /// Constructor.
         /// </summary>
         /// <param name="log">The <see cref="ILog"/> instance.</param>
         /// <param name="historyRep">The <see cref="ICandlesHistoryRepository"/> instance.</param>
+        // ReSharper disable once MemberCanBeProtected.Global
         public CandlesCheckerSilent(
             ILog log,
             ICandlesHistoryRepository historyRep)
         {
-            _log = log;
+            Log = log;
             _candlesHistoryRepository = historyRep;
         }
 

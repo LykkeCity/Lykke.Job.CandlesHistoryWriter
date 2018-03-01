@@ -1,4 +1,4 @@
-﻿namespace Lykke.Service.CandleHistory.Repositories
+﻿namespace Lykke.Job.CandleHistoryWriter.Repositories
 {
     internal static class Constants
     {

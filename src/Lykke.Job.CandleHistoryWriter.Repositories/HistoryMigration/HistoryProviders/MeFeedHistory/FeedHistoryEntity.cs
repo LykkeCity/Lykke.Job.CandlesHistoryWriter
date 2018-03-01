@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
-using Lykke.Job.CandlesProducer.Contract;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.HistoryProviders.MeFeedHistory;
+using Lykke.Job.CandlesProducer.Contract;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 
-namespace Lykke.Service.CandleHistory.Repositories.HistoryMigration.HistoryProviders.MeFeedHistory
+namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryProviders.MeFeedHistory
 {
     public class FeedHistoryEntity : ITableEntity, IFeedHistory
     {

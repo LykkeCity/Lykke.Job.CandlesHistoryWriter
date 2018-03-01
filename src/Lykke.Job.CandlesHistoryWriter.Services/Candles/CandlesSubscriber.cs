@@ -124,7 +124,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                 return errors;
             }
 
-            if (message.ContractVersion.Major != Job.CandlesProducer.Contract.Constants.ContractVersion.Major)
+            if (message.ContractVersion.Major != CandlesProducer.Contract.Constants.ContractVersion.Major)
             {
                 errors.Add("Unsupported contract version");
 

@@ -323,18 +323,18 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration.HistoryProvid
                 //});
 
                 var newCandle = Candle.Create(
-                    assetPair: assetPair.Id,
-                    priceType: priceType,
-                    timeInterval: CandleTimeInterval.Sec,
-                    timestamp: timestamp,
-                    open: (double) Math.Round(open, assetPair.Accuracy),
-                    close: (double) Math.Round(close, assetPair.Accuracy),
-                    high: (double) Math.Round(high, assetPair.Accuracy),
-                    low: (double) Math.Round(low, assetPair.Accuracy),
-                    tradingVolume: 0,
-                    tradingOppositeVolume: 0,
-                    lastTradePrice: 0,
-                    lastUpdateTimestamp: timestamp);
+                    assetPair.Id,
+                    priceType,
+                    CandleTimeInterval.Sec,
+                    timestamp,
+                    (double) Math.Round(open, assetPair.Accuracy),
+                    (double) Math.Round(close, assetPair.Accuracy),
+                    (double) Math.Round(high, assetPair.Accuracy),
+                    (double) Math.Round(low, assetPair.Accuracy),
+                    0,
+                    0,
+                    0,
+                    timestamp);
 
                 if (open == 0 || close == 0 || high == 0 || low == 0)
                 {
@@ -342,30 +342,30 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration.HistoryProvid
                     {
                         AssetPair = new
                         {
-                            Id = assetPair.Id,
-                            Accuracy = assetPair.Accuracy
+                            assetPair.Id,
+                            assetPair.Accuracy
                         },
-                        exclusiveStartDate = exclusiveStartDate,
-                        exclusiveEndDate = exclusiveEndDate,
-                        start = start,
-                        end = end,
-                        exclusiveStartPrice = exclusiveStartPrice,
-                        exclusiveEndPrice = exclusiveEndPrice,
-                        duration = duration,
-                        spread = spread,
-                        effectiveSpread = effectiveSpread,
-                        prevClose = prevClose,
-                        trendSign = trendSign,
-                        totalPriceChange = totalPriceChange,
-                        timestamp = timestamp,
-                        t = t,
-                        mid = mid,
-                        halfSpread = halfSpread,
-                        currentTrendSign = currentTrendSign,
-                        rangeMinMaxDeviationFactor = rangeMinMaxDeviationFactor,
-                        min = min,
-                        max = max,
-                        height = height
+                        exclusiveStartDate,
+                        exclusiveEndDate,
+                        start,
+                        end,
+                        exclusiveStartPrice,
+                        exclusiveEndPrice,
+                        duration,
+                        spread,
+                        effectiveSpread,
+                        prevClose,
+                        trendSign,
+                        totalPriceChange,
+                        timestamp,
+                        t,
+                        mid,
+                        halfSpread,
+                        currentTrendSign,
+                        rangeMinMaxDeviationFactor,
+                        min,
+                        max,
+                        height
                     };
 
                     throw new InvalidOperationException($"Generated candle {newCandle.ToJson()} has zero prices. Context: {context.ToJson()}");

@@ -5,11 +5,11 @@ using System.Threading.Tasks;
 using AzureStorage;
 using Common;
 using JetBrains.Annotations;
-using Lykke.Job.CandlesProducer.Contract;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.HistoryProviders.MeFeedHistory;
+using Lykke.Job.CandlesProducer.Contract;
 using Microsoft.WindowsAzure.Storage.Table;
 
-namespace Lykke.Service.CandleHistory.Repositories.HistoryMigration.HistoryProviders.MeFeedHistory
+namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryProviders.MeFeedHistory
 {
     [UsedImplicitly]
     public class FeedHistoryRepository : IFeedHistoryRepository

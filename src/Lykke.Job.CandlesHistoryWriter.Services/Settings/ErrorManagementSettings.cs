@@ -1,8 +1,9 @@
-﻿using Lykke.SettingsReader.Attributes;
-using System;
+﻿using System;
+using JetBrains.Annotations;
 
 namespace Lykke.Job.CandlesHistoryWriter.Services.Settings
 {
+    [UsedImplicitly]
     public class ErrorManagementSettings
     {
         public bool NotifyOnCantStoreAssetPair { get; set; }

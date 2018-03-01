@@ -1,9 +1,9 @@
 ﻿using System;
-using Lykke.Job.CandlesProducer.Contract;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
+using Lykke.Job.CandlesProducer.Contract;
 using Newtonsoft.Json;
 
-namespace Lykke.Service.CandleHistory.Repositories.Candles
+namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 {
     public class CandleHistoryItem
     {

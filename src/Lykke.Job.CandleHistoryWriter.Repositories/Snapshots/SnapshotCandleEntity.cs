@@ -1,9 +1,9 @@
 ﻿using System;
-using Lykke.Job.CandlesProducer.Contract;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
+using Lykke.Job.CandlesProducer.Contract;
 using MessagePack;
 
-namespace Lykke.Service.CandleHistory.Repositories.Snapshots
+namespace Lykke.Job.CandleHistoryWriter.Repositories.Snapshots
 {
     [MessagePackObject]
     public class SnapshotCandleEntity : ICandle

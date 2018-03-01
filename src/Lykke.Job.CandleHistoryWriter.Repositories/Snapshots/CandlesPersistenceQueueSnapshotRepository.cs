@@ -8,7 +8,7 @@ using JetBrains.Annotations;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using MessagePack;
 
-namespace Lykke.Service.CandleHistory.Repositories.Snapshots
+namespace Lykke.Job.CandleHistoryWriter.Repositories.Snapshots
 {
     [UsedImplicitly(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature)]
     public class CandlesPersistenceQueueSnapshotRepository : ICandlesPersistenceQueueSnapshotRepository

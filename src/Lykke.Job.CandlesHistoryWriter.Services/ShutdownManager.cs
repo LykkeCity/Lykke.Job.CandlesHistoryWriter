@@ -16,7 +16,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
         private readonly ICandlesSubscriber _candlesSubcriber;
         private readonly ISnapshotSerializer _snapshotSerializer;
         private readonly ICandlesPersistenceQueueSnapshotRepository _persistenceQueueSnapshotRepository;
-        private readonly ICandlesCacheService _candlesCacheService;
         private readonly ICandlesPersistenceQueue _persistenceQueue;
         private readonly ICandlesPersistenceManager _persistenceManager;
         private readonly CandlesMigrationManager _migrationManager;
@@ -26,7 +25,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
             ICandlesSubscriber candlesSubscriber, 
             ISnapshotSerializer snapshotSerializer,
             ICandlesPersistenceQueueSnapshotRepository persistenceQueueSnapshotRepository,
-            ICandlesCacheService candlesCacheService,
             ICandlesPersistenceQueue persistenceQueue,
             ICandlesPersistenceManager persistenceManager,
             CandlesMigrationManager migrationManager)
@@ -35,7 +33,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
             _candlesSubcriber = candlesSubscriber;
             _snapshotSerializer = snapshotSerializer;
             _persistenceQueueSnapshotRepository = persistenceQueueSnapshotRepository;
-            _candlesCacheService = candlesCacheService;
             _persistenceQueue = persistenceQueue;
             _persistenceManager = persistenceManager;
             _migrationManager = migrationManager;
@@ -56,7 +53,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
             await _log.WriteInfoAsync(nameof(ShutdownAsync), "", "Stopping persistence queue...");
                 
             _persistenceQueue.Stop();
-
             
             await _log.WriteInfoAsync(nameof(ShutdownAsync), "", "Serializing state...");
 

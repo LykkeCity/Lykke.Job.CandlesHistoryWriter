@@ -1,14 +1,14 @@
-﻿using Common;
+﻿using System;
+using System.Collections.Generic;
+using System.Globalization;
+using Common;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesProducer.Contract;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Globalization;
 
-namespace Lykke.Service.CandleHistory.Repositories.Candles
+namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 {
     public class CandleHistoryEntity : ITableEntity
     {

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
-using Common.Log;
 using Lykke.Job.CandlesProducer.Contract;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Candles;
 using Lykke.Job.CandlesHistoryWriter.Services.Candles;
@@ -26,7 +25,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
         [TestInitialize]
         public void InitializeTest()
         {
-            var logMock = new Mock<ILog>();
             _db = (new Mock<IDatabase>()).Object;
             _service = new RedisCandlesCacheService(_db, Core.Domain.Candles.MarketType.Mt, AmountOfCandlesToStore);
         }

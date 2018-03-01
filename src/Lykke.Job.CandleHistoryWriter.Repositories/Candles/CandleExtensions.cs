@@ -1,6 +1,6 @@
 ﻿using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 
-namespace Lykke.Service.CandleHistory.Repositories.Candles
+namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 {
     internal static class CandleExtensions
     {
@@ -8,15 +8,15 @@ namespace Lykke.Service.CandleHistory.Repositories.Candles
         {
             return new CandleHistoryItem
             (
-                open: candle.Open,
-                close: candle.Close,
-                high: candle.High,
-                low: candle.Low,
-                tick: tick,
-                tradingVolume: candle.TradingVolume,
-                tradingOppositeVolume:  candle.TradingOppositeVolume,
-                lastTradePrice: candle.LastTradePrice,
-                lastUpdateTimestamp: candle.LastUpdateTimestamp
+                candle.Open,
+                candle.Close,
+                candle.High,
+                candle.Low,
+                tick,
+                candle.TradingVolume,
+                candle.TradingOppositeVolume,
+                candle.LastTradePrice,
+                candle.LastUpdateTimestamp
             );
         }
     }

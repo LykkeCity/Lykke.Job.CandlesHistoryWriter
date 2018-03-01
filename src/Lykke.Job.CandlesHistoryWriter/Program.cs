@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 
@@ -10,6 +9,7 @@ namespace Lykke.Job.CandlesHistoryWriter
     {
         public static string EnvInfo => Environment.GetEnvironmentVariable("ENV_INFO");
 
+        // ReSharper disable once UnusedParameter.Local
         private static void Main(string[] args)
         {
             Console.WriteLine($"Lykke.Job.CandlesHistoryWriter version {Microsoft.Extensions.PlatformAbstractions.PlatformServices.Default.Application.ApplicationVersion}");

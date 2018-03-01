@@ -5,13 +5,13 @@ using System.Threading.Tasks;
 using AzureStorage;
 using Common;
 using Common.Log;
-using Lykke.Job.CandlesProducer.Contract;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services;
+using Lykke.Job.CandlesProducer.Contract;
 using Microsoft.WindowsAzure.Storage.Table;
 using Polly;
 
-namespace Lykke.Service.CandleHistory.Repositories.Candles
+namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 {
     internal sealed class AssetPairCandlesHistoryRepository
     {
