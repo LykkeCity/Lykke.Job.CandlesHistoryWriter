@@ -12,16 +12,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 {
     public class CandlesManager : ICandlesManager
     {
-        private static readonly ImmutableDictionary<CandleTimeInterval, CandleTimeInterval> GetToStoredIntervalsMap = ImmutableDictionary.CreateRange(new[]
-        {
-            KeyValuePair.Create(CandleTimeInterval.Min5, CandleTimeInterval.Minute),
-            KeyValuePair.Create(CandleTimeInterval.Min15, CandleTimeInterval.Minute),
-            KeyValuePair.Create(CandleTimeInterval.Min30, CandleTimeInterval.Minute),
-            KeyValuePair.Create(CandleTimeInterval.Hour4, CandleTimeInterval.Hour),
-            KeyValuePair.Create(CandleTimeInterval.Hour6, CandleTimeInterval.Hour),
-            KeyValuePair.Create(CandleTimeInterval.Hour12, CandleTimeInterval.Hour)
-        });
-
         private readonly ICandlesCacheService _candlesCacheService;
         private readonly ICandlesHistoryRepository _candlesHistoryRepository;
         private readonly ICandlesPersistenceQueue _candlesPersistenceQueue;

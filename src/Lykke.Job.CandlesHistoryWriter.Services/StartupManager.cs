@@ -14,7 +14,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
         private readonly ILog _log;
         private readonly ICandlesSubscriber _candlesSubscriber;
         private readonly ISnapshotSerializer _snapshotSerializer;
-        private readonly ICandlesCacheSnapshotRepository _candlesCacheSnapshotRepository;
         private readonly ICandlesPersistenceQueueSnapshotRepository _persistenceQueueSnapshotRepository;
         private readonly ICandlesCacheService _candlesCacheService;
         private readonly ICandlesPersistenceQueue _persistenceQueue;
@@ -26,7 +25,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
             ICandlesCacheInitalizationService cacheInitalizationService,
             ICandlesSubscriber candlesSubscriber,
             ISnapshotSerializer snapshotSerializer,
-            ICandlesCacheSnapshotRepository candlesCacheSnapshotRepository,
             ICandlesPersistenceQueueSnapshotRepository persistenceQueueSnapshotRepository,
             ICandlesCacheService candlesCacheService,
             ICandlesPersistenceQueue persistenceQueue,
@@ -35,7 +33,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
             _log = log.CreateComponentScope(nameof(StartupManager));
             _candlesSubscriber = candlesSubscriber;
             _snapshotSerializer = snapshotSerializer;
-            _candlesCacheSnapshotRepository = candlesCacheSnapshotRepository;
             _persistenceQueueSnapshotRepository = persistenceQueueSnapshotRepository;
             _candlesCacheService = candlesCacheService;
             _persistenceQueue = persistenceQueue;
@@ -51,16 +48,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
             {
                 _snapshotSerializer.DeserializeAsync(_persistenceQueue, _persistenceQueueSnapshotRepository)
             };
-
-            await _log.WriteInfoAsync(nameof(StartAsync), "", "Deserializing cache...");
-
-            if (!await _snapshotSerializer.DeserializeAsync(_candlesCacheService, _candlesCacheSnapshotRepository))
-            {
-                await _log.WriteInfoAsync(nameof(StartAsync), "", "Initializing cache from the history async...");
-
-                tasks.Add(_cacheInitalizationService.InitializeCacheAsync());
-            }
-
+            
             await _log.WriteInfoAsync(nameof(StartAsync), "", "Waiting for async tasks...");
 
             await Task.WhenAll(tasks);

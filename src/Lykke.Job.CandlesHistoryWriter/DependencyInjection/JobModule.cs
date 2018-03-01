@@ -23,7 +23,6 @@ using Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration;
 using Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration.HistoryProviders;
 using Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration.HistoryProviders.MeFeedHistory;
 using Lykke.Job.CandlesHistoryWriter.Services.Settings;
-using Lykke.Job.CandlesHistoryWriter.Validation;
 using Lykke.SettingsReader;
 using Microsoft.Extensions.DependencyInjection;
 using StackExchange.Redis;
@@ -99,7 +98,8 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
                 _settings.AssetsCache.ExpirationPeriod));
 
             builder.RegisterType<AssetPairsManager>()
-                .As<IAssetPairsManager>();
+                .As<IAssetPairsManager>()
+                .SingleInstance();
         }
 
         private void RegisterCandles(ContainerBuilder builder)
@@ -114,14 +114,16 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
                 .SingleInstance();
 
             builder.RegisterType<StartupManager>()
-                .As<IStartupManager>();
+                .As<IStartupManager>()
+                .SingleInstance();
 
             builder.RegisterType<ShutdownManager>()
                 .As<IShutdownManager>()
                 .SingleInstance();
 
             builder.RegisterType<SnapshotSerializer>()
-                .As<ISnapshotSerializer>();
+                .As<ISnapshotSerializer>()
+                .SingleInstance();
 
             // Now creating a silent -or- logging candles checker object.
             // CandlesChecker -- logs notifications on candles without properly configured connection strings for asset pair using the specified timeout between similar notifications.
@@ -144,16 +146,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
             builder.RegisterType<CandlesManager>()
                 .As<ICandlesManager>()
                 .SingleInstance();
-
-            // The simpliest way to switch between in-memory and redis configuration is:
-            // - comment out registering ICandlesCacheService with InMemoryCandlesCacheService;
-            // - uncomment registering ICandlesCacheService with RedisCandlesCacheService.
-
-            /*builder.RegisterType<InMemoryCandlesCacheService>()
-                .As<ICandlesCacheService>()
-                .WithParameter(TypedParameter.From(_settings.HistoryTicksCacheSize))
-                .SingleInstance();*/
-
+            
             builder.RegisterType<RedisCandlesCacheService>()
                 .As<ICandlesCacheService>()
                 .WithParameter(TypedParameter.From(_marketType))
@@ -180,17 +173,9 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
                 .WithParameter(TypedParameter.From(_settings.HistoryTicksCacheSize))
                 .As<ICandlesCacheInitalizationService>();
 
-            builder.RegisterType<CandlesCacheSnapshotRepository>()
-                .As<ICandlesCacheSnapshotRepository>()
-                .WithParameter(TypedParameter.From(AzureBlobStorage.Create(_dbSettings.ConnectionString(x => x.SnapshotsConnectionString), TimeSpan.FromMinutes(10))));
-
             builder.RegisterType<CandlesPersistenceQueueSnapshotRepository>()
                 .As<ICandlesPersistenceQueueSnapshotRepository>()
                 .WithParameter(TypedParameter.From(AzureBlobStorage.Create(_dbSettings.ConnectionString(x => x.SnapshotsConnectionString), TimeSpan.FromMinutes(10))));
-
-            builder.RegisterType<CandlesHistorySizeValidator>()
-                .AsSelf()
-                .WithParameter(TypedParameter.From(_settings.MaxCandlesCountWhichCanBeRequested));
 
             RegisterCandlesMigration(builder);
         }

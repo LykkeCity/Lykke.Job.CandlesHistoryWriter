@@ -7,9 +7,11 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Settings
         [AzureTableCheck]
         public string LogsConnectionString { get; set; }
 
+        [AzureBlobCheck]
         public string SnapshotsConnectionString { get; set; }
 
         [Optional]
+        [AzureTableCheck]
         public string FeedHistoryConnectionString { get; set; }
     }
 }

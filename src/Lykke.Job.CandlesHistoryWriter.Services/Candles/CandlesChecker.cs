@@ -13,7 +13,7 @@ namespace Lykke.Service.CandlesHistory.Services.Candles
         private readonly IClock _clock;
         private readonly TimeSpan _notificationTimeout;
 
-        private Dictionary<string, DateTime> _knownUnsupportedAssetPairs;
+        private readonly Dictionary<string, DateTime> _knownUnsupportedAssetPairs;
 
         /// <summary>
         /// Constructor.
@@ -48,10 +48,9 @@ namespace Lykke.Service.CandlesHistory.Services.Candles
                 return true; // It's Ok, we can store this asset pair
 
             // If we can't store and need to notify others...
-            bool needToLog = false;
-            DateTime lastLogMoment;
+            var needToLog = false;
 
-            if (!_knownUnsupportedAssetPairs.TryGetValue(assetPairId, out lastLogMoment))
+            if (!_knownUnsupportedAssetPairs.TryGetValue(assetPairId, out var lastLogMoment))
             {
                 _knownUnsupportedAssetPairs.Add(assetPairId, _clock.UtcNow);
                 needToLog = true;
