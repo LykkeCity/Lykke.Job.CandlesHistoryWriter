@@ -1,12 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
-using Common;
-using Lykke.Job.CandlesProducer.Contract;
+﻿using Common;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
+using Lykke.Job.CandlesProducer.Contract;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
 
 namespace Lykke.Service.CandleHistory.Repositories.Candles
 {
@@ -30,7 +30,7 @@ namespace Lykke.Service.CandleHistory.Repositories.Candles
         public string RowKey { get; set; }
         public DateTimeOffset Timestamp { get; set; }
 
-        #endregion
+        #endregion ITableEntity properties
 
         public DateTime DateTime
         {
@@ -165,12 +165,12 @@ namespace Lykke.Service.CandleHistory.Repositories.Candles
             var tick = GetIntervalTick(candle.Timestamp, interval);
 
             // Considering that Candles is ordered by Tick
-            for(var i = 0; i < Candles.Count; ++i)
+            for (var i = 0; i < Candles.Count; ++i)
             {
                 var currentCandle = Candles[i];
 
                 // While currentCandle.Tick < tick - just skipping
-                
+
                 // That's it, merge to existing candle
                 if (currentCandle.Tick == tick)
                 {
@@ -196,28 +196,40 @@ namespace Lykke.Service.CandleHistory.Repositories.Candles
             {
                 case CandleTimeInterval.Month:
                     return dateTime.Month;
+
                 case CandleTimeInterval.Week:
                     return (int)(dateTime - DateTimeUtils.GetFirstWeekOfYear(dateTime)).TotalDays / 7;
+
                 case CandleTimeInterval.Day:
                     return dateTime.Day;
+
                 case CandleTimeInterval.Hour12:
                     return dateTime.Hour / 12;
+
                 case CandleTimeInterval.Hour6:
                     return dateTime.Hour / 6;
+
                 case CandleTimeInterval.Hour4:
                     return dateTime.Hour / 4;
+
                 case CandleTimeInterval.Hour:
                     return dateTime.Hour;
+
                 case CandleTimeInterval.Min30:
                     return dateTime.Minute / 30;
+
                 case CandleTimeInterval.Min15:
                     return dateTime.Minute / 15;
+
                 case CandleTimeInterval.Min5:
                     return dateTime.Minute / 5;
+
                 case CandleTimeInterval.Minute:
                     return dateTime.Minute;
+
                 case CandleTimeInterval.Sec:
                     return dateTime.Second;
+
                 default:
                     throw new ArgumentOutOfRangeException(nameof(interval), interval, "Unexpected TimeInterval value.");
             }
@@ -235,7 +247,7 @@ namespace Lykke.Service.CandleHistory.Repositories.Candles
                 throw new ArgumentNullException(nameof(value));
             }
 
-            if (DateTime.TryParseExact(value, "s", DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AssumeUniversal, out var date))
+            if (DateTime.TryParseExact(value, "s", DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AdjustToUniversal, out var date))
             {
                 return DateTime.SpecifyKind(date, DateTimeKind.Utc);
             }
