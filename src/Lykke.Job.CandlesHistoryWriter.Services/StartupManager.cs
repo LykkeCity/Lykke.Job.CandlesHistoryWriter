@@ -12,6 +12,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
     public class StartupManager : IStartupManager
     {
         private readonly ILog _log;
+        private readonly ICandlesCacheInitalizationService _cacheInitalizationService;
         private readonly ICandlesSubscriber _candlesSubscriber;
         private readonly ISnapshotSerializer _snapshotSerializer;
         private readonly ICandlesPersistenceQueueSnapshotRepository _persistenceQueueSnapshotRepository;
@@ -20,6 +21,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
 
         public StartupManager(
             ILog log,
+            ICandlesCacheInitalizationService cacheInitalizationService,
             ICandlesSubscriber candlesSubscriber,
             ISnapshotSerializer snapshotSerializer,
             ICandlesPersistenceQueueSnapshotRepository persistenceQueueSnapshotRepository,
@@ -27,6 +29,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
             ICandlesPersistenceManager persistenceManager)
         {
             _log = log.CreateComponentScope(nameof(StartupManager));
+            _cacheInitalizationService = cacheInitalizationService;
             _candlesSubscriber = candlesSubscriber;
             _snapshotSerializer = snapshotSerializer;
             _persistenceQueueSnapshotRepository = persistenceQueueSnapshotRepository;
@@ -42,7 +45,11 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
             {
                 _snapshotSerializer.DeserializeAsync(_persistenceQueue, _persistenceQueueSnapshotRepository)
             };
-            
+
+            await _log.WriteInfoAsync(nameof(StartAsync), "", "Initializing cache from the history async...");
+
+            tasks.Add(_cacheInitalizationService.InitializeCacheAsync());
+
             await _log.WriteInfoAsync(nameof(StartAsync), "", "Waiting for async tasks...");
 
             await Task.WhenAll(tasks);
