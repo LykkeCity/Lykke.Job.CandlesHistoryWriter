@@ -26,7 +26,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
         public void InitializeTest()
         {
             _db = (new Mock<IDatabase>()).Object;
-            _service = new RedisCandlesCacheService(_db, Core.Domain.Candles.MarketType.Mt, AmountOfCandlesToStore);
+            _service = new RedisCandlesCacheService(_db, Core.Domain.Candles.MarketType.Mt, AmountOfCandlesToStore, new TimeSpan(0, 0, 1, 0));
         }
 
 

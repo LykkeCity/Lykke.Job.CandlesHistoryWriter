@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Autofac;
 using Common;
 using JetBrains.Annotations;
 using Lykke.Job.CandlesProducer.Contract;
@@ -20,19 +21,24 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
     /// Caches candles in the redis using lexographical indexes with candles data as the auxiliary information of the index
     /// </summary>
     [UsedImplicitly]
-    public class RedisCandlesCacheService : ICandlesCacheService
+    public class RedisCandlesCacheService : ICandlesCacheService, IStartable, IStopable
     {
         private const string TimestampFormat = "yyyyMMddHHmmss";
 
         private readonly IDatabase _database;
         private readonly MarketType _market;
         private readonly int _amountOfCandlesToStore;
+        private readonly TimeSpan _cacheCleanupPeriod;
+        private DateTime _lastCleanupTime;
 
-        public RedisCandlesCacheService(IDatabase database, MarketType market, int amountOfCandlesToStore)
+        public RedisCandlesCacheService(IDatabase database, MarketType market, int amountOfCandlesToStore, TimeSpan cacheCleanupPeriod)
         {
             _database = database;
             _market = market;
             _amountOfCandlesToStore = amountOfCandlesToStore;
+            _cacheCleanupPeriod = cacheCleanupPeriod;
+
+            _lastCleanupTime = DateTime.UtcNow;
         }
 
         public IImmutableDictionary<string, IImmutableList<ICandle>> GetState()
@@ -96,6 +102,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
             var key = GetKey(candle.AssetPairId, candle.PriceType, candle.TimeInterval);
             var serializedValue = SerializeCandle(candle);
+            
+            // Peek the top candle from cache
+            var candleOnTop = DeserializeCandle(_database.ListGetByIndex(key, -1), null, CandlePriceType.Unspecified, CandleTimeInterval.Unspecified);
 
             // Transaction is needed here, despite of this method is non concurrent-safe,
             // without transaction at the moment candle can be missed or doubled
@@ -103,33 +112,24 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
             var transaction = _database.CreateTransaction();
 
-            // Removes old candle
-
-            var currentCandleKey = candle.Timestamp.ToString(TimestampFormat);
-            var nextCandleKey = candle.Timestamp.AddIntervalTicks(1, candle.TimeInterval).ToString(TimestampFormat);
-
-            var candleRemovalTask = transaction.SortedSetRemoveRangeByValueAsync(key, currentCandleKey, nextCandleKey, Exclude.Stop);
+            // If the top candle is the current one, we need to remove it first, and then add once again with updated content.
+            // This is important because we may have several candle updates during its time interval.
+            if (DateTime.UtcNow.TruncateTo(candle.TimeInterval).CompareTo(candleOnTop.Timestamp) == 0)
+                await transaction.SortedSetRemoveRangeByRankAsync(key, -1, -1);
 
             // Adds new candle
-
-            var candleAdditionTask = transaction.SortedSetAddAsync(key, serializedValue, 0);
+            await transaction.SortedSetAddAsync(key, serializedValue, 0);
 
             if (!await transaction.ExecuteAsync())
             {
                 throw new InvalidOperationException("Redis transaction is rolled back");
             }
 
-            // Operations in the transaction can't be awaited before transaction is executed, so
-            // saves tasks and waits they here, just to calm down the Resharper
-
-            await Task.WhenAll(candleRemovalTask, candleAdditionTask);
-
-            // Truncates candles set to the _amountOfCandlesToStore. 
-            // The older candles will be removed, since they goes first in the set
-
-            // TODO: Do it not on every candle
-
-            await _database.SortedSetRemoveRangeByRankAsync(key, 0, -_amountOfCandlesToStore - 1);
+            if (_lastCleanupTime.Add(_cacheCleanupPeriod) >= DateTime.UtcNow)
+            {
+                await _database.SortedSetRemoveRangeByRankAsync(key, 0, -_amountOfCandlesToStore - 1);
+                _lastCleanupTime = DateTime.UtcNow;
+            }
         }
 
         public async Task<IEnumerable<ICandle>> GetCandlesAsync(string assetPairId, CandlePriceType priceType, CandleTimeInterval timeInterval, DateTime fromMoment, DateTime toMoment)
@@ -208,6 +208,21 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         private string GetKey(string assetPairId, CandlePriceType priceType, CandleTimeInterval timeInterval)
         {
             return $"CandlesHistory:{_market}:{assetPairId}:{priceType}:{timeInterval}";
+        }
+
+        public void Start()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Dispose()
+        {
+            // do nothing
+        }
+
+        public void Stop()
+        {
+            throw new NotImplementedException();
         }
     }
 }
