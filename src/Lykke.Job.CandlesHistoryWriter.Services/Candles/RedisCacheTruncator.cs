@@ -5,7 +5,6 @@ using Common;
 using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
-using Lykke.Job.CandlesProducer.Contract;
 using Lykke.SettingsReader;
 using StackExchange.Redis;
 
@@ -14,10 +13,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
     [UsedImplicitly]
     public class RedisCacheTruncator : TimerPeriod
     {
+        private readonly IReloadingManager<Dictionary<string, string>> _assetConnectionStrings;
         private readonly IDatabase _database;
+        private readonly MarketType _market;
         private readonly int _amountOfCandlesToStore;
-
-        private readonly List<string> _cacheKeys;
 
         public RedisCacheTruncator(
             IReloadingManager<Dictionary<string, string>> assetConnectionStrings,
@@ -28,31 +27,24 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             ILog log)
             : base(nameof(QueueMonitor), (int)cacheCleanupPeriod.TotalMilliseconds, log)
         {
+            _assetConnectionStrings = assetConnectionStrings;
             _database = database;
+            _market = market;
             _amountOfCandlesToStore = amountOfCandlesToStore;
-
-            var priceTypes = Enum.GetValues(typeof(CandlePriceType));
-            var timeIntervals = Enum.GetValues(typeof(CandleTimeInterval));
-
-            _cacheKeys = new List<string>();
-
-            foreach (var assetId in assetConnectionStrings.CurrentValue.Keys)
-            {
-                foreach (var priceType in priceTypes)
-                {
-                    foreach (var timeInterval in timeIntervals)
-                    {
-                        var keyToTest = $"CandlesHistory:{market}:{assetId}:{priceType}:{timeInterval}";
-                        if (_database.KeyExists(keyToTest)) _cacheKeys.Add(keyToTest);
-                    }
-                }
-            }
         }
 
         public override async Task Execute()
         {
-            foreach (var key in _cacheKeys)
-                await _database.SortedSetRemoveRangeByRankAsync(key, 0, -_amountOfCandlesToStore - 1);
+            foreach (var assetId in _assetConnectionStrings.CurrentValue.Keys)
+            {
+                foreach (var priceType in Constants.StoredPriceTypes)
+                {
+                    foreach (var timeInterval in Constants.StoredIntervals)
+                    {
+                        await _database.SortedSetRemoveRangeByRankAsync($"CandlesHistory:{_market}:{assetId}:{priceType}:{timeInterval}", 0, -_amountOfCandlesToStore - 1);
+                    }
+                }
+            }
         }
     }
 }

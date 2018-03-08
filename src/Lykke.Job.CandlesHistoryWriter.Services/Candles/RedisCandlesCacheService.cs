@@ -27,7 +27,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         private readonly IDatabase _database;
         private readonly MarketType _market;
 
-        public RedisCandlesCacheService(IDatabase database, MarketType market, int amountOfCandlesToStore, TimeSpan cacheCleanupPeriod)
+        public RedisCandlesCacheService(IDatabase database, MarketType market)
         {
             _database = database;
             _market = market;
