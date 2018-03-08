@@ -1,4 +1,6 @@
-﻿namespace Lykke.Job.CandlesHistoryWriter.Services.Settings
+﻿using System;
+
+namespace Lykke.Job.CandlesHistoryWriter.Services.Settings
 {
     public class CandlesHistoryWriterSettings
     {        
@@ -10,6 +12,6 @@
         public MigrationSettings Migration { get; set; }
         public ErrorManagementSettings ErrorManagement { get; set; }
         public int HistoryTicksCacheSize { get; set; }
-        public int MaxCandlesCountWhichCanBeRequested { get; set; }
+        public TimeSpan CacheCleanupPeriod { get; set; }
     }
 }

@@ -149,7 +149,6 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
             builder.RegisterType<RedisCandlesCacheService>()
                 .As<ICandlesCacheService>()
                 .WithParameter(TypedParameter.From(_marketType))
-                .WithParameter(TypedParameter.From(_settings.HistoryTicksCacheSize))
                 .SingleInstance();
 
             builder.RegisterType<CandlesPersistenceManager>()
@@ -175,6 +174,14 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
             builder.RegisterType<CandlesPersistenceQueueSnapshotRepository>()
                 .As<ICandlesPersistenceQueueSnapshotRepository>()
                 .WithParameter(TypedParameter.From(AzureBlobStorage.Create(_dbSettings.ConnectionString(x => x.SnapshotsConnectionString), TimeSpan.FromMinutes(10))));
+
+            builder.RegisterType<RedisCacheTruncator>()
+                .As<IStartable>()
+                .SingleInstance()
+                .WithParameter(TypedParameter.From(_marketType))
+                .WithParameter(TypedParameter.From(_settings.CacheCleanupPeriod))
+                .WithParameter(TypedParameter.From(_settings.HistoryTicksCacheSize))
+                .AutoActivate();
 
             RegisterCandlesMigration(builder);
         }

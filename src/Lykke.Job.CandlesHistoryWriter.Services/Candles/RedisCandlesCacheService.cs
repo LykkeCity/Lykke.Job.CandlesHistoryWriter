@@ -26,13 +26,11 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
         private readonly IDatabase _database;
         private readonly MarketType _market;
-        private readonly int _amountOfCandlesToStore;
 
-        public RedisCandlesCacheService(IDatabase database, MarketType market, int amountOfCandlesToStore)
+        public RedisCandlesCacheService(IDatabase database, MarketType market)
         {
             _database = database;
             _market = market;
-            _amountOfCandlesToStore = amountOfCandlesToStore;
         }
 
         public IImmutableDictionary<string, IImmutableList<ICandle>> GetState()
@@ -74,7 +72,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
             // TODO: This is non concurrent-safe update
 
-            var key = GetKey(assetPairId, priceType, timeInterval);
+            var key = GetKey(_market, assetPairId, priceType, timeInterval);
 
             // Cleans cache
 
@@ -94,7 +92,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         {
             // TODO: This is non concurrent-safe method
 
-            var key = GetKey(candle.AssetPairId, candle.PriceType, candle.TimeInterval);
+            var key = GetKey(_market, candle.AssetPairId, candle.PriceType, candle.TimeInterval);
             var serializedValue = SerializeCandle(candle);
 
             // Transaction is needed here, despite of this method is non concurrent-safe,
@@ -123,18 +121,11 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             // saves tasks and waits they here, just to calm down the Resharper
 
             await Task.WhenAll(candleRemovalTask, candleAdditionTask);
-
-            // Truncates candles set to the _amountOfCandlesToStore. 
-            // The older candles will be removed, since they goes first in the set
-
-            // TODO: Do it not on every candle
-
-            await _database.SortedSetRemoveRangeByRankAsync(key, 0, -_amountOfCandlesToStore - 1);
         }
 
         public async Task<IEnumerable<ICandle>> GetCandlesAsync(string assetPairId, CandlePriceType priceType, CandleTimeInterval timeInterval, DateTime fromMoment, DateTime toMoment)
         {
-            var key = GetKey(assetPairId, priceType, timeInterval);
+            var key = GetKey(_market, assetPairId, priceType, timeInterval);
             var from = fromMoment.ToString(TimestampFormat);
             var to = toMoment.ToString(TimestampFormat);
             var serializedValues = await _database.SortedSetRangeByValueAsync(key, from, to, Exclude.Stop);
@@ -205,9 +196,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             }
         }
 
-        private string GetKey(string assetPairId, CandlePriceType priceType, CandleTimeInterval timeInterval)
+        public static string GetKey(MarketType market, string assetPairId, CandlePriceType priceType, CandleTimeInterval timeInterval)
         {
-            return $"CandlesHistory:{_market}:{assetPairId}:{priceType}:{timeInterval}";
+            return $"CandlesHistory:{market}:{assetPairId}:{priceType}:{timeInterval}";
         }
     }
 }
