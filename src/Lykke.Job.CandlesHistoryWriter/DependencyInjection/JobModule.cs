@@ -178,7 +178,6 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
             builder.RegisterType<RedisCacheTruncator>()
                 .As<IStartable>()
                 .SingleInstance()
-                .WithParameter(TypedParameter.From(_candleHistoryAssetConnections))
                 .WithParameter(TypedParameter.From(_marketType))
                 .WithParameter(TypedParameter.From(_settings.CacheCleanupPeriod))
                 .WithParameter(TypedParameter.From(_settings.HistoryTicksCacheSize))

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using AzureStorage;
 using AzureStorage.Tables;
@@ -129,6 +130,11 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             storage.GetDataAsync(assetPairId, "1900-01-01").Wait();
 
             return storage;
+        }
+
+        public IReadOnlyList<string> GetStoredAssetPairs()
+        {
+            return _assetConnectionStrings.CurrentValue.Keys.ToList();
         }
     }
 }
