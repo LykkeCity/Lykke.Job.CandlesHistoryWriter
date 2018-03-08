@@ -45,7 +45,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                     {
                         var key = RedisCandlesCacheService.GetKey(_market, assetId, priceType, timeInterval);
 
-                        tasks.Add(_database.SortedSetRemoveRangeByRankAsync(key, 0, -_amountOfCandlesToStore - 1));
+                        tasks.Add(transaction.SortedSetRemoveRangeByRankAsync(key, 0, -_amountOfCandlesToStore - 1));
                     }
                 }
             }
