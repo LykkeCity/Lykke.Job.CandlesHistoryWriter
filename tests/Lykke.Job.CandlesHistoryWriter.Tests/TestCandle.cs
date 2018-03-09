@@ -16,7 +16,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
         public double Low { get; set; }
         public double TradingVolume { get; set; }
         public double TradingOppositeVolume { get; set; }
-        public double LastTradePrice { get; set; }
         public DateTime LastUpdateTimestamp { get; set; }
     }
 }

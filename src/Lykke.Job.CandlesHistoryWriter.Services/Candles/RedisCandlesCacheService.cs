@@ -152,7 +152,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                     High = candle.High,
                     TradingVolume = candle.TradingVolume,
                     TradingOppositVolume = candle.TradingOppositeVolume,
-                    LastTradePrice = candle.LastTradePrice,
                     LastUpdateTimestamp = candle.LastUpdateTimestamp
                 };
 

@@ -15,7 +15,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles
         public double Low { get; }
         public double TradingVolume { get; }
         public double TradingOppositeVolume { get; }
-        public double LastTradePrice { get; }
         public DateTime LastUpdateTimestamp { get; }
 
         private Candle(
@@ -29,7 +28,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles
             double low,
             double tradingVolume,
             double tradingOppositeVolume,
-            double lastTradePrice, 
             DateTime lastUpdateTimestamp)
         {
             AssetPairId = assetPair;
@@ -42,7 +40,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles
             Low = low;
             TradingVolume = tradingVolume;
             TradingOppositeVolume = tradingOppositeVolume;
-            LastTradePrice = lastTradePrice;
             LastUpdateTimestamp = lastUpdateTimestamp;
         }
 
@@ -57,7 +54,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles
             double low, 
             double tradingVolume,
             double tradingOppositeVolume,
-            double lastTradePrice, 
             DateTime lastUpdateTimestamp)
         {
             return new Candle(
@@ -71,7 +67,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles
                 low,
                 tradingVolume,
                 tradingOppositeVolume,
-                lastTradePrice,
                 lastUpdateTimestamp);
         }
 
@@ -81,7 +76,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles
             double high, 
             double tradingVolume, 
             double tradingOppositeVolume,
-            double lastTradePrice, 
             DateTime updateTimestamp)
         {
             if (updateTimestamp > LastUpdateTimestamp)
@@ -97,7 +91,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles
                     low: low,
                     tradingVolume: tradingVolume, 
                     tradingOppositeVolume: tradingOppositeVolume,
-                    lastTradePrice: lastTradePrice,
                     lastUpdateTimestamp: updateTimestamp);
             }
 
@@ -118,7 +111,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles
                 low: candle.Low,
                 tradingVolume: candle.TradingVolume,
                 tradingOppositeVolume: candle.TradingOppositeVolume,
-                lastTradePrice: candle.LastTradePrice,
                 lastUpdateTimestamp: candle.LastUpdateTimestamp
             );
         }

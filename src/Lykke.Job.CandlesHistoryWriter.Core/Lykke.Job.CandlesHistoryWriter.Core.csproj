@@ -8,7 +8,7 @@
   <ItemGroup>
     <PackageReference Include="Autofac" Version="4.6.2" />
     <PackageReference Include="JetBrains.Annotations" Version="11.1.0" />
-    <PackageReference Include="Lykke.Job.CandlesProducer.Contract" Version="3.0.1" />
+    <PackageReference Include="Lykke.Job.CandlesProducer.Contract" Version="4.0.0" />
     <PackageReference Include="Lykke.Service.Assets.Client" Version="1.0.17" />
   </ItemGroup>
 

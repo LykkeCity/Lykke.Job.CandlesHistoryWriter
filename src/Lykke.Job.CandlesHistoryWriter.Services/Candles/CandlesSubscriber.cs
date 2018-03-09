@@ -92,7 +92,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                         high: candleUpdate.High,
                         tradingVolume: candleUpdate.TradingVolume,
                         tradingOppositeVolume: candleUpdate.TradingOppositeVolume,
-                        lastTradePrice: candleUpdate.LastTradePrice,
                         lastUpdateTimestamp: candleUpdate.ChangeTimestamp))
                     .ToArray();
 
@@ -124,8 +123,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             }
 
             if (message.ContractVersion.Major != CandlesProducer.Contract.Constants.ContractVersion.Major &&
-                // Version 2 is still supported
-                message.ContractVersion.Major != 2)
+                // Version 2 and 3 is still supported
+                message.ContractVersion.Major != 2 &&
+                message.ContractVersion.Major != 3)
             {
                 errors.Add("Unsupported contract version");
 

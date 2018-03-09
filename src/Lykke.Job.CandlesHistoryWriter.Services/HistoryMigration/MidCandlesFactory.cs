@@ -59,9 +59,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                 tradingOppositeVolume: askCandle.LastUpdateTimestamp > bidCandle.LastUpdateTimestamp
                     ? askCandle.TradingOppositeVolume
                     : bidCandle.TradingOppositeVolume,
-                lastTradePrice: askCandle.LastUpdateTimestamp > bidCandle.LastUpdateTimestamp
-                    ? askCandle.LastTradePrice
-                    : bidCandle.LastTradePrice,
                 lastUpdateTimestamp: askCandle.LastUpdateTimestamp > bidCandle.LastUpdateTimestamp
                     ? askCandle.LastUpdateTimestamp
                     : bidCandle.LastUpdateTimestamp);
