@@ -105,8 +105,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
         {
             _cacheCandlesStopwatch.Stop();
 
-            LastCacheDuration = _persistCandlesStopwatch.Elapsed;
-            TotalCacheDuration += _persistCandlesStopwatch.Elapsed;
+            LastCacheDuration = _cacheCandlesStopwatch.Elapsed;
+            TotalCacheDuration += _cacheCandlesStopwatch.Elapsed;
             ++TotalCandleBatchesCachedCount;
             TotalCandlesCachedCount += candlesCount;
 
