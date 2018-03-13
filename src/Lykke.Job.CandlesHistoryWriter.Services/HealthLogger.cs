@@ -1,49 +1,38 @@
-﻿using Lykke.Job.CandlesHistoryWriter.Core.Services;
-using Lykke.Job.CandlesHistoryWriter.Models.IsAlive;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.PlatformAbstractions;
-using Swashbuckle.AspNetCore.SwaggerGen;
+﻿using System;
+using System.Threading.Tasks;
+using Common;
+using Common.Log;
+using JetBrains.Annotations;
+using Lykke.Job.CandlesHistoryWriter.Core.Services;
 
-namespace Lykke.Job.CandlesHistoryWriter.Controllers
+namespace Lykke.Job.CandlesHistoryWriter.Services
 {
-    /// <summary>
-    /// Controller to test service is alive
-    /// </summary>
-    [Route("api/[controller]")]
-    public class IsAliveController : Controller
+    [UsedImplicitly]
+    public class HealthLogger : TimerPeriod
     {
         private readonly IHealthService _healthService;
-        private readonly IShutdownManager _shutdownManager;
+        private readonly ILog _log;
 
-        public IsAliveController(IHealthService healthService, IShutdownManager shutdownManager)
+        public HealthLogger(IHealthService healthService, ILog log) : 
+            base((int)TimeSpan.FromMinutes(10).TotalMilliseconds, log)
         {
             _healthService = healthService;
-            _shutdownManager = shutdownManager;
+            _log = log;
         }
 
-        /// <summary>
-        /// Checks service is alive
-        /// </summary>
-        [HttpGet]
-        [SwaggerOperation("IsAlive")]
-        public IsAliveResponse Get()
+        public override Task Execute()
         {
-            return new IsAliveResponse
+            var health = new
             {
-                Name = PlatformServices.Default.Application.ApplicationName,
-                Version = PlatformServices.Default.Application.ApplicationVersion,
-                Env = Program.EnvInfo,
-                IsShuttingDown = _shutdownManager.IsShuttingDown,
-                IsShuttedDown = _shutdownManager.IsShuttedDown,
-                Persistence = new IsAliveResponse.PersistenceInfo
+                Persistence = new
                 {
-                    Duration = new IsAliveResponse.Duration
+                    Duration = new
                     {
                         Average = _healthService.AveragePersistDuration,
                         Last = _healthService.LastPersistDuration,
                         Total = _healthService.TotalPersistDuration,
                     },
-                    PersistThroughput = new IsAliveResponse.PersistThroughput
+                    PersistThroughput = new
                     {
                         AverageCandlesPersistedPerSecond = _healthService.AverageCandlesPersistedPerSecond,
                         AverageCandleRowsPersistedPerSecond = _healthService.AverageCandleRowsPersistedPerSecond
@@ -53,15 +42,15 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
                     TotalCandlesPersistedCount = _healthService.TotalCandlesPersistedCount,
                     TotalCandleRowsPersistedCount = _healthService.TotalCandleRowsPersistedCount,
                 },
-                Cache = new IsAliveResponse.CacheInfo
+                Cache = new
                 {
-                    Duration = new IsAliveResponse.Duration
+                    Duration = new
                     {
                         Average = _healthService.AverageCacheDuration,
                         Last = _healthService.LastCacheDuration,
                         Total = _healthService.TotalCacheDuration,
                     },
-                    Throughput = new IsAliveResponse.CacheThroughput
+                    Throughput = new
                     {
                         AverageCandlesCachedPerSecond = _healthService.AverageCandlesCachedPerSecond,
                         AverageCandlesCachedPerBatch = _healthService.AverageCandlesCachedPerBatch,
@@ -71,6 +60,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
                     TotalCandleBatchesCachedCount = _healthService.TotalCandleBatchesCachedCount
                 }
             };
+
+            _log.WriteInfo("Health", health, string.Empty);
+
+            return Task.CompletedTask;
         }
     }
 }

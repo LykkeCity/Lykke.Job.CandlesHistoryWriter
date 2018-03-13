@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -10,6 +9,7 @@ using Common;
 using JetBrains.Annotations;
 using Lykke.Job.CandlesProducer.Contract;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
+using Lykke.Job.CandlesHistoryWriter.Core.Services;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Candles;
 using MoreLinq;
 using StackExchange.Redis;
@@ -24,11 +24,13 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
     {
         private const string TimestampFormat = "yyyyMMddHHmmss";
 
+        private readonly IHealthService _healthService;
         private readonly IDatabase _database;
         private readonly MarketType _market;
 
-        public RedisCandlesCacheService(IDatabase database, MarketType market)
+        public RedisCandlesCacheService(IHealthService healthService, IDatabase database, MarketType market)
         {
+            _healthService = healthService;
             _database = database;
             _market = market;
         }
@@ -88,29 +90,33 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             }
         }
 
-        public async Task CacheAsync(ICandle candle)
+        public async Task CacheAsync(IReadOnlyList<ICandle> candles)
         {
-            // TODO: This is non concurrent-safe method
-
-            var key = GetKey(_market, candle.AssetPairId, candle.PriceType, candle.TimeInterval);
-            var serializedValue = SerializeCandle(candle);
+            _healthService.TraceStartCacheCandles();
 
             // Transaction is needed here, despite of this method is non concurrent-safe,
             // without transaction at the moment candle can be missed or doubled
             // depending on the order of the remove/add calls
 
             var transaction = _database.CreateTransaction();
+            var tasks = new List<Task>();
 
-            // Removes old candle
+            foreach (var candle in candles)
+            {  
+                var key = GetKey(_market, candle.AssetPairId, candle.PriceType, candle.TimeInterval);
+                var serializedValue = SerializeCandle(candle);
 
-            var currentCandleKey = candle.Timestamp.ToString(TimestampFormat);
-            var nextCandleKey = candle.Timestamp.AddIntervalTicks(1, candle.TimeInterval).ToString(TimestampFormat);
+                // Removes old candle
 
-            var candleRemovalTask = transaction.SortedSetRemoveRangeByValueAsync(key, currentCandleKey, nextCandleKey, Exclude.Stop);
+                var currentCandleKey = candle.Timestamp.ToString(TimestampFormat);
+                var nextCandleKey = candle.Timestamp.AddIntervalTicks(1, candle.TimeInterval).ToString(TimestampFormat);
 
-            // Adds new candle
+                tasks.Add(transaction.SortedSetRemoveRangeByValueAsync(key, currentCandleKey, nextCandleKey, Exclude.Stop));
 
-            var candleAdditionTask = transaction.SortedSetAddAsync(key, serializedValue, 0);
+                // Adds new candle
+
+                tasks.Add(transaction.SortedSetAddAsync(key, serializedValue, 0));
+            }
 
             if (!await transaction.ExecuteAsync())
             {
@@ -120,47 +126,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             // Operations in the transaction can't be awaited before transaction is executed, so
             // saves tasks and waits they here, just to calm down the Resharper
 
-            await Task.WhenAll(candleRemovalTask, candleAdditionTask);
-        }
+            await Task.WhenAll(tasks);
 
-        public async Task<IEnumerable<ICandle>> GetCandlesAsync(string assetPairId, CandlePriceType priceType, CandleTimeInterval timeInterval, DateTime fromMoment, DateTime toMoment)
-        {
-            var key = GetKey(_market, assetPairId, priceType, timeInterval);
-            var from = fromMoment.ToString(TimestampFormat);
-            var to = toMoment.ToString(TimestampFormat);
-            var serializedValues = await _database.SortedSetRangeByValueAsync(key, from, to, Exclude.Stop);
-            
-            return serializedValues.Select(v => DeserializeCandle(v, assetPairId, priceType, timeInterval));
-        }
-
-        private static ICandle DeserializeCandle(byte[] value, string assetPairId, CandlePriceType priceType, CandleTimeInterval timeInterval)
-        {
-            // value is: 
-            // 0 .. TimestampFormat.Length - 1 bytes: timestamp as yyyyMMddHHmmss in ASCII
-            // TimestampFormat.Length .. end bytes: serialized RedistCachedCandle
-
-            var timestampLength = TimestampFormat.Length;
-            var timestampString = Encoding.ASCII.GetString(value, 0, timestampLength);
-            var timestamp = DateTime.ParseExact(timestampString, TimestampFormat, CultureInfo.InvariantCulture);
-
-            using (var stream = new MemoryStream(value, timestampLength, value.Length - timestampLength, writable: false))
-            {
-                var cachedCandle = MessagePack.MessagePackSerializer.Deserialize<RedisCachedCandle>(stream);
-
-                return Candle.Create(
-                    assetPairId,
-                    priceType,
-                    timeInterval,
-                    timestamp,
-                    cachedCandle.Open,
-                    cachedCandle.Close,
-                    cachedCandle.High,
-                    cachedCandle.Low,
-                    cachedCandle.TradingVolume,
-                    cachedCandle.TradingOppositVolume,
-                    cachedCandle.LastTradePrice,
-                    cachedCandle.LastUpdateTimestamp);
-            }
+            _healthService.TraceStopCacheCandles(candles.Count);
         }
 
         private static byte[] SerializeCandle(ICandle candle)

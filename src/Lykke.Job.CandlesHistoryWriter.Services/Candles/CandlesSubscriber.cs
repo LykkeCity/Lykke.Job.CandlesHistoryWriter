@@ -77,16 +77,13 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                     return;
                 }
 
-                foreach (var candleUpdate in candlesUpdate.Candles)
-                {
-                    // May be it would be better to move the next line outside the loop and check only the first candle in batch,
-                    // but not sure we always will obtain only a single-pairID batches.
-                    if (!_candlesChecker.CanHandleAssetPair(candleUpdate.AssetPairId))
-                        continue; 
-
-                    await _candlesManager.ProcessCandleAsync(Candle.Create(
-                        assetPair: candleUpdate.AssetPairId,
+                var candles = candlesUpdate.Candles
+                    .Where(candleUpdate =>
+                        Constants.StoredIntervals.Contains(candleUpdate.TimeInterval) &&
+                        _candlesChecker.CanHandleAssetPair(candleUpdate.AssetPairId))
+                    .Select(candleUpdate => Candle.Create(
                         priceType: candleUpdate.PriceType,
+                        assetPair: candleUpdate.AssetPairId,
                         timeInterval: candleUpdate.TimeInterval,
                         timestamp: candleUpdate.CandleTimestamp,
                         open: candleUpdate.Open,
@@ -96,8 +93,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                         tradingVolume: candleUpdate.TradingVolume,
                         tradingOppositeVolume: candleUpdate.TradingOppositeVolume,
                         lastTradePrice: candleUpdate.LastTradePrice,
-                        lastUpdateTimestamp: candleUpdate.ChangeTimestamp));
-                }
+                        lastUpdateTimestamp: candleUpdate.ChangeTimestamp))
+                    .ToArray();
+
+                await _candlesManager.ProcessCandlesAsync(candles);
             }
             catch (Exception)
             {

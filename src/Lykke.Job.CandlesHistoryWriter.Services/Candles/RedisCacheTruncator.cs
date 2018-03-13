@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
@@ -32,11 +31,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             _amountOfCandlesToStore = amountOfCandlesToStore;
         }
 
-        public override async Task Execute()
+        public override Task Execute()
         {
-            var transaction = _database.CreateTransaction();
-            var tasks = new List<Task>();
-
             foreach (var assetId in _historyRepository.GetStoredAssetPairs())
             {
                 foreach (var priceType in Constants.StoredPriceTypes)
@@ -45,17 +41,12 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                     {
                         var key = RedisCandlesCacheService.GetKey(_market, assetId, priceType, timeInterval);
 
-                        tasks.Add(transaction.SortedSetRemoveRangeByRankAsync(key, 0, -_amountOfCandlesToStore - 1));
+                        _database.SortedSetRemoveRangeByRank(key, 0, -_amountOfCandlesToStore - 1, CommandFlags.FireAndForget);
                     }
                 }
             }
 
-            if (!await transaction.ExecuteAsync())
-            {
-                throw new InvalidOperationException("Redis transaction is rolled back");
-            }
-
-            await Task.WhenAll(tasks);
+            return Task.CompletedTask;
         }
     }
 }
