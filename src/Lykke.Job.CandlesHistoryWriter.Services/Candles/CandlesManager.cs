@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Candles;
@@ -20,6 +21,11 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
         public Task ProcessCandlesAsync(IReadOnlyList<ICandle> candles)
         {
+            if (!candles.Any())
+            {
+                return Task.CompletedTask;
+            }
+
             var cacheTask = _candlesCacheService.CacheAsync(candles);
 
             foreach (var candle in candles)
