@@ -19,28 +19,45 @@ namespace Lykke.Job.CandlesHistoryWriter.Models.IsAlive
         public bool IsShuttingDown { get; set; }
         public bool IsShuttedDown { get; set; }
         public PersistenceInfo Persistence { get; set; }
-        
+        public CacheInfo Cache { get; set; }
+
         public class PersistenceInfo
         {
-            public Times Times { get; set; }
-            public Throughput Throughput { get; set; }
+            public Duration Duration { get; set; }
+            public PersistThroughput PersistThroughput { get; set; }
             public long TotalCandlesPersistedCount { get; set; }
             public long TotalCandleRowsPersistedCount { get; set; }
             public int BatchesToPersistQueueLength { get; set; }
             public int CandlesToDispatchQueueLength { get; set; }
         }
 
-        public class Times
+        public class Duration
         {
-            public TimeSpan TotalPersistTime { get; set; }
-            public TimeSpan AveragePersistTime { get; set; }
-            public TimeSpan LastPersistTime { get; set; }
+            public TimeSpan Total { get; set; }
+            public TimeSpan Average { get; set; }
+            public TimeSpan Last { get; set; }
         }
 
-        public class Throughput
+        public class PersistThroughput
         {
             public int AverageCandlesPersistedPerSecond { get; set; }
             public int AverageCandleRowsPersistedPerSecond { get; set; }
+        }
+
+        public class CacheInfo
+        {
+            public Duration Duration { get; set; }
+            public CacheThroughput Throughput { get; set; }
+            public long TotalCandlesCachedCount { get; set; }
+            public long TotalCandleBatchesCachedCount { get; set; }
+        }
+
+
+        public class CacheThroughput
+        {
+            public int AverageCandlesCachedPerSecond { get; set; }
+            public int AverageCandlesCachedPerBatch { get; set; }
+            public int AverageCandleBatchesPerSecond { get; set; }
         }
     }
 }

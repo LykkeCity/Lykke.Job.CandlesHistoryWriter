@@ -4,9 +4,13 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Services
 {
     public interface IHealthService
     {
-        TimeSpan AveragePersistTime { get; }
-        TimeSpan TotalPersistTime { get; }
-        TimeSpan LastPersistTime { get; }
+        TimeSpan AveragePersistDuration { get; }
+        TimeSpan TotalPersistDuration { get; }
+        TimeSpan LastPersistDuration { get; }
+
+        TimeSpan AverageCacheDuration { get; }
+        TimeSpan TotalCacheDuration { get; }
+        TimeSpan LastCacheDuration { get; }
 
         int BatchesToPersistQueueLength { get; }
         int CandlesToDispatchQueueLength { get; }
@@ -14,6 +18,12 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Services
         int AverageCandleRowsPersistedPerSecond { get; }
         long TotalCandlesPersistedCount { get; }
         long TotalCandleRowsPersistedCount { get; }
+
+        int AverageCandlesCachedPerSecond { get; }
+        int AverageCandlesCachedPerBatch { get; }
+        int AverageCandleBatchesPerSecond { get; }
+        long TotalCandlesCachedCount { get; }
+        long TotalCandleBatchesCachedCount { get; }
         
         void TraceStartPersistCandles();
         void TraceStopPersistCandles();
@@ -24,6 +34,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Services
         void TraceCandleRowsPersisted(int rowsCount);
 
         void TraceSetPersistenceQueueState(int amountOfCandlesToDispatch);
-        
+
+        void TraceStartCacheCandles();
+        void TraceStopCacheCandles(int candlesCount);
     }
 }

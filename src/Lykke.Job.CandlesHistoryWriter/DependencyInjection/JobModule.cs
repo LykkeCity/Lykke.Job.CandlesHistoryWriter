@@ -107,6 +107,11 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
                 .As<IHealthService>()
                 .SingleInstance();
 
+            builder.RegisterType<HealthLogger>()
+                .As<IStartable>()
+                .SingleInstance()
+                .AutoActivate();
+
             builder.RegisterType<CandlesHistoryRepository>()
                 .As<ICandlesHistoryRepository>()
                 .WithParameter(TypedParameter.From(_candleHistoryAssetConnections))
