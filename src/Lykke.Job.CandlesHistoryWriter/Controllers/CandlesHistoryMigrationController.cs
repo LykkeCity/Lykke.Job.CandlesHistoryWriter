@@ -30,6 +30,15 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
             return Ok(result);
         }
 
+        [HttpPost]
+        [Route("trades")]
+        public async Task<IActionResult> MigrateTrades([FromBody] string[] assetPairs)
+        {
+            await Task.Delay(50);
+
+            return Ok();
+        }
+
         [HttpGet]
         [Route("health")]
         public IActionResult Health()

@@ -260,11 +260,11 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                     return true;
                 }
 
-                if (_healthService.CandlesToDispatchQueueLength > _settings.CandlesToDispatchLengthThrottlingThreshold)
+                if (_healthService.CandlesToDispatchQueueLength > _settings.Quotes.CandlesToDispatchLengthThrottlingThreshold)
                 {
                     try
                     {
-                        Task.Delay(_settings.ThrottlingDelay).GetAwaiter().GetResult();
+                        Task.Delay(_settings.Quotes.ThrottlingDelay).GetAwaiter().GetResult();
                     }
                     catch (TaskCanceledException)
                     {
