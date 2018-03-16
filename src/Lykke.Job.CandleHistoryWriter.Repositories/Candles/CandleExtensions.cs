@@ -15,6 +15,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                 tick,
                 candle.TradingVolume,
                 candle.TradingOppositeVolume,
+                candle.LastTradePrice,
                 candle.LastUpdateTimestamp
             );
         }

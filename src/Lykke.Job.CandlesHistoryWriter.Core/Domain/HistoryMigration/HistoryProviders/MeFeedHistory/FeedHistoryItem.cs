@@ -27,6 +27,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.HistoryPro
                 timestamp: timeStamp,
                 tradingVolume: 0,
                 tradingOppositeVolume: 0,
+                lastTradePrice: 0,
                 lastUpdateTimestamp: timeStamp);
         }
     }

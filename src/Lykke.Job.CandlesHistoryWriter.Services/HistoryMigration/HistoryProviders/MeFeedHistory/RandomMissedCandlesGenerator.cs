@@ -333,6 +333,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration.HistoryProvid
                     (double) Math.Round(low, assetPair.Accuracy),
                     0,
                     0,
+                    0,
                     timestamp);
 
                 if (open == 0 || close == 0 || high == 0 || low == 0)
@@ -419,6 +420,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration.HistoryProvid
                     (double) close,
                     (double) high,
                     (double) low,
+                    0,
                     0,
                     0,
                     candle.Timestamp);

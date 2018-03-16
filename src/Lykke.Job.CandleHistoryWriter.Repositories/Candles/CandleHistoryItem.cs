@@ -28,6 +28,9 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
         [JsonProperty("OV")]
         public  double TradingOppositeVolume { get; private set; }
 
+        [JsonProperty("LTP")]	
+        public double LastTradePrice { get; private set; }
+
         [JsonProperty("U")]
         public DateTime LastUpdateTimestamp { get; private set; }
 
@@ -40,6 +43,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             int tick, 
             double tradingVolume, 
             double tradingOppositeVolume,
+            double lastTradePrice,
             DateTime lastUpdateTimestamp)
         {
             Open = open;
@@ -49,6 +53,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             Tick = tick;
             TradingVolume = tradingVolume;
             TradingOppositeVolume = tradingOppositeVolume;
+            LastTradePrice = lastTradePrice;
             LastUpdateTimestamp = lastUpdateTimestamp;
         }
 
@@ -68,6 +73,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                 timestamp: baseTime.AddIntervalTicks(normalizedTick, timeInterval),
                 tradingVolume: TradingVolume,
                 tradingOppositeVolume: TradingOppositeVolume,
+                lastTradePrice: LastTradePrice,
                 lastUpdateTimestamp: LastUpdateTimestamp
             );
         }

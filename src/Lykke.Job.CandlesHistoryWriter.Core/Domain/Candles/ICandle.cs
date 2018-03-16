@@ -15,6 +15,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles
         double Low { get; }
         double TradingVolume { get; }
         double TradingOppositeVolume { get; }
+        double LastTradePrice { get; }
         DateTime LastUpdateTimestamp { get; }
     }
 }
