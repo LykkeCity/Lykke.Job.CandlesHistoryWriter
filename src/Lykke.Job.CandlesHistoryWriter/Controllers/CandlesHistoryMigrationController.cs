@@ -1,5 +1,6 @@
 ﻿using System.Threading.Tasks;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.HistoryMigration.HistoryProviders;
+using Lykke.Job.CandlesHistoryWriter.Models.Migration;
 using Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration;
 using Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration.HistoryProviders.MeFeedHistory;
 using Microsoft.AspNetCore.Mvc;
@@ -9,13 +10,16 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
     public class CandlesHistoryMigrationController : Controller
     {
         private readonly CandlesMigrationManager _candlesMigrationManager;
+        private readonly TradesMigrationManager _tradesMigrationManager;
         private readonly IHistoryProvidersManager _historyProvidersManager;
 
         public CandlesHistoryMigrationController(
             CandlesMigrationManager candlesMigrationManager, 
+            TradesMigrationManager tradesMigrationManager,
             IHistoryProvidersManager historyProvidersManager)
         {
             _candlesMigrationManager = candlesMigrationManager;
+            _tradesMigrationManager = tradesMigrationManager;
             _historyProvidersManager = historyProvidersManager;
         }
 
@@ -32,9 +36,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
 
         [HttpPost]
         [Route("trades")]
-        public async Task<IActionResult> MigrateTrades([FromBody] string[] assetPairs)
+        public async Task<IActionResult> MigrateTrades([FromBody] TradesMigrationRequestModel request)
         {
-            await Task.Delay(50);
+            await _tradesMigrationManager.MigrateAsync(request);
 
             return Ok();
         }
