@@ -1,12 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.HistoryProviders.TradesSQLHistory
 {
     public interface ITradesSqlHistoryRepository
     {
-        void Init(int startingRowOffset, string assetPairId);
-        IEnumerable<TradeHistoryItem> GetNextBatchAsync();
+        Task<bool> InitAsync(int startingRowOffset, string assetPairId);
+        Task<IEnumerable<TradeHistoryItem>> GetNextBatchAsync();
     }
 }
