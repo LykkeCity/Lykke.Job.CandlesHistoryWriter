@@ -39,8 +39,8 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Snapshots
         public DateTime LastUpdateTimestamp { get; set; }
 
         [Key(10)]
-        public decimal LastTradePrice { get; set; }
-
+        public decimal LastTradePrice { get; set; }	
+        
         [Key(11)]
         public decimal TradingOppositeVolume { get; set; }
         
@@ -56,7 +56,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Snapshots
 
         double ICandle.TradingOppositeVolume => (double) TradingOppositeVolume;
 
-        double ICandle.LastTradePrice => (double) LastTradePrice;
+        double ICandle.LastTradePrice => (double)LastTradePrice;
 
         public static SnapshotCandleEntity Copy(ICandle candle)
         {

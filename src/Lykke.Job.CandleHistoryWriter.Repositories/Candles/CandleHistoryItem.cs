@@ -28,7 +28,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
         [JsonProperty("OV")]
         public  double TradingOppositeVolume { get; private set; }
 
-        [JsonProperty("LTP")]
+        [JsonProperty("LTP")]	
         public double LastTradePrice { get; private set; }
 
         [JsonProperty("U")]

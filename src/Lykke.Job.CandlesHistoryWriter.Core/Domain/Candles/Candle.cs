@@ -29,7 +29,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles
             double low,
             double tradingVolume,
             double tradingOppositeVolume,
-            double lastTradePrice, 
+            double lastTradePrice,
             DateTime lastUpdateTimestamp)
         {
             AssetPairId = assetPair;
@@ -57,7 +57,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles
             double low, 
             double tradingVolume,
             double tradingOppositeVolume,
-            double lastTradePrice, 
+            double lastTradePrice,
             DateTime lastUpdateTimestamp)
         {
             return new Candle(
@@ -81,7 +81,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles
             double high, 
             double tradingVolume, 
             double tradingOppositeVolume,
-            double lastTradePrice, 
+            double lastTradePrice,
             DateTime updateTimestamp)
         {
             if (updateTimestamp > LastUpdateTimestamp)

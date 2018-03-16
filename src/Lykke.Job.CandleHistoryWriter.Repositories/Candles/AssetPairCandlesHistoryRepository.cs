@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AzureStorage;
-using Common;
 using Common.Log;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services;
 using Lykke.Job.CandlesProducer.Contract;
 using Microsoft.WindowsAzure.Storage.Table;
+using MoreLinq;
 using Polly;
 
 namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
@@ -47,7 +47,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
             var candleByRowsChunks = candles
                 .GroupBy(candle => CandleHistoryEntity.GenerateRowKey(candle.Timestamp, _timeInterval))
-                .ToChunks(100);
+                .Batch(100);
 
             foreach (var candleByRowsChunk in candleByRowsChunks)
             {
