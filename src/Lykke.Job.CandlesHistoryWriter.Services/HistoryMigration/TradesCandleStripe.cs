@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
+using System.Linq;
 using System.Threading.Tasks;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.HistoryProviders.TradesSQLHistory;
@@ -10,27 +10,27 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 {
     public class TradesCandleStripe
     {
-        public string AssetId { get; private set; }
-        public CandleTimeInterval TimeInterval { get; private set; }
+        public string AssetId { get; }
+        public CandleTimeInterval TimeInterval { get; }
 
-        public CandlePriceType PriceType =>
-            CandlePriceType.Unspecified; // TODO: change to Trades after rebase on test branch.
+        public static CandlePriceType PriceType =>
+            CandlePriceType.Trades;
 
-        public List<ICandle> Candles { get; set; }
+        public Dictionary<long, ICandle> Candles { get; }
 
         public TradesCandleStripe(string assetId, CandleTimeInterval interval)
         {
             AssetId = assetId;
             TimeInterval = interval;
 
-            Candles = new List<ICandle>();
+            Candles = new Dictionary<long, ICandle>();
         }
 
-        public async Task MakeFromTrades(IEnumerable<TradeHistoryItem> trade)
+        public async Task MakeFromTrades(IEnumerable<TradeHistoryItem> trades)
         {
             await Task.Run(() =>
             {
-                throw new NotImplementedException();
+                _makeFromTrades(trades);
             });
         }
 
@@ -38,11 +38,63 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
         {
             await Task.Run(() =>
             {
-                if ((int)(basis.TimeInterval) >= (int)TimeInterval)
-                    throw new InvalidOperationException($"Can't derive candles for time interval {TimeInterval.ToString()} from candles of time interval {basis.TimeInterval.ToString()}.");
-
-                throw new NotImplementedException();
+                _deriveFromSmallerIntervalAsync(basis);
             });
+        }
+
+        private void _makeFromTrades(IEnumerable<TradeHistoryItem> trades)
+        {
+            if (Candles.Any())
+                Candles.Clear();
+
+            foreach (var trade in trades)
+            {
+                var truncatedDate = trade.DateTime.TruncateTo(TimeInterval);
+                var timestamp = truncatedDate.ToFileTimeUtc();
+
+                var tradeCandle = Candle.Create(
+                    AssetId,
+                    PriceType,
+                    TimeInterval,
+                    truncatedDate,
+                    (double)trade.Price,
+                    (double)trade.Price,
+                    (double)trade.Price,
+                    (double)trade.Price,
+                    (double)trade.Volume,
+                    (double)trade.OppositeVolume,
+                    (double)trade.Price,
+                    trade.DateTime
+                );
+
+                if (!Candles.TryGetValue(timestamp, out var existingCandle))
+                    Candles.Add(timestamp, tradeCandle);
+                else
+                    Candles[timestamp] = existingCandle.ExtendBy(tradeCandle);
+            }
+        }
+
+        private void _deriveFromSmallerIntervalAsync(TradesCandleStripe basis)
+        {
+            if ((int)(basis.TimeInterval) >= (int)TimeInterval)
+                throw new InvalidOperationException($"Can't derive candles for time interval {TimeInterval.ToString()} from candles of {basis.TimeInterval.ToString()}.");
+
+            if (basis.AssetId != AssetId)
+                throw new InvalidOperationException($"Can't derive candles for asset pair ID {AssetId} from candles of {basis.AssetId}");
+
+            if (Candles.Any())
+                Candles.Clear();
+
+            foreach (var candle in basis.Candles)
+            {
+                var truncatedDate = candle.Value.Timestamp.TruncateTo(TimeInterval);
+                var timestamp = truncatedDate.ToFileTimeUtc();
+
+                if (!Candles.TryGetValue(timestamp, out var existingCandle))
+                    Candles.Add(timestamp, candle.Value.RebaseToInterval(TimeInterval));
+                else
+                    Candles[timestamp] = existingCandle.ExtendBy(candle.Value.RebaseToInterval(TimeInterval));
+            }
         }
     }
 }
