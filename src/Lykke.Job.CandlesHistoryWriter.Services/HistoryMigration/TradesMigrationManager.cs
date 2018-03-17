@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System.Linq;
 using System.Threading.Tasks;
 using Common.Log;
 using JetBrains.Annotations;
@@ -43,6 +40,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 
                 // It's important for Constants.StoredIntervals to be ordered by time period increase,
                 // because we will calculate candles for each period based on previous period candles.
+                // We can form the candles stripes set only once per asset pair ID because each stripe 
+                // is implicitly cleaned up on the begining of every iteration.
                 var candleStripes = (Constants.StoredIntervals
                     .Select(interval => new TradesCandleStripe(migrationItem.AssetId, interval))).ToList();
 
@@ -67,8 +66,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                         else // And all of other intervals MUST BE ordered ascending.
                             await candleStripes[i].DeriveFromSmallerIntervalAsync(candleStripes[i - 1]);
 
-                        await _candlesHistoryRepository.InsertOrMergeAsync(candleStripes[i].Candles, candleStripes[i].AssetId,
-                            candleStripes[i].PriceType, candleStripes[i].TimeInterval);
+                        await _candlesHistoryRepository.InsertOrMergeAsync(candleStripes[i].Candles.Values, candleStripes[i].AssetId,
+                            TradesCandleStripe.PriceType, candleStripes[i].TimeInterval);
                     }
 
                     totalTradesRecordsFetched += batchCount;

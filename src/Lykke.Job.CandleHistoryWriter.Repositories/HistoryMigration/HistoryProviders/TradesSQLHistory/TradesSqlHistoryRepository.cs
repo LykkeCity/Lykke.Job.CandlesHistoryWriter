@@ -71,7 +71,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
                 await _log.WriteMonitorAsync(nameof(TradesSqlHistoryRepository), nameof(GetNextBatchAsync),
                     $"Starting offset = {StartingRowOffset}, asset pair ID = {AssetPairId}",
                     $"Trying to fetch next {_sqlQueryBatchSize} rows...");
-
+                
                 using (var sqlCommand = new SqlCommand(_buildCurrentQueryCommand(), _sqlConnection))
                 {
                     using (var reader = await sqlCommand.ExecuteReaderAsync())
@@ -80,10 +80,11 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
                         {
                             result.Add(new TradeHistoryItem
                             {
-                                Volume = reader.GetDecimal(0),
-                                Price = reader.GetDecimal(1),
-                                DateTime = reader.GetDateTime(2),
-                                OppositeVolume = reader.GetDecimal(3)
+                                Id = reader.GetInt64(0),
+                                Volume = reader.GetDecimal(1),
+                                Price = reader.GetDecimal(2),
+                                DateTime = reader.GetDateTime(3),
+                                OppositeVolume = reader.GetDecimal(4)
                             });
                         }
                     }
@@ -93,7 +94,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
                     $"Starting offset = {StartingRowOffset}, asset pair ID = {AssetPairId}",
                     $"Fetched {_sqlQueryBatchSize} rows successfully.");
 
-                StartingRowOffset += _sqlQueryBatchSize;
+                StartingRowOffset += result.Count;
             }
             catch (Exception ex)
             {
@@ -113,10 +114,13 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
             var commandBld = new StringBuilder();
 
             // TODO: implement a query with pagination.
-            commandBld.Append($@"SELECT TOP {_sqlQueryBatchSize} Volume, Price, ""DateTime"", OppositeVolume ");
+            //commandBld.Append($@"SELECT TOP {_sqlQueryBatchSize} Volume, Price, ""DateTime"", OppositeVolume ");
+            commandBld.Append($@"SELECT Id, Volume, Price, ""DateTime"", OppositeVolume ");
             commandBld.Append("FROM Trades ");
             commandBld.Append("WHERE ");
-            commandBld.Append($@"OrderType = 'Limit' AND Asset + OppositeAsset = '{AssetPairId}' AND Direction IN ('Buy', 'Sell');");
+            commandBld.Append($@"OrderType = 'Limit' AND Asset + OppositeAsset = '{AssetPairId}' AND Direction IN ('Buy', 'Sell') ");
+            commandBld.Append("ORDER BY Id ASC ");
+            commandBld.Append($"OFFSET {StartingRowOffset} ROWS FETCH NEXT {_sqlQueryBatchSize} ROWS ONLY;");
 
             return commandBld.ToString();
         }
