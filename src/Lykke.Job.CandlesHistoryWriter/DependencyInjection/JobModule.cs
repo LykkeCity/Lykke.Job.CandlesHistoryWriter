@@ -67,10 +67,6 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
                         
             builder.RegisterType<Clock>().As<IClock>();
 
-            // For CandlesHistoryController
-            builder.RegisterInstance(_candleHistoryAssetConnections.CurrentValue)
-                .AsSelf();
-
             RegisterRedis(builder);
 
             RegisterAssets(builder);
