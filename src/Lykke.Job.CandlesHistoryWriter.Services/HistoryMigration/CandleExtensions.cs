@@ -18,12 +18,16 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
         /// <returns></returns>
         public static ICandle ExtendBy(this ICandle self, ICandle newCandle)
         {
-            if (self.Timestamp.CompareTo(newCandle.Timestamp) != 0 ||
-                self.TimeInterval != newCandle.TimeInterval ||
-                self.PriceType != newCandle.PriceType)
-                return self;
+            if (self.Timestamp != newCandle.Timestamp)
+                throw new InvalidOperationException("It's impossible to extend a candle by another one with the different time stamp.");
 
-            var selfIsOlder = self.LastUpdateTimestamp.CompareTo(newCandle.LastUpdateTimestamp) <= 0;
+            if (self.TimeInterval != newCandle.TimeInterval)
+                throw new InvalidOperationException($"It's impossible to extend a candle with time interval {self.TimeInterval} by another one with {newCandle.TimeInterval}.");
+
+            if (self.PriceType != newCandle.PriceType)
+                throw new InvalidOperationException($"It's impossible to extend a candle eith price type {self.PriceType} by another one with {newCandle.PriceType}");
+
+            var selfIsOlder = self.LastUpdateTimestamp <= newCandle.LastUpdateTimestamp;
 
             return Candle.Create(
                 self.AssetPairId,

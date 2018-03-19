@@ -16,7 +16,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Settings
 
     public class TradesSettings
     {
-        public string SQLTradesDataSourceConnString { get; set; }
-        public int SQLQueryBatchSize { get; set; }
+        public string SqlTradesDataSourceConnString { get; set; }
+        public int SqlQueryBatchSize { get; set; }
     }
 }

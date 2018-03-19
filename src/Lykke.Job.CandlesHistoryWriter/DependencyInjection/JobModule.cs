@@ -7,12 +7,10 @@ using AzureStorage.Tables;
 using Common.Log;
 using Lykke.Job.CandleHistoryWriter.Repositories.Candles;
 using Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryProviders.MeFeedHistory;
-using Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryProviders.TradesSQLHistory;
 using Lykke.Job.CandleHistoryWriter.Repositories.Snapshots;
 using Lykke.Service.Assets.Client.Custom;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.HistoryProviders.MeFeedHistory;
-using Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.HistoryProviders.TradesSQLHistory;
 using Lykke.Job.CandlesHistoryWriter.Core.Services;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Assets;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Candles;
@@ -231,12 +229,10 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
             RegisterHistoryProvider<MeFeedHistoryProvider>(builder);
 
             builder.RegisterType<TradesMigrationManager>()
-                .AsSelf();
-
-            builder.RegisterType<TradesSqlHistoryRepository>()
-                .As<ITradesSqlHistoryRepository>()
-                .WithParameter(TypedParameter.From(_settings.Migration.Trades.SQLTradesDataSourceConnString))
-                .WithParameter(TypedParameter.From(_settings.Migration.Trades.SQLQueryBatchSize));
+                .AsSelf()
+                .WithParameter(TypedParameter.From(_settings.Migration.Trades.SqlTradesDataSourceConnString))
+                .WithParameter(TypedParameter.From(_settings.Migration.Trades.SqlQueryBatchSize))
+                .SingleInstance();
         }
 
         private static void RegisterHistoryProvider<TProvider>(ContainerBuilder builder) 

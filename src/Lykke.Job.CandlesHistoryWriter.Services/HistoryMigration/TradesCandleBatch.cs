@@ -1,15 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.HistoryProviders.TradesSQLHistory;
 using Lykke.Job.CandlesProducer.Contract;
 
 namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 {
-    public class TradesCandleStripe
+    public class TradesCandleBatch
     {
+        public int CandlesCount { get; }
+
         public string AssetId { get; }
         public CandleTimeInterval TimeInterval { get; }
 
@@ -18,35 +18,29 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 
         public Dictionary<long, ICandle> Candles { get; }
 
-        public TradesCandleStripe(string assetId, CandleTimeInterval interval)
+        public TradesCandleBatch(string assetId, CandleTimeInterval interval, IEnumerable<TradeHistoryItem> trades)
         {
             AssetId = assetId;
             TimeInterval = interval;
 
             Candles = new Dictionary<long, ICandle>();
+
+            CandlesCount = MakeFromTrades(trades);
         }
 
-        public async Task MakeFromTrades(IEnumerable<TradeHistoryItem> trades)
+        public TradesCandleBatch(string assetId, CandleTimeInterval interval, TradesCandleBatch basis)
         {
-            await Task.Run(() =>
-            {
-                _makeFromTrades(trades);
-            });
+            AssetId = assetId;
+            TimeInterval = interval;
+
+            Candles = new Dictionary<long, ICandle>();
+
+            CandlesCount = DeriveFromSmallerIntervalAsync(basis);
         }
 
-        public async Task DeriveFromSmallerIntervalAsync(TradesCandleStripe basis)
+        private int MakeFromTrades(IEnumerable<TradeHistoryItem> trades)
         {
-            await Task.Run(() =>
-            {
-                _deriveFromSmallerIntervalAsync(basis);
-            });
-        }
-
-        private void _makeFromTrades(IEnumerable<TradeHistoryItem> trades)
-        {
-            if (Candles.Any())
-                Candles.Clear();
-
+            var count = 0;
             foreach (var trade in trades)
             {
                 var truncatedDate = trade.DateTime.TruncateTo(TimeInterval);
@@ -68,13 +62,18 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                 );
 
                 if (!Candles.TryGetValue(timestamp, out var existingCandle))
+                {
                     Candles.Add(timestamp, tradeCandle);
+                    count++;
+                }
                 else
                     Candles[timestamp] = existingCandle.ExtendBy(tradeCandle);
             }
+
+            return count;
         }
 
-        private void _deriveFromSmallerIntervalAsync(TradesCandleStripe basis)
+        private int DeriveFromSmallerIntervalAsync(TradesCandleBatch basis)
         {
             if ((int)(basis.TimeInterval) >= (int)TimeInterval)
                 throw new InvalidOperationException($"Can't derive candles for time interval {TimeInterval.ToString()} from candles of {basis.TimeInterval.ToString()}.");
@@ -82,8 +81,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             if (basis.AssetId != AssetId)
                 throw new InvalidOperationException($"Can't derive candles for asset pair ID {AssetId} from candles of {basis.AssetId}");
 
-            if (Candles.Any())
-                Candles.Clear();
+            var count = 0;
 
             foreach (var candle in basis.Candles)
             {
@@ -91,10 +89,15 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                 var timestamp = truncatedDate.ToFileTimeUtc();
 
                 if (!Candles.TryGetValue(timestamp, out var existingCandle))
+                {
                     Candles.Add(timestamp, candle.Value.RebaseToInterval(TimeInterval));
+                    count++;
+                }
                 else
                     Candles[timestamp] = existingCandle.ExtendBy(candle.Value.RebaseToInterval(TimeInterval));
             }
+
+            return count;
         }
     }
 }
