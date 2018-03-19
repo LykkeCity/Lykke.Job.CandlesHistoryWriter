@@ -1,5 +1,6 @@
 ﻿using System.Threading.Tasks;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.HistoryMigration.HistoryProviders;
+using Lykke.Job.CandlesHistoryWriter.Models.Migration;
 using Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration;
 using Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration.HistoryProviders.MeFeedHistory;
 using Microsoft.AspNetCore.Mvc;
@@ -9,13 +10,16 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
     public class CandlesHistoryMigrationController : Controller
     {
         private readonly CandlesMigrationManager _candlesMigrationManager;
+        private readonly TradesMigrationManager _tradesMigrationManager;
         private readonly IHistoryProvidersManager _historyProvidersManager;
 
         public CandlesHistoryMigrationController(
             CandlesMigrationManager candlesMigrationManager, 
+            TradesMigrationManager tradesMigrationManager,
             IHistoryProvidersManager historyProvidersManager)
         {
             _candlesMigrationManager = candlesMigrationManager;
+            _tradesMigrationManager = tradesMigrationManager;
             _historyProvidersManager = historyProvidersManager;
         }
 
@@ -47,6 +51,29 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
             }
 
             return Ok(_candlesMigrationManager.Health[assetPair]);
+        }
+
+        [HttpPost]
+        [Route("trades")]
+        public IActionResult MigrateTrades([FromBody] TradesMigrationRequestModel request)
+        {
+            // This method is sync but internally starts a new task and returns
+            _tradesMigrationManager.Migrate(request);
+
+            return Ok();
+        }
+
+        [HttpGet]
+        [Route("trades/health")]
+        public IActionResult TradesHealth()
+        {
+            var healthReport = _tradesMigrationManager.Health;
+
+            // If null, we have not currently been carrying out a trades migration.
+            if (healthReport == null)
+                return NoContent();
+
+            return Ok(healthReport);
         }
     }
 }

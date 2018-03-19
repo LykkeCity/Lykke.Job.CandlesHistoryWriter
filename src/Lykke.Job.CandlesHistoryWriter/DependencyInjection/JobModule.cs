@@ -223,6 +223,12 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
                 .SingleInstance();
                 
             RegisterHistoryProvider<MeFeedHistoryProvider>(builder);
+
+            builder.RegisterType<TradesMigrationManager>()
+                .AsSelf()
+                .WithParameter(TypedParameter.From(_settings.Migration.Trades.SqlTradesDataSourceConnString))
+                .WithParameter(TypedParameter.From(_settings.Migration.Trades.SqlQueryBatchSize))
+                .SingleInstance();
         }
 
         private static void RegisterHistoryProvider<TProvider>(ContainerBuilder builder) 
