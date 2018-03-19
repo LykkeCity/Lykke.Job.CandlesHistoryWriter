@@ -78,7 +78,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
             // Cleans cache
 
-            await _database.SortedSetRemoveRangeByRankAsync(key, 0, -1);
+            await _database.KeyDeleteAsync(key);
 
             foreach (var candlesBatch in candles.Batch(100))
             {
