@@ -1,84 +1,115 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.HistoryProviders.TradesSQLHistory;
-using Lykke.Job.CandlesHistoryWriter.Services.Candles;
+using Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryProviders.TradesSQLHistory;
+using Lykke.Job.CandlesProducer.Contract;
+using Constants = Lykke.Job.CandlesHistoryWriter.Services.Candles.Constants;
 
 namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 {
     [UsedImplicitly]
     public class TradesMigrationManager
     {
-        private readonly ITradesSqlHistoryRepository _sqlTradesSqlHistoryRepository;
         private readonly ICandlesHistoryRepository _candlesHistoryRepository;
         private readonly ILog _log;
 
+        private readonly string _sqlConnString;
+        private readonly int _sqlQueryBatchSize;
+
+        public TradesMigrationHealthReport Health;
+
         public TradesMigrationManager(
-            ITradesSqlHistoryRepository sqlTradesSqlHistoryRepository,
             ICandlesHistoryRepository candlesHistoryRepository,
-            ILog log
+            ILog log,
+            string sqlConnString,
+            int sqlQueryBatchSize
             )
         {
-            _sqlTradesSqlHistoryRepository = sqlTradesSqlHistoryRepository;
             _candlesHistoryRepository = candlesHistoryRepository;
             _log = log;
+
+            _sqlConnString = sqlConnString;
+            _sqlQueryBatchSize = sqlQueryBatchSize;
+
+            Health = null;
         }
 
-        public async Task MigrateAsync(ITradesMigrationRequest request)
+        public void Migrate(ITradesMigrationRequest request)
         {
+            Task.Run(() => DoMigrateAsync(request).Wait());
+        }
+
+        private async Task DoMigrateAsync(ITradesMigrationRequest request)
+        {
+            Health = new TradesMigrationHealthReport(_sqlQueryBatchSize);
+
             foreach (var migrationItem in request.MigrationItems)
             {
-                await _log.WriteMonitorAsync(nameof(TradesMigrationManager), nameof(MigrateAsync),
-                    $"Starting migration for {migrationItem.AssetId}, except firts {migrationItem.OffsetFromTop} records.");
+                Health.AssetReportItems[migrationItem.AssetId] = new TradesMigrationHealthReportItem(migrationItem.OffsetFromTop);
 
-                await _sqlTradesSqlHistoryRepository.InitAsync(migrationItem.OffsetFromTop, migrationItem.AssetId);
-
-                var totalTradesRecordsFetched = 0;
-                var totalCandlesStored = 0;
-
-                // It's important for Constants.StoredIntervals to be ordered by time period increase,
-                // because we will calculate candles for each period based on previous period candles.
-                // We can form the candles stripes set only once per asset pair ID because each stripe 
-                // is implicitly cleaned up on the begining of every iteration.
-                var candleStripes = (Constants.StoredIntervals
-                    .Select(interval => new TradesCandleStripe(migrationItem.AssetId, interval))).ToList();
-
-                while (true)
+                using (var sqlRepo = new TradesSqlHistoryRepository(_sqlConnString, _sqlQueryBatchSize, _log,
+                    migrationItem.OffsetFromTop, migrationItem.AssetId))
                 {
-                    var tradesBatch = await _sqlTradesSqlHistoryRepository.GetNextBatchAsync();
-                    var batchCount = tradesBatch.Count();
+                    await _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(Migrate),
+                        $"Starting migration for {migrationItem.AssetId}, except firts {migrationItem.OffsetFromTop} records.");
 
-                    if (batchCount == 0) break;
-
-                    // Now we can build sequentally candle stripes for all the stored time intervals.
-                    // To avoid looking through the whole trades batch several times, we derive the
-                    // bigger time intervals from the smaller ones. For example, let's assume that we
-                    // generate 1000 sec candles from our batch of 2381 trades. Than, for calculating
-                    // minute candles we need to iterate only 1000 second candles, and this will give
-                    // us 16 minute candles. Next, we iterate 16 minute candles to get 1 hour candle,
-                    // and so on, instead of looking through 2381 trades for each time interval.
-                    for (var i = 0; i < candleStripes.Count; i++)
+                    while (true)
                     {
-                        if (i == 0) // The first-going time interval IS TO BE "Sec"
-                            await candleStripes[i].MakeFromTrades(tradesBatch);
-                        else // And all of other intervals MUST BE ordered ascending.
-                            await candleStripes[i].DeriveFromSmallerIntervalAsync(candleStripes[i - 1]);
+                        var tradesBatch = await sqlRepo.GetNextBatchAsync();
+                        var batchCount = tradesBatch.Count();
 
-                        await _candlesHistoryRepository.InsertOrMergeAsync(candleStripes[i].Candles.Values, candleStripes[i].AssetId,
-                            TradesCandleStripe.PriceType, candleStripes[i].TimeInterval);
+                        if (batchCount == 0) break;
+
+                        TradesCandleBatch smallerCandles = null;
+
+                        var batchInsertTasks = new List<Task>();
+
+                        // Now we can build sequentally candle batches for all the stored time intervals.
+                        // To avoid looking through the whole trades batch several times, we derive the
+                        // bigger time intervals from the smaller ones. For example, let's assume that we
+                        // generate 1000 sec candles from our batch of 2381 trades. Then, for calculating
+                        // minute candles we need to iterate only 1000 second candles, and this will give
+                        // us 16 minute candles. Next, we iterate 16 minute candles to get 1 hour candle,
+                        // and so on, instead of looking through 2381 trades for each time interval.
+                        foreach (var interval in Constants.StoredIntervals)
+                        {
+                            // It's important for Constants.StoredIntervals to be ordered by time period increase,
+                            // because we will calculate candles for each period based on previous period candles.
+                            var currentCandles = interval == CandleTimeInterval.Sec
+                                ? new TradesCandleBatch(migrationItem.AssetId, interval, tradesBatch)
+                                : new TradesCandleBatch(migrationItem.AssetId, interval, smallerCandles);
+
+                            Health.AssetReportItems[migrationItem.AssetId].SummarySavedCandles += currentCandles.CandlesCount;
+
+                            smallerCandles = currentCandles;
+
+                            // Preffered to perform inserting in parralel style.
+                            batchInsertTasks.Add(
+                                _candlesHistoryRepository.InsertOrMergeAsync(
+                                    currentCandles.Candles.Values,
+                                    currentCandles.AssetId,
+                                    TradesCandleBatch.PriceType,
+                                    currentCandles.TimeInterval));
+                        }
+
+                        Health.AssetReportItems[migrationItem.AssetId].SummaryFetchedTrades += batchCount;
+
+                        Task.WaitAll(batchInsertTasks.ToArray());
+
+                        await _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(Migrate),
+                            $"Batch of {batchCount} records for {migrationItem.AssetId} processed.");
                     }
 
-                    totalTradesRecordsFetched += batchCount;
-
-                    await _log.WriteMonitorAsync(nameof(TradesMigrationManager), nameof(MigrateAsync),
-                        $"Batch of {batchCount} records for {migrationItem.AssetId} processed.");
+                    await _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(Migrate),
+                        $"Migration for {migrationItem.AssetId} finished. Total records migrated: {Health.AssetReportItems[migrationItem.AssetId].SummaryFetchedTrades}, total candles stored: {Health.AssetReportItems[migrationItem.AssetId].SummarySavedCandles}.");
                 }
-
-                await _log.WriteMonitorAsync(nameof(TradesMigrationManager), nameof(MigrateAsync),
-                    $"Migration for {migrationItem.AssetId} finished. Total records migrated: {totalTradesRecordsFetched}, total candles stored: {totalCandlesStored}.");
             }
         }
+
+
     }
 }

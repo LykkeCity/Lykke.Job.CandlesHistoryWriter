@@ -34,15 +34,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
             return Ok(result);
         }
 
-        [HttpPost]
-        [Route("trades")]
-        public async Task<IActionResult> MigrateTrades([FromBody] TradesMigrationRequestModel request)
-        {
-            await _tradesMigrationManager.MigrateAsync(request);
-
-            return Ok();
-        }
-
         [HttpGet]
         [Route("health")]
         public IActionResult Health()
@@ -60,6 +51,29 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
             }
 
             return Ok(_candlesMigrationManager.Health[assetPair]);
+        }
+
+        [HttpPost]
+        [Route("trades")]
+        public IActionResult MigrateTrades([FromBody] TradesMigrationRequestModel request)
+        {
+            // This method is sync but internally starts a new task and returns
+            _tradesMigrationManager.Migrate(request);
+
+            return Ok();
+        }
+
+        [HttpGet]
+        [Route("trades/health")]
+        public IActionResult TradesHealth()
+        {
+            var healthReport = _tradesMigrationManager.Health;
+
+            // If null, we have not currently been carrying out a trades migration.
+            if (healthReport == null)
+                return NoContent();
+
+            return Ok(healthReport);
         }
     }
 }
