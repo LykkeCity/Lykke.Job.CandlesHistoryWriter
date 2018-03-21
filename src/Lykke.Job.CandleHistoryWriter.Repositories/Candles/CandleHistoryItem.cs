@@ -84,38 +84,17 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
         /// <param name="candleState">Candle state</param>
         public void InplaceMergeWith(ICandle candleState)
         {
-            if (LastUpdateTimestamp >= candleState.LastUpdateTimestamp 
-                && candleState.PriceType != CandlePriceType.Trades)
+            if (LastUpdateTimestamp >= candleState.LastUpdateTimestamp)
             {
                 return;
             }
-
-            if (candleState.PriceType != CandlePriceType.Trades)
-            {
-                Close = candleState.Close;
-                High = Math.Max(High, candleState.High);
-                Low = Math.Min(Low, candleState.Low);
-                TradingVolume = candleState.TradingVolume;
-                TradingOppositeVolume = candleState.TradingOppositeVolume;
-                LastUpdateTimestamp = candleState.LastUpdateTimestamp;
-            }
-            else
-            {
-                // In case of Trades candles the source DB does not guaranty that all trades
-                // are going one by one comparing their DateTime property. So, if we already
-                // have the candle in repository, and now we got something with is older, we
-                // should ensure the data piece was not lost. This is correct for migration
-                // process and is not wrong for real-time Trades candles creation.
-                var selfIsOlder = LastUpdateTimestamp <= candleState.LastUpdateTimestamp;
-
-                Close = selfIsOlder ? candleState.Close : Close;
-                High = Math.Max(High, candleState.High);
-                Low = Math.Min(Low, candleState.Low);
-                TradingVolume += candleState.TradingVolume;
-                TradingOppositeVolume += candleState.TradingOppositeVolume;
-                LastTradePrice = selfIsOlder ? candleState.LastTradePrice : LastTradePrice;
-                LastUpdateTimestamp = selfIsOlder ? candleState.LastUpdateTimestamp : LastUpdateTimestamp;
-            }
+            
+            Close = candleState.Close;
+            High = Math.Max(High, candleState.High);
+            Low = Math.Min(Low, candleState.Low);
+            TradingVolume = candleState.TradingVolume;
+            TradingOppositeVolume = candleState.TradingOppositeVolume;
+            LastUpdateTimestamp = candleState.LastUpdateTimestamp;
         }
 
         private static int GetIntervalTickOrigin(CandleTimeInterval interval)
