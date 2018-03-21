@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.HistoryProviders.TradesSQLHistory;
 using Lykke.Job.CandlesProducer.Contract;
@@ -16,12 +18,18 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
         public static CandlePriceType PriceType =>
             CandlePriceType.Trades;
 
+        public DateTime MinTimeStamp { get; private set; }
+        public DateTime MaxTimeStamp { get; private set; }
+
         public Dictionary<long, ICandle> Candles { get; }
 
         public TradesCandleBatch(string assetId, CandleTimeInterval interval, IEnumerable<TradeHistoryItem> trades)
         {
             AssetId = assetId;
             TimeInterval = interval;
+
+            MinTimeStamp = DateTime.MaxValue;
+            MaxTimeStamp = DateTime.MinValue;
 
             Candles = new Dictionary<long, ICandle>();
 
@@ -32,6 +40,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
         {
             AssetId = assetId;
             TimeInterval = interval;
+
+            MinTimeStamp = DateTime.MaxValue;
+            MaxTimeStamp = DateTime.MinValue;
 
             Candles = new Dictionary<long, ICandle>();
 
@@ -65,6 +76,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                 {
                     Candles.Add(timestamp, tradeCandle);
                     count++;
+                    if (truncatedDate < MinTimeStamp)
+                        MinTimeStamp = truncatedDate;
+                    if (truncatedDate > MaxTimeStamp)
+                        MaxTimeStamp = truncatedDate;
                 }
                 else
                     Candles[timestamp] = existingCandle.ExtendBy(tradeCandle);
@@ -92,6 +107,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                 {
                     Candles.Add(timestamp, candle.Value.RebaseToInterval(TimeInterval));
                     count++;
+                    if (truncatedDate < MinTimeStamp)
+                        MinTimeStamp = truncatedDate;
+                    if (truncatedDate > MaxTimeStamp)
+                        MaxTimeStamp = truncatedDate;
                 }
                 else
                     Candles[timestamp] = existingCandle.ExtendBy(candle.Value.RebaseToInterval(TimeInterval));
