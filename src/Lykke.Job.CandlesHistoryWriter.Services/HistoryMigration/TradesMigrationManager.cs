@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Common.Log;
@@ -103,6 +104,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                         await _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(Migrate),
                             $"Batch of {batchCount} records for {migrationItem.AssetId} processed.");
                     }
+
+                    Health.State = TradesMigrationState.Finished;
 
                     await _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(Migrate),
                         $"Migration for {migrationItem.AssetId} finished. Total records migrated: {Health.AssetReportItems[migrationItem.AssetId].SummaryFetchedTrades}, total candles stored: {Health.AssetReportItems[migrationItem.AssetId].SummarySavedCandles}.");
