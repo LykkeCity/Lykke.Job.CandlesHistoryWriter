@@ -40,7 +40,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                 Math.Min(self.Low, newCandle.Low),
                 self.TradingVolume + newCandle.TradingVolume,
                 self.TradingOppositeVolume + newCandle.TradingOppositeVolume,
-                newCandle.LastTradePrice,
+                selfIsOlder ? newCandle.LastTradePrice : self.LastTradePrice,
                 selfIsOlder ? newCandle.LastUpdateTimestamp : self.LastUpdateTimestamp
             );
         }
