@@ -86,14 +86,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 
                             ExtendStoredCandles(ref currentCandles);
 
-                            /*
-                             var storedCandle =
-                                (_historyRepository.GetCandlesAsync(AssetId, TimeInterval, PriceType, truncatedDate,
-                                    truncatedDate.AddSeconds((int)TimeInterval)).GetAwaiter().GetResult()).FirstOrDefault();
-                            if (storedCandle != null)
-                                Candles[timestamp] = storedCandle.ExtendBy(Candles[timestamp]);                             
-                             */
-
                             Health.AssetReportItems[migrationItem.AssetId].SummarySavedCandles += currentCandles.CandlesCount;
 
                             smallerCandles = currentCandles;

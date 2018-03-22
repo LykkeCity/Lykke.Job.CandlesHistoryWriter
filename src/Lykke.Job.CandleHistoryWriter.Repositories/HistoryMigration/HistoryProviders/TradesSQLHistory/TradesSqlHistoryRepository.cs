@@ -97,7 +97,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
             commandBld.Append("FROM Trades ");
             commandBld.Append("WHERE ");
             commandBld.Append($@"OrderType = 'Limit' AND Asset + OppositeAsset = '{AssetPairId}' AND Direction IN ('Buy', 'Sell') ");
-            commandBld.Append("ORDER BY Id ASC ");
+            commandBld.Append(@"ORDER BY ""DateTime"", Id ASC ");
             commandBld.Append($"OFFSET {StartingRowOffset} ROWS FETCH NEXT {_sqlQueryBatchSize} ROWS ONLY;");
 
             return commandBld.ToString();
