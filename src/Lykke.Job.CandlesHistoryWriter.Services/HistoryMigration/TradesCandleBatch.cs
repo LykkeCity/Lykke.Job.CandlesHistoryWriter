@@ -68,7 +68,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                     (double)trade.Price,
                     (double)trade.Volume,
                     (double)trade.OppositeVolume,
-                    (double)trade.Price,
+                    0,
                     trade.DateTime
                 );
 
