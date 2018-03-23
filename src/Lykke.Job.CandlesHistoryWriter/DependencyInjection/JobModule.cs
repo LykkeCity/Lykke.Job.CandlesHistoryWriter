@@ -5,6 +5,7 @@ using Autofac.Extensions.DependencyInjection;
 using AzureStorage.Blob;
 using AzureStorage.Tables;
 using Common.Log;
+using Lykke.Common;
 using Lykke.Job.CandleHistoryWriter.Repositories.Candles;
 using Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryProviders.MeFeedHistory;
 using Lykke.Job.CandleHistoryWriter.Repositories.Snapshots;
@@ -67,12 +68,37 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
                         
             builder.RegisterType<Clock>().As<IClock>();
 
+            RegisterResourceMonitor(builder);
+
             RegisterRedis(builder);
 
             RegisterAssets(builder);
             RegisterCandles(builder);
 
             builder.Populate(_services);
+        }
+
+        private void RegisterResourceMonitor(ContainerBuilder builder)
+        {
+            var monitorSettings = _settings.ResourceMonitor;
+
+            switch (monitorSettings.MonitorMode)
+            {
+                case ResourceMonitorMode.Off:
+                    // Do not register any resource monitor.
+                    break;
+
+                case ResourceMonitorMode.AppInsightsOnly:
+                    builder.RegisterResourcesMonitoring(_log);
+                    break;
+
+                case ResourceMonitorMode.AppInsightsWithLog:
+                    builder.RegisterResourcesMonitoringWithLogging(
+                        _log,
+                        monitorSettings.CpuThreshold,
+                        monitorSettings.RamThreshold);
+                    break;
+            }
         }
 
         private void RegisterRedis(ContainerBuilder builder)
