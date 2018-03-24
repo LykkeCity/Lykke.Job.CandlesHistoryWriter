@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.HistoryProviders.TradesSQLHistory;
 using Lykke.Job.CandlesProducer.Contract;
