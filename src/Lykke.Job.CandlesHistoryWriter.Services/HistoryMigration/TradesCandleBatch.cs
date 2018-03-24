@@ -46,7 +46,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 
             Candles = new Dictionary<long, ICandle>();
 
-            CandlesCount = DeriveFromSmallerIntervalAsync(basis);
+            CandlesCount = DeriveFromSmallerInterval(basis);
         }
 
         private int MakeFromTrades(IEnumerable<TradeHistoryItem> trades)
@@ -88,7 +88,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             return count;
         }
 
-        private int DeriveFromSmallerIntervalAsync(TradesCandleBatch basis)
+        private int DeriveFromSmallerInterval(TradesCandleBatch basis)
         {
             if ((int)(basis.TimeInterval) >= (int)TimeInterval)
                 throw new InvalidOperationException($"Can't derive candles for time interval {TimeInterval.ToString()} from candles of {basis.TimeInterval.ToString()}.");
