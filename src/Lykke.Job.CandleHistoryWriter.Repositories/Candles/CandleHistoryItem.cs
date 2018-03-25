@@ -88,7 +88,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             {
                 return;
             }
-
+            
             Close = candleState.Close;
             High = Math.Max(High, candleState.High);
             Low = Math.Min(Low, candleState.Low);
