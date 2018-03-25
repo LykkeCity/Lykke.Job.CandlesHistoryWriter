@@ -26,7 +26,7 @@ namespace Lykke.Job.CandlesHistoryWriter
         public Dictionary<string, string> CandleHistoryAssetConnections
         {
             get => _candleHistoryAssetConnections;
-            set => _candleHistoryAssetConnections = value.ToDictionary(x => x.Key.ToUpper(), x => x.Value);
+            set => _candleHistoryAssetConnections = value.ToDictionary(x => x.Key.ToUpperInvariant(), x => x.Value);
         }
 
         [Optional]
@@ -34,7 +34,7 @@ namespace Lykke.Job.CandlesHistoryWriter
         public Dictionary<string, string> MtCandleHistoryAssetConnections
         {
             get => _mtCandleHistoryAssetConnections;
-            set => _mtCandleHistoryAssetConnections = value.ToDictionary(x => x.Key.ToUpper(), x => x.Value);
+            set => _mtCandleHistoryAssetConnections = value.ToDictionary(x => x.Key.ToUpperInvariant(), x => x.Value);
         }
 
         [UsedImplicitly(ImplicitUseKindFlags.Assign)]
