@@ -1,4 +1,5 @@
 ﻿using System.Threading.Tasks;
+using Lykke.Common.Api.Contract.Responses;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.HistoryMigration.HistoryProviders;
 using Lykke.Job.CandlesHistoryWriter.Models.Migration;
 using Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration;
@@ -58,9 +59,13 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
         public IActionResult MigrateTrades([FromBody] TradesMigrationRequestModel request)
         {
             // This method is sync but internally starts a new task and returns
-            _tradesMigrationManager.Migrate(request);
+            var migrationStarted = _tradesMigrationManager.Migrate(request);
 
-            return Ok();
+            if (migrationStarted)
+                return Ok();
+
+            return BadRequest(
+                ErrorResponse.Create("The previous migration session still has not been finished. Parallel execution is not supported."));
         }
 
         [HttpGet]

@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.HistoryProviders.TradesSQLHistory;
 using Lykke.Job.CandlesProducer.Contract;
@@ -46,7 +44,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 
             Candles = new Dictionary<long, ICandle>();
 
-            CandlesCount = DeriveFromSmallerIntervalAsync(basis);
+            CandlesCount = DeriveFromSmallerInterval(basis);
         }
 
         private int MakeFromTrades(IEnumerable<TradeHistoryItem> trades)
@@ -88,7 +86,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             return count;
         }
 
-        private int DeriveFromSmallerIntervalAsync(TradesCandleBatch basis)
+        private int DeriveFromSmallerInterval(TradesCandleBatch basis)
         {
             if ((int)(basis.TimeInterval) >= (int)TimeInterval)
                 throw new InvalidOperationException($"Can't derive candles for time interval {TimeInterval.ToString()} from candles of {basis.TimeInterval.ToString()}.");

@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Common.Log;
@@ -39,9 +38,14 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             Health = null;
         }
 
-        public void Migrate(ITradesMigrationRequest request)
+        public bool Migrate(ITradesMigrationRequest request)
         {
-            Task.Run(() => DoMigrateAsync(request).Wait());
+            // We should not run migration multiple times before the first attempt ends.
+            if (Health != null && Health.State != TradesMigrationState.Finished)
+                return false;
+
+            Task.Run(() => DoMigrateAsync(request).GetAwaiter().GetResult());
+            return true;
         }
 
         private async Task DoMigrateAsync(ITradesMigrationRequest request)
@@ -63,7 +67,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                         var tradesBatch = await sqlRepo.GetNextBatchAsync();
                         var batchCount = tradesBatch.Count();
 
-                        if (batchCount == 0) break;
+                        if (batchCount == 0)
+                            break;
 
                         TradesCandleBatch smallerCandles = null;
 
