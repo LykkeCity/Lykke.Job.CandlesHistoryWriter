@@ -34,7 +34,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
         public bool CanStoreAssetPair(string assetPairId)
         {
-            return _assetConnectionStrings.CurrentValue.ContainsKey(assetPairId);
+            return _assetConnectionStrings.CurrentValue.ContainsKey(assetPairId.ToUpperInvariant());
         }
 
         /// <summary>
@@ -100,10 +100,12 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
             if (!_assetPairRepositories.TryGetValue(key, out AssetPairCandlesHistoryRepository repo) || repo == null)
             {
+                var upperAssetPair = assetPairId.ToUpperInvariant();
+
                 return _assetPairRepositories.AddOrUpdate(
                     key: key,
-                    addValueFactory: k => new AssetPairCandlesHistoryRepository(_healthService, _log, assetPairId, timeInterval, CreateStorage(assetPairId, tableName)),
-                    updateValueFactory: (k, oldRepo) => oldRepo ?? new AssetPairCandlesHistoryRepository(_healthService, _log, assetPairId, timeInterval, CreateStorage(assetPairId, tableName)));
+                    addValueFactory: k => new AssetPairCandlesHistoryRepository(_healthService, _log, upperAssetPair, timeInterval, CreateStorage(upperAssetPair, tableName)),
+                    updateValueFactory: (k, oldRepo) => oldRepo ?? new AssetPairCandlesHistoryRepository(_healthService, _log, upperAssetPair, timeInterval, CreateStorage(upperAssetPair, tableName)));
             }
 
             return repo;
