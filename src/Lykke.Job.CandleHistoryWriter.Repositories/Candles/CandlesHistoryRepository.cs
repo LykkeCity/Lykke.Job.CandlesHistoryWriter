@@ -34,7 +34,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
         public bool CanStoreAssetPair(string assetPairId)
         {
-            return _assetConnectionStrings.CurrentValue.ContainsKey(assetPairId.ToUpperInvariant());
+            return _assetConnectionStrings.CurrentValue.ContainsKey(assetPairId);
         }
 
         /// <summary>
@@ -88,7 +88,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
         private void ResetRepo(string assetPairId, CandleTimeInterval interval)
         {
             var tableName = interval.ToString().ToLowerInvariant();
-            var key = assetPairId.ToLowerInvariant() + "_" + tableName;
+            var key = assetPairId + "_" + tableName;
 
             _assetPairRepositories[key] = null;
         }
@@ -96,16 +96,14 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
         private AssetPairCandlesHistoryRepository GetRepo(string assetPairId, CandleTimeInterval timeInterval)
         {
             var tableName = timeInterval.ToString().ToLowerInvariant();
-            var key = $"{assetPairId.ToLowerInvariant()}_{tableName}";
+            var key = $"{assetPairId}_{tableName}";
 
             if (!_assetPairRepositories.TryGetValue(key, out AssetPairCandlesHistoryRepository repo) || repo == null)
             {
-                var upperAssetPair = assetPairId.ToUpperInvariant();
-
                 return _assetPairRepositories.AddOrUpdate(
                     key: key,
-                    addValueFactory: k => new AssetPairCandlesHistoryRepository(_healthService, _log, upperAssetPair, timeInterval, CreateStorage(upperAssetPair, tableName)),
-                    updateValueFactory: (k, oldRepo) => oldRepo ?? new AssetPairCandlesHistoryRepository(_healthService, _log, upperAssetPair, timeInterval, CreateStorage(upperAssetPair, tableName)));
+                    addValueFactory: k => new AssetPairCandlesHistoryRepository(_healthService, _log, assetPairId, timeInterval, CreateStorage(assetPairId, tableName)),
+                    updateValueFactory: (k, oldRepo) => oldRepo ?? new AssetPairCandlesHistoryRepository(_healthService, _log, assetPairId, timeInterval, CreateStorage(assetPairId, tableName)));
             }
 
             return repo;
