@@ -96,6 +96,74 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             await _tableStorage.InsertOrReplaceBatchAsync(existingEntities.Concat(newEntities));
         }
 
+        public async Task<int> DeleteCandlesAsync(IEnumerable<ICandle> candlesToDelete, CandlePriceType priceType)
+        {
+            if (candlesToDelete == null || !candlesToDelete.Any())
+                throw new ArgumentException("Candles set should not be empty.");
+
+            var partitionKey = CandleHistoryEntity.GeneratePartitionKey(priceType);
+
+            // Splitting to chunks, just like in InsertOrMergeAsync
+
+            var candleByRowsChunks = candlesToDelete
+                .GroupBy(candle => CandleHistoryEntity.GenerateRowKey(candle.Timestamp, _timeInterval))
+                .Batch(100);
+
+            int deletedCandlesCount = 0;
+
+            foreach (var candleByRowsChunk in candleByRowsChunks)
+            {
+                var candleByRows = candleByRowsChunk.ToDictionary(g => g.Key, g => g.AsEnumerable());
+
+                var existingEntities = (await _tableStorage.GetDataAsync(partitionKey, candleByRows.Keys)).ToArray();
+
+                foreach (var entity in existingEntities)
+                {
+                    deletedCandlesCount += entity.DeleteCandles(candleByRows[entity.RowKey]);
+                }
+
+                // No _healthService trackig here. Monitoring of candles deletion is performed on upper layers of logic.
+
+                await _tableStorage.InsertOrReplaceBatchAsync(existingEntities); // For we do not have a ReplaceBatchAsync method in AzureTableStorage yet.
+            }
+
+            return deletedCandlesCount;
+        }
+
+        public async Task<int> ReplaceCandlesAsync(IEnumerable<ICandle> candlesToReplace, CandlePriceType priceType)
+        {
+            if (candlesToReplace == null || !candlesToReplace.Any())
+                throw new ArgumentException("Candles set should not be empty.");
+
+            var partitionKey = CandleHistoryEntity.GeneratePartitionKey(priceType);
+
+            // Splitting to chunks, just like in InsertOrMergeAsync
+
+            var candleByRowsChunks = candlesToReplace
+                .GroupBy(candle => CandleHistoryEntity.GenerateRowKey(candle.Timestamp, _timeInterval))
+                .Batch(100);
+
+            int replacedCandlesCount = 0;
+
+            foreach (var candleByRowsChunk in candleByRowsChunks)
+            {
+                var candleByRows = candleByRowsChunk.ToDictionary(g => g.Key, g => g.AsEnumerable());
+
+                var existingEntities = (await _tableStorage.GetDataAsync(partitionKey, candleByRows.Keys)).ToArray();
+
+                foreach (var entity in existingEntities)
+                {
+                    replacedCandlesCount += entity.ReplaceCandles(candleByRows[entity.RowKey]);
+                }
+
+                // No _healthService trackig here. Monitoring of candles deletion is performed on upper layers of logic.
+
+                await _tableStorage.InsertOrReplaceBatchAsync(existingEntities); // For we do not have a ReplaceBatchAsync method in AzureTableStorage yet.
+            }
+
+            return replacedCandlesCount;
+        }
+
         public async Task<IEnumerable<ICandle>> GetCandlesAsync(CandlePriceType priceType, CandleTimeInterval interval, DateTime from, DateTime to)
         {
             if (priceType == CandlePriceType.Unspecified)

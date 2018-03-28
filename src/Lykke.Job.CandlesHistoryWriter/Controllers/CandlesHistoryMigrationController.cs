@@ -1,6 +1,7 @@
 ﻿using System.Threading.Tasks;
 using Lykke.Common.Api.Contract.Responses;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.HistoryMigration.HistoryProviders;
+using Lykke.Job.CandlesHistoryWriter.Models.Filtration;
 using Lykke.Job.CandlesHistoryWriter.Models.Migration;
 using Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration;
 using Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration.HistoryProviders.MeFeedHistory;
@@ -12,15 +13,18 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
     {
         private readonly CandlesMigrationManager _candlesMigrationManager;
         private readonly TradesMigrationManager _tradesMigrationManager;
+        private readonly CandlesFiltrationManager _candlesFiltrationManager;
         private readonly IHistoryProvidersManager _historyProvidersManager;
 
         public CandlesHistoryMigrationController(
             CandlesMigrationManager candlesMigrationManager, 
             TradesMigrationManager tradesMigrationManager,
+            CandlesFiltrationManager candlesFiltrationManager,
             IHistoryProvidersManager historyProvidersManager)
         {
             _candlesMigrationManager = candlesMigrationManager;
             _tradesMigrationManager = tradesMigrationManager;
+            _candlesFiltrationManager = candlesFiltrationManager;
             _historyProvidersManager = historyProvidersManager;
         }
 
@@ -90,6 +94,31 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
             var healthReport = _tradesMigrationManager.Health;
 
             // If null, we have not currently been carrying out a trades migration.
+            if (healthReport == null)
+                return NoContent();
+
+            return Ok(healthReport);
+        }
+
+        [HttpPost]
+        [Route("extremumFilter")]
+        public IActionResult FilterExtremumCandles([FromBody] CandlesFiltrationRequestModel request)
+        {
+            var filtrationStarted = _candlesFiltrationManager.Filtrate(request);
+
+            if (filtrationStarted)
+                return Ok();
+
+            return BadRequest(
+                ErrorResponse.Create("The previous filtration session still has not been finished. Parallel execution is not supported."));
+        }
+
+        [HttpGet]
+        [Route("extremeFilter/health")]
+        public IActionResult ExtremumFilterHealth()
+        {
+            var healthReport = _candlesFiltrationManager.Health;
+
             if (healthReport == null)
                 return NoContent();
 

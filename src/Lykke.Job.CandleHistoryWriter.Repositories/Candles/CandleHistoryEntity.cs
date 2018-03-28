@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using Common;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesProducer.Contract;
@@ -133,6 +134,44 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             }
 
             return FormatRowKey(time);
+        }
+
+        public int DeleteCandles(IEnumerable<ICandle> candlesToDelete)
+        {
+            var ticksToDelete = candlesToDelete
+                .Select(c => GetIntervalTick(c.Timestamp, c.TimeInterval))
+                .Distinct();
+
+            return Candles.RemoveAll(c => 
+                ticksToDelete.Contains(c.Tick));
+        }
+
+        public int ReplaceCandles(IEnumerable<ICandle> candlesToReplace)
+        {
+            var replacedCount = 0;
+
+            foreach (var candle in candlesToReplace)
+            {
+                var tick = GetIntervalTick(candle.Timestamp, candle.TimeInterval);
+
+                if (Candles.RemoveAll(c => c.Tick == tick) <= 0)
+                    continue; // Can't replace if there was no candle with the requested tick.
+
+                Candles.Add(candle.ToItem(tick));
+                replacedCount++;
+            }
+
+            // Sorting candles for storing in DB in proper order.
+            Candles.Sort((a, b) =>
+            {
+                if (a.Tick > b.Tick)
+                    return 1;
+                if (a.Tick < b.Tick)
+                    return -1;
+                return 0;
+            });
+
+            return replacedCount;
         }
 
         public void MergeCandles(IEnumerable<ICandle> candles, string assetPair, CandleTimeInterval timeInterval)
