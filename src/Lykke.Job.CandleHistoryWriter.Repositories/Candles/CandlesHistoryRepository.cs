@@ -23,6 +23,8 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
         private readonly ConcurrentDictionary<string, AssetPairCandlesHistoryRepository> _assetPairRepositories;
 
+        private Dictionary<string, string> _extremeCandlesContinuationTokens;
+
         public CandlesHistoryRepository(IHealthService healthService, ILog log, IReloadingManager<Dictionary<string, string>> assetConnectionStrings)
         {
             _healthService = healthService;
@@ -83,6 +85,61 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                 ResetRepo(assetPairId, interval);
                 throw;
             }
+        }
+
+        public async Task<int> DeleteCandlesAsync(IEnumerable<ICandle> candlesToDelete)
+        {
+            CheckupInputCandleSet(candlesToDelete, out var assetPairId, out var interval, out var priceType);
+
+            var repo = GetRepo(assetPairId, interval);
+            try
+            {
+                return 
+                    await repo.DeleteCandlesAsync(candlesToDelete, priceType);
+            }
+            catch
+            {
+                ResetRepo(assetPairId, interval);
+                throw;
+            }
+        }
+
+        public async Task<int> ReplaceCandlesAsync(IEnumerable<ICandle> candlesToReplace)
+        {
+            CheckupInputCandleSet(candlesToReplace, out var assetPairId, out var interval, out var priceType);
+
+            var repo = GetRepo(assetPairId, interval);
+            try
+            {
+                return 
+                    await repo.ReplaceCandlesAsync(candlesToReplace, priceType);
+            }
+            catch
+            {
+                ResetRepo(assetPairId, interval);
+                throw;
+            }
+        }
+
+        private void CheckupInputCandleSet(
+            IEnumerable<ICandle> candlesToCheck, 
+            out string assetPairId,
+            out CandleTimeInterval interval, 
+            out CandlePriceType priceType)
+        {
+            var firstCandle = candlesToCheck?.FirstOrDefault();
+            if (firstCandle == null)
+                throw new ArgumentException("The input candle set is null or empty.");
+
+            assetPairId = firstCandle.AssetPairId;
+            interval = firstCandle.TimeInterval;
+            priceType = firstCandle.PriceType;
+
+            if (candlesToCheck.Any(c =>
+                c.AssetPairId != firstCandle.AssetPairId ||
+                c.TimeInterval != firstCandle.TimeInterval ||
+                c.PriceType != firstCandle.PriceType))
+                throw new ArgumentException("The input set contains candles with different asset pair IDs, time intervals and/or price types.");
         }
 
         private void ResetRepo(string assetPairId, CandleTimeInterval interval)
