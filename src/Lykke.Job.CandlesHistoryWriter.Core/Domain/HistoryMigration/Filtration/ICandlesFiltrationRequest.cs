@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.Filtration
+﻿namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.Filtration
 {
     public interface ICandlesFiltrationRequest
     {
