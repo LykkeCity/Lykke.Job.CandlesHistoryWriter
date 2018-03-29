@@ -13,7 +13,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.HistoryPro
             get => _state;
             set
             {
-                if (value == TradesMigrationState.Finished)
+                if (value != TradesMigrationState.InProgress)
                     FinishTime = DateTime.UtcNow;
                 _state = value;
             }
@@ -53,6 +53,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.HistoryPro
     public enum TradesMigrationState
     {
         InProgress,
-        Finished
+        Finished,
+        Error
     }
 }

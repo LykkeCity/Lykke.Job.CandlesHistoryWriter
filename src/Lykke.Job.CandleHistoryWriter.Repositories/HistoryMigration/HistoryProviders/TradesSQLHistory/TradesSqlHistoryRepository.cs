@@ -52,6 +52,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
                 
                 using (var sqlCommand = new SqlCommand(BuildCurrentQueryCommand(), _sqlConnection))
                 {
+                    sqlCommand.CommandTimeout = 180; // 3 minutes
                     using (var reader = await sqlCommand.ExecuteReaderAsync())
                     {
                         while (await reader.ReadAsync())
