@@ -23,8 +23,6 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
         private readonly ConcurrentDictionary<string, AssetPairCandlesHistoryRepository> _assetPairRepositories;
 
-        private Dictionary<string, string> _extremeCandlesContinuationTokens;
-
         public CandlesHistoryRepository(IHealthService healthService, ILog log, IReloadingManager<Dictionary<string, string>> assetConnectionStrings)
         {
             _healthService = healthService;
@@ -89,12 +87,14 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
         public async Task<int> DeleteCandlesAsync(IEnumerable<ICandle> candlesToDelete)
         {
+            // ReSharper disable once PossibleMultipleEnumeration
             CheckupInputCandleSet(candlesToDelete, out var assetPairId, out var interval, out var priceType);
 
             var repo = GetRepo(assetPairId, interval);
             try
             {
                 return 
+                    // ReSharper disable once PossibleMultipleEnumeration
                     await repo.DeleteCandlesAsync(candlesToDelete, priceType);
             }
             catch
@@ -106,12 +106,14 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
         public async Task<int> ReplaceCandlesAsync(IEnumerable<ICandle> candlesToReplace)
         {
+            // ReSharper disable once PossibleMultipleEnumeration
             CheckupInputCandleSet(candlesToReplace, out var assetPairId, out var interval, out var priceType);
 
             var repo = GetRepo(assetPairId, interval);
             try
             {
                 return 
+                    // ReSharper disable once PossibleMultipleEnumeration
                     await repo.ReplaceCandlesAsync(candlesToReplace, priceType);
             }
             catch
@@ -127,6 +129,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             out CandleTimeInterval interval, 
             out CandlePriceType priceType)
         {
+            // ReSharper disable once PossibleMultipleEnumeration
             var firstCandle = candlesToCheck?.FirstOrDefault();
             if (firstCandle == null)
                 throw new ArgumentException("The input candle set is null or empty.");
@@ -135,6 +138,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             interval = firstCandle.TimeInterval;
             priceType = firstCandle.PriceType;
 
+            // ReSharper disable once PossibleMultipleEnumeration
             if (candlesToCheck.Any(c =>
                 c.AssetPairId != firstCandle.AssetPairId ||
                 c.TimeInterval != firstCandle.TimeInterval ||
