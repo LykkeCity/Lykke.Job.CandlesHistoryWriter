@@ -93,7 +93,6 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
             var commandBld = new StringBuilder();
 
             // TODO: implement a query with pagination.
-            //commandBld.Append($@"SELECT TOP {_sqlQueryBatchSize} Volume, Price, ""DateTime"", OppositeVolume ");
             commandBld.Append($@"SELECT Id, Volume, Price, ""DateTime"", OppositeVolume ");
             commandBld.Append("FROM Trades ");
             commandBld.Append("WHERE ");
