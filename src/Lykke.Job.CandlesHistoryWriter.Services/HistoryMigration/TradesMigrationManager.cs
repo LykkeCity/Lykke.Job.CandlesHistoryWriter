@@ -128,7 +128,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                     catch (Exception ex)
                     {
                         Health.State = TradesMigrationState.Error;
-                        await _log.WriteErrorAsync(nameof(TradesSqlHistoryRepository), nameof(DoMigrateAsync), ex);
+                        await _log.WriteErrorAsync(nameof(TradesMigrationManager), nameof(DoMigrateAsync), ex);
                         await _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(Migrate),
                             $"Migration for {migrationItem.AssetId} interrupted due to error. Please, check error log for details.");
                     }
