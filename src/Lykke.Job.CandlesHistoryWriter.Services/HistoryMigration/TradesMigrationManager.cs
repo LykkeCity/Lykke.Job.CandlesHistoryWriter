@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Common.Log;
@@ -41,7 +42,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
         public bool Migrate(ITradesMigrationRequest request)
         {
             // We should not run migration multiple times before the first attempt ends.
-            if (Health != null && Health.State != TradesMigrationState.Finished)
+            if (Health != null && Health.State == TradesMigrationState.InProgress)
                 return false;
 
             Task.Run(() => DoMigrateAsync(request).GetAwaiter().GetResult());
@@ -62,60 +63,75 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                     await _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(Migrate),
                         $"Starting migration for {migrationItem.AssetId}, except firts {migrationItem.OffsetFromTop} records.");
 
-                    while (true)
+                    try
                     {
-                        var tradesBatch = await sqlRepo.GetNextBatchAsync();
-                        var batchCount = tradesBatch.Count();
-
-                        if (batchCount == 0)
-                            break;
-
-                        TradesCandleBatch smallerCandles = null;
-
-                        var batchInsertTasks = new List<Task>();
-
-                        // Now we can build sequentally candle batches for all the stored time intervals.
-                        // To avoid looking through the whole trades batch several times, we derive the
-                        // bigger time intervals from the smaller ones. For example, let's assume that we
-                        // generate 1000 sec candles from our batch of 2381 trades. Then, for calculating
-                        // minute candles we need to iterate only 1000 second candles, and this will give
-                        // us 16 minute candles. Next, we iterate 16 minute candles to get 1 hour candle,
-                        // and so on, instead of looking through 2381 trades for each time interval.
-                        foreach (var interval in Constants.StoredIntervals)
+                        while (true)
                         {
-                            // It's important for Constants.StoredIntervals to be ordered by time period increase,
-                            // because we will calculate candles for each period based on previous period candles.
-                            var currentCandles = interval == CandleTimeInterval.Sec
-                                ? new TradesCandleBatch(migrationItem.AssetId, interval, tradesBatch)
-                                : new TradesCandleBatch(migrationItem.AssetId, interval, smallerCandles);
+                            var tradesBatch = await sqlRepo.GetNextBatchAsync();
+                            var batchCount = tradesBatch.Count();
 
-                            ExtendStoredCandles(ref currentCandles);
+                            if (batchCount == 0)
+                                break;
 
-                            Health.AssetReportItems[migrationItem.AssetId].SummarySavedCandles += currentCandles.CandlesCount;
+                            TradesCandleBatch smallerCandles = null;
 
-                            smallerCandles = currentCandles;
+                            var batchInsertTasks = new List<Task>();
 
-                            // Preffered to perform inserting in parralel style.
-                            batchInsertTasks.Add(
-                                _candlesHistoryRepository.InsertOrMergeAsync(
-                                    currentCandles.Candles.Values,
-                                    currentCandles.AssetId,
-                                    TradesCandleBatch.PriceType,
-                                    currentCandles.TimeInterval));
+                            // Now we can build sequentally candle batches for all the stored time intervals.
+                            // To avoid looking through the whole trades batch several times, we derive the
+                            // bigger time intervals from the smaller ones. For example, let's assume that we
+                            // generate 1000 sec candles from our batch of 2381 trades. Then, for calculating
+                            // minute candles we need to iterate only 1000 second candles, and this will give
+                            // us 16 minute candles. Next, we iterate 16 minute candles to get 1 hour candle,
+                            // and so on, instead of looking through 2381 trades for each time interval.
+                            foreach (var interval in Constants.StoredIntervals)
+                            {
+                                // It's important for Constants.StoredIntervals to be ordered by time period increase,
+                                // because we will calculate candles for each period based on previous period candles.
+                                var currentCandles = interval == CandleTimeInterval.Sec
+                                    ? new TradesCandleBatch(migrationItem.AssetId, interval, tradesBatch)
+                                    : new TradesCandleBatch(migrationItem.AssetId, interval, smallerCandles);
+
+                                ExtendStoredCandles(ref currentCandles);
+
+                                Health.AssetReportItems[migrationItem.AssetId].SummarySavedCandles +=
+                                    currentCandles.CandlesCount;
+
+                                // We can not derive month candles from weeks for they may lay out of the borders
+                                // of the month. While generating a month candles, we should use day candles as a
+                                // data source instead.
+                                if (interval != CandleTimeInterval.Week)
+                                    smallerCandles = currentCandles;
+
+                                // Preffered to perform inserting in parralel style.
+                                batchInsertTasks.Add(
+                                    _candlesHistoryRepository.InsertOrMergeAsync(
+                                        currentCandles.Candles.Values,
+                                        currentCandles.AssetId,
+                                        TradesCandleBatch.PriceType,
+                                        currentCandles.TimeInterval));
+                            }
+
+                            Health.AssetReportItems[migrationItem.AssetId].SummaryFetchedTrades += batchCount;
+
+                            Task.WaitAll(batchInsertTasks.ToArray());
+
+                            await _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(Migrate),
+                                $"Batch of {batchCount} records for {migrationItem.AssetId} processed.");
                         }
 
-                        Health.AssetReportItems[migrationItem.AssetId].SummaryFetchedTrades += batchCount;
-
-                        Task.WaitAll(batchInsertTasks.ToArray());
+                        Health.State = TradesMigrationState.Finished;
 
                         await _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(Migrate),
-                            $"Batch of {batchCount} records for {migrationItem.AssetId} processed.");
+                            $"Migration for {migrationItem.AssetId} finished. Total records migrated: {Health.AssetReportItems[migrationItem.AssetId].SummaryFetchedTrades}, total candles stored: {Health.AssetReportItems[migrationItem.AssetId].SummarySavedCandles}.");
                     }
-
-                    Health.State = TradesMigrationState.Finished;
-
-                    await _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(Migrate),
-                        $"Migration for {migrationItem.AssetId} finished. Total records migrated: {Health.AssetReportItems[migrationItem.AssetId].SummaryFetchedTrades}, total candles stored: {Health.AssetReportItems[migrationItem.AssetId].SummarySavedCandles}.");
+                    catch (Exception ex)
+                    {
+                        Health.State = TradesMigrationState.Error;
+                        await _log.WriteErrorAsync(nameof(TradesMigrationManager), nameof(DoMigrateAsync), ex);
+                        await _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(Migrate),
+                            $"Migration for {migrationItem.AssetId} interrupted due to error. Please, check error log for details.");
+                    }
                 }
             }
         }
