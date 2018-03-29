@@ -87,9 +87,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
 
         [HttpPost]
         [Route("extremumFilter")]
-        public IActionResult FilterExtremumCandles([FromBody] CandlesFiltrationRequestModel request)
+        public IActionResult FilterExtremumCandles([FromBody] CandlesFiltrationRequestModel request, bool analyzeOnly)
         {
-            var filtrationStarted = _candlesFiltrationManager.Filtrate(request);
+            var filtrationStarted = _candlesFiltrationManager.Filtrate(request, analyzeOnly);
 
             if (filtrationStarted)
                 return Ok();

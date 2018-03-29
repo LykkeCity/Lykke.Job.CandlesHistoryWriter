@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using Lykke.Job.CandlesProducer.Contract;
 
 namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.Filtration
 {
     public class CandlesFiltrationHealthReport
     {
         private readonly object _stateLocker = new object();
-        private readonly object _deletedLocker = new object();
-        private readonly object _replacedLocker = new object();
+
+        public bool AnalyzeOnly { get; }
 
         private CandlesFiltrationState _state;
         public CandlesFiltrationState State
@@ -34,32 +35,15 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.Filtration
         public double LimitLow { get; }
         public double LimitHigh { get; }
 
-        private int _deletedCandlesCount;
-        public int DeletedCandlesCount
-        {
-            get => _deletedCandlesCount;
-            set
-            {
-                lock (_deletedLocker)
-                    _deletedCandlesCount = value;
-            }
-        }
-
-        private int _replacedCandlesCount;
-        public int ReplacedCandlesCount
-        {
-            get => _replacedCandlesCount;
-            set
-            {
-                lock (_replacedLocker)
-                    _replacedCandlesCount = value;
-            }
-        }
+        public ConcurrentDictionary<CandlePriceType, int> DeletedCandlesCount { get; }
+        public ConcurrentDictionary<CandlePriceType, int> ReplacedCandlesCount { get; }
 
         public ConcurrentBag<string> Errors;
 
-        public CandlesFiltrationHealthReport(string assetId, double limitLow, double limitHigh)
+        public CandlesFiltrationHealthReport(string assetId, double limitLow, double limitHigh, bool analyzeOnly)
         {
+            AnalyzeOnly = analyzeOnly;
+
             AssetId = assetId;
             State = CandlesFiltrationState.InProgress;
             StartTime = DateTime.UtcNow;
@@ -67,6 +51,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.Filtration
             LimitLow = limitLow;
             LimitHigh = limitHigh;
 
+            DeletedCandlesCount = new ConcurrentDictionary<CandlePriceType, int>();
+            ReplacedCandlesCount = new ConcurrentDictionary<CandlePriceType, int>();
             Errors = new ConcurrentBag<string>();
         }
     }
