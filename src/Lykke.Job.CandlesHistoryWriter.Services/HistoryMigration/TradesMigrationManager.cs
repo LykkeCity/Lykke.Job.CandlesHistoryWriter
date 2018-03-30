@@ -23,11 +23,14 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 
         public TradesMigrationHealthReport Health;
 
+        public bool MigrationEnabled { get; }
+
         public TradesMigrationManager(
             ICandlesHistoryRepository candlesHistoryRepository,
             ILog log,
             string sqlConnString,
-            int sqlQueryBatchSize
+            int sqlQueryBatchSize,
+            bool migrationEnabled
             )
         {
             _candlesHistoryRepository = candlesHistoryRepository;
@@ -37,10 +40,15 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             _sqlQueryBatchSize = sqlQueryBatchSize;
 
             Health = null;
+
+            MigrationEnabled = migrationEnabled;
         }
 
         public bool Migrate(ITradesMigrationRequest request)
         {
+            if (!MigrationEnabled)
+                return false;
+
             // We should not run migration multiple times before the first attempt ends.
             if (Health != null && Health.State == TradesMigrationState.InProgress)
                 return false;

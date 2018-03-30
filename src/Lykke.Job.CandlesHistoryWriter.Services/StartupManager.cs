@@ -18,6 +18,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
         private readonly ICandlesPersistenceQueueSnapshotRepository _persistenceQueueSnapshotRepository;
         private readonly ICandlesPersistenceQueue _persistenceQueue;
         private readonly ICandlesPersistenceManager _persistenceManager;
+        private readonly bool _migrationEnabled;
 
         public StartupManager(
             ILog log,
@@ -26,7 +27,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
             ISnapshotSerializer snapshotSerializer,
             ICandlesPersistenceQueueSnapshotRepository persistenceQueueSnapshotRepository,
             ICandlesPersistenceQueue persistenceQueue,
-            ICandlesPersistenceManager persistenceManager)
+            ICandlesPersistenceManager persistenceManager,
+            bool migrationEnabled)
         {
             _log = log.CreateComponentScope(nameof(StartupManager));
             _cacheInitalizationService = cacheInitalizationService;
@@ -35,6 +37,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
             _persistenceQueueSnapshotRepository = persistenceQueueSnapshotRepository;
             _persistenceQueue = persistenceQueue;
             _persistenceManager = persistenceManager;
+            _migrationEnabled = migrationEnabled;
         }
 
         public async Task StartAsync()
@@ -46,9 +49,12 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
                 _snapshotSerializer.DeserializeAsync(_persistenceQueue, _persistenceQueueSnapshotRepository)
             };
 
-            await _log.WriteInfoAsync(nameof(StartAsync), "", "Initializing cache from the history async...");
+            if (!_migrationEnabled)
+            {
+                await _log.WriteInfoAsync(nameof(StartAsync), "", "Initializing cache from the history async...");
 
-            tasks.Add(_cacheInitalizationService.InitializeCacheAsync());
+                tasks.Add(_cacheInitalizationService.InitializeCacheAsync());
+            }
 
             await _log.WriteInfoAsync(nameof(StartAsync), "", "Waiting for async tasks...");
 
@@ -62,9 +68,13 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
 
             _persistenceManager.Start();
 
-            await _log.WriteInfoAsync(nameof(StartAsync), "", "Starting candles subscriber...");
+            // We can not combine it with the previous if(!_migration...) due to launch order importance.
+            if (!_migrationEnabled)
+            {
+                await _log.WriteInfoAsync(nameof(StartAsync), "", "Starting candles subscriber...");
 
-            _candlesSubscriber.Start();
+                _candlesSubscriber.Start();
+            }
 
             await _log.WriteInfoAsync(nameof(StartAsync), "", "Started up");
         }

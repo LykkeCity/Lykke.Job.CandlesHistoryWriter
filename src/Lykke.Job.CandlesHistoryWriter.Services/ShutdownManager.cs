@@ -19,6 +19,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
         private readonly ICandlesPersistenceQueue _persistenceQueue;
         private readonly ICandlesPersistenceManager _persistenceManager;
         private readonly CandlesMigrationManager _migrationManager;
+        private readonly bool _migrationEnabled;
 
         public ShutdownManager(
             ILog log,
@@ -27,7 +28,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
             ICandlesPersistenceQueueSnapshotRepository persistenceQueueSnapshotRepository,
             ICandlesPersistenceQueue persistenceQueue,
             ICandlesPersistenceManager persistenceManager,
-            CandlesMigrationManager migrationManager)
+            CandlesMigrationManager migrationManager,
+            bool migrationEnabled)
         {
             _log = log.CreateComponentScope(nameof(ShutdownManager));
             _candlesSubcriber = candlesSubscriber;
@@ -36,15 +38,19 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
             _persistenceQueue = persistenceQueue;
             _persistenceManager = persistenceManager;
             _migrationManager = migrationManager;
+            _migrationEnabled = migrationEnabled;
         }
 
         public async Task ShutdownAsync()
         {
             IsShuttingDown = true;
 
-            await _log.WriteInfoAsync(nameof(ShutdownAsync), "", "Stopping candles subscriber...");
+            if (!_migrationEnabled)
+            {
+                await _log.WriteInfoAsync(nameof(ShutdownAsync), "", "Stopping candles subscriber...");
 
-            _candlesSubcriber.Stop();
+                _candlesSubcriber.Stop();
+            }
 
             await _log.WriteInfoAsync(nameof(ShutdownAsync), "", "Stopping persistence manager...");
                 
@@ -58,9 +64,13 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
 
             await _snapshotSerializer.SerializeAsync(_persistenceQueue, _persistenceQueueSnapshotRepository);
 
-            await _log.WriteInfoAsync(nameof(ShutdownAsync), "", "Stopping candles migration manager...");
+            // We can not combine it with the previous if(!_migration...) due to launch order importance.
+            if (_migrationEnabled)
+            {
+                await _log.WriteInfoAsync(nameof(ShutdownAsync), "", "Stopping candles migration manager...");
 
-            _migrationManager.Stop();
+                _migrationManager.Stop();
+            }
 
             await _log.WriteInfoAsync(nameof(ShutdownAsync), "", "Shutted down");
 
