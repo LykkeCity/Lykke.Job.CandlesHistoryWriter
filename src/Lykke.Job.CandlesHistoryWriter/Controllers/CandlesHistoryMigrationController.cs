@@ -28,6 +28,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
         [Route("{assetPair}")]
         public async Task<IActionResult> Migrate(string assetPair)
         {
+            if (!_candlesMigrationManager.MigrationEnabled)
+                return Ok("Migration is currently disabled in application settings.");
+
             var result = await _candlesMigrationManager.MigrateAsync(
                 assetPair,
                 _historyProvidersManager.GetProvider<MeFeedHistoryProvider>());
@@ -39,6 +42,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
         [Route("health")]
         public IActionResult Health()
         {
+            if (!_candlesMigrationManager.MigrationEnabled)
+                return Ok("Migration is currently disabled in application settings.");
+
             return Ok(_candlesMigrationManager.Health);
         }
 
@@ -46,6 +52,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
         [Route("health/{assetPair}")]
         public IActionResult Health(string assetPair)
         {
+            if (!_candlesMigrationManager.MigrationEnabled)
+                return Ok("Migration is currently disabled in application settings.");
+
             if (!_candlesMigrationManager.Health.ContainsKey(assetPair))
             {
                 return NotFound();
@@ -58,6 +67,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
         [Route("trades")]
         public IActionResult MigrateTrades([FromBody] TradesMigrationRequestModel request)
         {
+            if (!_tradesMigrationManager.MigrationEnabled)
+                return Ok("Migration is currently disabled in application settings.");
+
             // This method is sync but internally starts a new task and returns
             var migrationStarted = _tradesMigrationManager.Migrate(request);
 
@@ -72,6 +84,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
         [Route("trades/health")]
         public IActionResult TradesHealth()
         {
+            if (!_tradesMigrationManager.MigrationEnabled)
+                return Ok("Migration is currently disabled in application settings.");
+
             var healthReport = _tradesMigrationManager.Health;
 
             // If null, we have not currently been carrying out a trades migration.

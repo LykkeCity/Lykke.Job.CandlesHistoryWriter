@@ -20,6 +20,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
     {
         public IReadOnlyDictionary<string, AssetPairMigrationTelemetryService> Health => _assetHealthServices;
 
+        public bool MigrationEnabled => _settings.MigrationEnabled;
+
         private readonly IHealthService _healthService;
         private readonly MigrationCandlesGenerator _candlesGenerator;
         private readonly IMissedCandlesGenerator _missedCandlesGenerator;
@@ -59,6 +61,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 
         public async Task<string> MigrateAsync(string assetPairId, IHistoryProvider historyProvider)
         {
+            if (!MigrationEnabled)
+                return string.Empty;
+
             if (!_candlesHistoryRepository.CanStoreAssetPair(assetPairId))
             {
                 return $"Connection string for the asset pair '{assetPairId}' not configuer";
@@ -113,6 +118,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 
         public void Stop()
         {
+            if (!MigrationEnabled)
+                return;
+
             lock (_assetManagers)
             {
                 foreach (var pair in _assetManagers.Keys)
