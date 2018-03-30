@@ -141,10 +141,12 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
 
             builder.RegisterType<StartupManager>()
                 .As<IStartupManager>()
+                .WithParameter(TypedParameter.From(_settings.Migration.MigrationEnabled))
                 .SingleInstance();
 
             builder.RegisterType<ShutdownManager>()
                 .As<IShutdownManager>()
+                .WithParameter(TypedParameter.From(_settings.Migration.MigrationEnabled))
                 .SingleInstance();
 
             builder.RegisterType<SnapshotSerializer>()
@@ -254,6 +256,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
                 .AsSelf()
                 .WithParameter(TypedParameter.From(_settings.Migration.Trades.SqlTradesDataSourceConnString))
                 .WithParameter(TypedParameter.From(_settings.Migration.Trades.SqlQueryBatchSize))
+                .WithParameter(TypedParameter.From(_settings.Migration.MigrationEnabled))
                 .SingleInstance();
         }
 
