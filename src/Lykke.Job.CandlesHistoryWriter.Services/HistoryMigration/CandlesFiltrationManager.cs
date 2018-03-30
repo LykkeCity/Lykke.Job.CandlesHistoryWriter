@@ -52,13 +52,14 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                             .GetResult()));
             }
 
-            Task.WaitAll(priceTypeTasks.ToArray());
+            Task.WhenAll(priceTypeTasks.ToArray()).ContinueWith(t =>
+            {
+                Health.State = CandlesFiltrationState.Finished;
 
-            Health.State = CandlesFiltrationState.Finished;
-
-            _log.WriteInfo(nameof(CandlesFiltrationManager), nameof(Filtrate),
-                $"Filtration for {request.AssetId} finished. Total amount of deleted Sec candles: {Health.DeletedCandlesCount.Values.Sum()}, " +
-                $"total amount of replaced bigger candles: {Health.ReplacedCandlesCount.Values.Sum()}. Errors count: {Health.Errors.Count}.");
+                _log.WriteInfo(nameof(CandlesFiltrationManager), nameof(Filtrate),
+                    $"Filtration for {request.AssetId} finished. Total amount of deleted Sec candles: {Health.DeletedCandlesCount.Values.Sum()}, " +
+                    $"total amount of replaced bigger candles: {Health.ReplacedCandlesCount.Values.Sum()}. Errors count: {Health.Errors.Count}.");
+            });
 
             return true;
         }
