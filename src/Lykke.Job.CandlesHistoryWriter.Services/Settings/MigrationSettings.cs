@@ -1,9 +1,11 @@
 ﻿using System;
+using Lykke.SettingsReader.Attributes;
 
 namespace Lykke.Job.CandlesHistoryWriter.Services.Settings
 {
     public class MigrationSettings
     {
+        [Optional]
         public bool MigrationEnabled { get; set; }
         public QuotesSettings Quotes { get; set; }
         public TradesSettings Trades { get; set; }
