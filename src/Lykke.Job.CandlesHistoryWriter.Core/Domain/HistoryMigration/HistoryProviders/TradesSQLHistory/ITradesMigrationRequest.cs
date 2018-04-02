@@ -9,7 +9,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.HistoryPro
 
     public class AssetMigrationItem
     {
-        public string AssetId { get; set; }
+        public string AssetPairId { get; set; }
         public int OffsetFromTop { get; set; }
     }
 }

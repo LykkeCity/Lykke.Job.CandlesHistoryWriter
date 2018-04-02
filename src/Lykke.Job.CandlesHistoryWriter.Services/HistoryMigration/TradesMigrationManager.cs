@@ -68,24 +68,24 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             foreach (var migrationItem in request.MigrationItems)
             {
                 // First of all, we will check if we can store the requested asset pair via this instance of the job.
-                var storedAssetPair = await _assetPairsManager.TryGetEnabledPairAsync(migrationItem.AssetId);
+                var storedAssetPair = await _assetPairsManager.TryGetEnabledPairAsync(migrationItem.AssetPairId);
                 if (storedAssetPair == null)
                 {
                     await _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(DoMigrateAsync),
-                        $"Asset pair {migrationItem.AssetId} is not currently enabled. Skipping.");
+                        $"Asset pair {migrationItem.AssetPairId} is not currently enabled. Skipping.");
                     continue;
                 }
 
                 // The real asset ID + opposite asset ID:
                 var assetSearchToken = storedAssetPair.BaseAssetId + storedAssetPair.QuotingAssetId;
 
-                Health.AssetReportItems[migrationItem.AssetId] = new TradesMigrationHealthReportItem(migrationItem.OffsetFromTop);
+                Health.AssetReportItems[migrationItem.AssetPairId] = new TradesMigrationHealthReportItem(migrationItem.OffsetFromTop);
 
                 using (var sqlRepo = new TradesSqlHistoryRepository(_sqlConnString, _sqlQueryBatchSize, _log,
                     migrationItem.OffsetFromTop, assetSearchToken))
                 {
                     await _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(DoMigrateAsync),
-                        $"Starting migration for {migrationItem.AssetId}, except firts {migrationItem.OffsetFromTop} records.");
+                        $"Starting migration for {migrationItem.AssetPairId}, except firts {migrationItem.OffsetFromTop} records.");
 
                     try
                     {
@@ -113,12 +113,12 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                                 // It's important for Constants.StoredIntervals to be ordered by time period increase,
                                 // because we will calculate candles for each period based on previous period candles.
                                 var currentCandles = interval == CandleTimeInterval.Sec
-                                    ? new TradesCandleBatch(migrationItem.AssetId, interval, tradesBatch)
-                                    : new TradesCandleBatch(migrationItem.AssetId, interval, smallerCandles);
+                                    ? new TradesCandleBatch(migrationItem.AssetPairId, interval, tradesBatch)
+                                    : new TradesCandleBatch(migrationItem.AssetPairId, interval, smallerCandles);
 
                                 ExtendStoredCandles(ref currentCandles);
 
-                                Health.AssetReportItems[migrationItem.AssetId].SummarySavedCandles +=
+                                Health.AssetReportItems[migrationItem.AssetPairId].SummarySavedCandles +=
                                     currentCandles.CandlesCount;
 
                                 // We can not derive month candles from weeks for they may lay out of the borders
@@ -136,23 +136,23 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                                         currentCandles.TimeInterval));
                             }
 
-                            Health.AssetReportItems[migrationItem.AssetId].SummaryFetchedTrades += batchCount;
+                            Health.AssetReportItems[migrationItem.AssetPairId].SummaryFetchedTrades += batchCount;
 
                             Task.WaitAll(batchInsertTasks.ToArray());
 
                             await _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(DoMigrateAsync),
-                                $"Batch of {batchCount} records for {migrationItem.AssetId} processed.");
+                                $"Batch of {batchCount} records for {migrationItem.AssetPairId} processed.");
                         }
 
                         await _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(DoMigrateAsync),
-                            $"Migration for {migrationItem.AssetId} finished. Total records migrated: {Health.AssetReportItems[migrationItem.AssetId].SummaryFetchedTrades}, total candles stored: {Health.AssetReportItems[migrationItem.AssetId].SummarySavedCandles}.");
+                            $"Migration for {migrationItem.AssetPairId} finished. Total records migrated: {Health.AssetReportItems[migrationItem.AssetPairId].SummaryFetchedTrades}, total candles stored: {Health.AssetReportItems[migrationItem.AssetPairId].SummarySavedCandles}.");
                     }
                     catch (Exception ex)
                     {
                         Health.State = TradesMigrationState.Error;
                         await _log.WriteErrorAsync(nameof(TradesMigrationManager), nameof(DoMigrateAsync), ex);
                         await _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(DoMigrateAsync),
-                            $"Migration for {migrationItem.AssetId} interrupted due to error. Please, check error log for details.");
+                            $"Migration for {migrationItem.AssetPairId} interrupted due to error. Please, check error log for details.");
                         return;
                     }
                 }
