@@ -17,13 +17,13 @@ using Moq;
 
 namespace Lykke.Job.CandlesHistoryWriter.Tests
 {
+    [TestClass]
     public class CandlesCacheInitializationTest
     {
         private static readonly ImmutableArray<CandleTimeInterval> StoredIntervals = ImmutableArray.Create
         (
             CandleTimeInterval.Sec,
             CandleTimeInterval.Minute,
-            CandleTimeInterval.Min30,
             CandleTimeInterval.Hour,
             CandleTimeInterval.Day,
             CandleTimeInterval.Week,
@@ -87,8 +87,21 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
 
             _dateTimeProviderMock.SetupGet(p => p.UtcNow).Returns(now);
             _historyRepositoryMock
-                .Setup(r => r.GetCandlesAsync(It.IsAny<string>(), It.IsAny<CandleTimeInterval>(), It.IsAny<CandlePriceType>(), It.IsAny<DateTime>(), It.IsAny<DateTime>()))
-                .ReturnsAsync((string a, CandleTimeInterval i, CandlePriceType p, DateTime f, DateTime t) => new[] { new TestCandle(), new TestCandle() });
+                .Setup(r => r.GetCandlesAsync(
+                    It.IsAny<string>(), 
+                    It.IsAny<CandleTimeInterval>(), 
+                    It.IsAny<CandlePriceType>(), 
+                    It.IsAny<DateTime>(), 
+                    It.IsAny<DateTime>()))
+                .ReturnsAsync((string a, CandleTimeInterval i, CandlePriceType p, DateTime f, DateTime t) => 
+                    new[]
+                    {
+                        new TestCandle(),
+                        new TestCandle()
+                    });
+            _historyRepositoryMock
+                .Setup(r => r.CanStoreAssetPair(It.Is<string>(a => new[] {"EURUSD", "USDCHF"}.Contains(a))))
+                .Returns<string>(a => true);
 
             // Act
             await _service.InitializeCacheAsync();
@@ -106,7 +119,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
                                     It.Is<CandleTimeInterval>(i => i == interval),
                                     It.Is<CandlePriceType>(p => p == priceType),
                                     It.Is<DateTime>(d => d == now.TruncateTo(interval).AddIntervalTicks(-AmountOfCandlesToStore, interval)),
-                                    It.Is<DateTime>(d => d == now.TruncateTo(interval))),
+                                    It.Is<DateTime>(d => d == now.TruncateTo(interval).AddIntervalTicks(1, interval))),
                             Times.Once);
 
                         _cacheServiceMock.Verify(s =>
@@ -114,7 +127,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
                                     It.Is<string>(a => a == assetPairId),
                                     It.Is<CandlePriceType>(p => p == priceType),
                                     It.Is<CandleTimeInterval>(i => i == interval),
-                                    It.Is<IReadOnlyCollection<ICandle>>(c => c.Count() == 2)),
+                                    It.Is<IReadOnlyCollection<ICandle>>(c => c.Count == 2)),
                             Times.Once);
                     }
                 }
