@@ -44,7 +44,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
             try
             {
                 if (_sqlConnection == null || _sqlConnection.State != ConnectionState.Open)
-                    throw new InvalidOperationException("Can't fetch from DB while connection is not opened. You should call InitAsync first.");
+                    throw new InvalidOperationException("Can't fetch from DB while connection is not opened.");
 
                 await _log.WriteInfoAsync(nameof(TradesSqlHistoryRepository), nameof(GetNextBatchAsync),
                     $"Starting offset = {StartingRowOffset}, asset pair ID = {AssetPairId}",
@@ -69,11 +69,18 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
                     }
                 }
 
-                await _log.WriteInfoAsync(nameof(TradesSqlHistoryRepository), nameof(GetNextBatchAsync),
-                    $"Starting offset = {StartingRowOffset}, asset pair ID = {AssetPairId}",
-                    $"Fetched {_sqlQueryBatchSize} rows successfully.");
+                if (result.Count > 0)
+                {
+                    await _log.WriteInfoAsync(nameof(TradesSqlHistoryRepository), nameof(GetNextBatchAsync),
+                        $"Starting offset = {StartingRowOffset}, asset pair ID = {AssetPairId}",
+                        $"Fetched {result.Count} rows successfully.");
 
-                StartingRowOffset += result.Count;
+                    StartingRowOffset += result.Count;
+                }
+                else
+                    await _log.WriteInfoAsync(nameof(TradesSqlHistoryRepository), nameof(GetNextBatchAsync),
+                        $"Starting offset = {StartingRowOffset}, asset pair ID = {AssetPairId}",
+                        $"No data to fetch.");
             }
             catch (Exception ex)
             {
