@@ -51,7 +51,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             await _log.WriteInfoAsync(nameof(CandlesCacheInitalizationService), nameof(InitializeCacheAsync), null, "All candles history is cached");
         }
 
-        private async Task CacheAssetPairCandlesAsync(IAssetPair assetPair, DateTime toDate)
+        private async Task CacheAssetPairCandlesAsync(IAssetPair assetPair, DateTime now)
         {
             await _log.WriteInfoAsync(nameof(CandlesCacheInitalizationService), nameof(InitializeCacheAsync), null, $"Caching {assetPair.Id} candles history...");
 
@@ -59,8 +59,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             {
                 foreach (var timeInterval in Constants.StoredIntervals)
                 {
-                    var alignedToDate = toDate.TruncateTo(timeInterval);
-                    var alignedFromDate = alignedToDate.AddIntervalTicks(-_amountOfCandlesToStore, timeInterval);
+                    var alignedToDate = now.TruncateTo(timeInterval).AddIntervalTicks(1, timeInterval);
+                    var alignedFromDate = alignedToDate.AddIntervalTicks(-_amountOfCandlesToStore - 1, timeInterval);
                     var candles = await _candlesHistoryRepository.GetCandlesAsync(assetPair.Id, timeInterval, priceType, alignedFromDate, alignedToDate);
                     
                     await _candlesCacheService.InitializeAsync(assetPair.Id, priceType, timeInterval, candles.ToArray());
