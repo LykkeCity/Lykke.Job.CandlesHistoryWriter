@@ -31,7 +31,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.Filtration
             ? DateTime.UtcNow - StartTime
             : FinishTime - StartTime;
 
-        public string AssetId { get; }
+        public string AssetPairId { get; }
         public double LimitLow { get; }
         public double LimitHigh { get; }
 
@@ -40,11 +40,11 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.Filtration
 
         public ConcurrentBag<string> Errors;
 
-        public CandlesFiltrationHealthReport(string assetId, double limitLow, double limitHigh, bool analyzeOnly)
+        public CandlesFiltrationHealthReport(string assetPairId, double limitLow, double limitHigh, bool analyzeOnly)
         {
             AnalyzeOnly = analyzeOnly;
 
-            AssetId = assetId;
+            AssetPairId = assetPairId;
             State = CandlesFiltrationState.InProgress;
             StartTime = DateTime.UtcNow;
             FinishTime = null;

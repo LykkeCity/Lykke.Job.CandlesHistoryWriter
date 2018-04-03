@@ -104,17 +104,35 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
         [Route("extremumFilter")]
         public IActionResult FilterExtremumCandles([FromBody] CandlesFiltrationRequestModel request, bool analyzeOnly)
         {
-            var filtrationStarted = _candlesFiltrationManager.Filtrate(request, analyzeOnly);
+            var modelErrors = CandlesFiltrationRequestModel.CheckupModel(request);
+            if (modelErrors.Count > 0)
+            {
+                var response = new ErrorResponse();
+                foreach (var me in modelErrors)
+                    response.AddModelError(me.Key, me.Value);
 
-            if (filtrationStarted)
-                return Ok();
+                return BadRequest(response);
+            }
 
-            return BadRequest(
-                ErrorResponse.Create("The previous filtration session still has not been finished. Parallel execution is not supported."));
+            var filtrationLaunchResult = _candlesFiltrationManager.Filtrate(request, analyzeOnly);
+
+            switch (filtrationLaunchResult)
+            {
+                case CandlesFiltrationManager.FiltrationLaunchResult.AlreadyInProgress:
+                    return BadRequest(
+                        ErrorResponse.Create("The previous filtration session still has not been finished. Parallel execution is not supported."));
+
+                case CandlesFiltrationManager.FiltrationLaunchResult.AssetPairNotSupported:
+                    return BadRequest(
+                        ErrorResponse.Create("The specified asset pair is not supported."));
+
+                default:
+                    return Ok();
+            }
         }
 
         [HttpGet]
-        [Route("extremeFilter/health")]
+        [Route("extremumFilter/health")]
         public IActionResult ExtremumFilterHealth()
         {
             var healthReport = _candlesFiltrationManager.Health;

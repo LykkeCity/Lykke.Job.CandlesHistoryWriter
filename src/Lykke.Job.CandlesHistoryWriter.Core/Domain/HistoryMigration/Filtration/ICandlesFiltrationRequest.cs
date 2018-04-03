@@ -2,7 +2,7 @@
 {
     public interface ICandlesFiltrationRequest
     {
-        string AssetId { get; set; }
+        string AssetPairId { get; set; }
         double LimitLow { get; set; }
         double LimitHigh { get; set; }
     }
