@@ -124,7 +124,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
                 // No _healthService trackig here. Monitoring of candles deletion is performed on upper layers of logic.
 
-                await _tableStorage.InsertOrReplaceBatchAsync(existingEntities); // For we do not have a ReplaceBatchAsync method in AzureTableStorage yet.
+                //await _tableStorage.InsertOrReplaceBatchAsync(existingEntities); // For we do not have a ReplaceBatchAsync method in AzureTableStorage yet.
             }
 
             return deletedCandlesCount;
@@ -158,7 +158,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
                 // No _healthService trackig here. Monitoring of candles deletion is performed on upper layers of logic.
 
-                await _tableStorage.InsertOrReplaceBatchAsync(existingEntities); // For we do not have a ReplaceBatchAsync method in AzureTableStorage yet.
+                //await _tableStorage.InsertOrReplaceBatchAsync(existingEntities); // For we do not have a ReplaceBatchAsync method in AzureTableStorage yet.
             }
 
             return replacedCandlesCount;

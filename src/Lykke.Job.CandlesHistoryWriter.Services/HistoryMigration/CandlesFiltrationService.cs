@@ -19,7 +19,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             _candlesHistoryRepository = candlesHistoryRepository;
         }
 
-        public async Task<IReadOnlyList<ICandle>> TryGetExtremeCandlesAsync(string assetPairId, CandlePriceType priceType, double limitLow, double limitHigh)
+        public async Task<IReadOnlyList<ICandle>> TryGetExtremeCandlesAsync(string assetPairId, CandlePriceType priceType, double limitLow, double limitHigh, double epsilon)
         {
             var (dateFrom, dateTo) = await GetDateTimeRangAsynce(assetPairId, priceType);
 
@@ -54,7 +54,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                         priceType, dateFrom, dateTo);
 
                     currentCandles = candles
-                        .Where(c => IsExtremeCandle(c, limitLow, limitHigh))
+                        .Where(c => IsExtremeCandle(c, limitLow, limitHigh, epsilon))
                         .ToList();
 
                     // There are no incorrect candles at all - returning.
@@ -76,7 +76,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 
                         currentCandles.AddRange(
                             candles
-                                .Where(c => IsExtremeCandle(c, limitLow, limitHigh))
+                                .Where(c => IsExtremeCandle(c, limitLow, limitHigh, epsilon))
                                 .ToList());
                     }
                 }
@@ -192,12 +192,12 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
         }
 
         // The function we will use as predicate in LINQ to find extreme candles
-        private bool IsExtremeCandle(ICandle candleToTest, double limitLow, double limitHigh)
+        private bool IsExtremeCandle(ICandle candleToTest, double limitLow, double limitHigh, double epsilon)
         {
-            if (candleToTest.Open < Constants.Epsilon ||
-                candleToTest.Close < Constants.Epsilon ||
-                candleToTest.High < Constants.Epsilon ||
-                candleToTest.Low < Constants.Epsilon)
+            if (candleToTest.Open < epsilon ||
+                candleToTest.Close < epsilon ||
+                candleToTest.High < epsilon ||
+                candleToTest.Low < epsilon)
                 return true;
 
             if (candleToTest.Open > limitHigh || candleToTest.Open < limitLow)
