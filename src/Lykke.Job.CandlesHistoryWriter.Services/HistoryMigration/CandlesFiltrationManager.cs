@@ -7,6 +7,7 @@ using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.Filtration;
+using Lykke.Job.CandlesHistoryWriter.Core.Services.Assets;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.HistoryMigration;
 using Lykke.Job.CandlesProducer.Contract;
 using Constants = Lykke.Job.CandlesHistoryWriter.Services.Candles.Constants;
@@ -23,6 +24,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             AssetPairNotSupported
         }
 
+        private readonly IAssetPairsManager _assetPairsManager;
         private readonly ICandlesHistoryRepository _candlesHistoryRepository;
         private readonly ICandlesFiltrationService _candlesFiltrationService;
         private readonly ILog _log;
@@ -30,11 +32,13 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
         public CandlesFiltrationHealthReport Health;
 
         public CandlesFiltrationManager(
+            IAssetPairsManager assetPairsManager,
             ICandlesHistoryRepository candlesHistoryRepository,
             ICandlesFiltrationService candlesFiltrationService,
             ILog log
         )
         {
+            _assetPairsManager = assetPairsManager;
             _candlesHistoryRepository = candlesHistoryRepository;
             _candlesFiltrationService = candlesFiltrationService;
             _log = log;
@@ -49,8 +53,11 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                 return FiltrationLaunchResult.AlreadyInProgress;
 
             // And also we should check if the specified asset pair is enabled.
-            if (!_candlesHistoryRepository.CanStoreAssetPair(request.AssetPairId))
+            var storedAssetPair = _assetPairsManager.TryGetEnabledPairAsync(request.AssetPairId).GetAwaiter().GetResult();
+            if (storedAssetPair == null || !_candlesHistoryRepository.CanStoreAssetPair(request.AssetPairId))
                 return FiltrationLaunchResult.AssetPairNotSupported;
+
+            var epsilon = Math.Pow(10, -storedAssetPair.Accuracy);
 
             _log.WriteInfo(nameof(CandlesFiltrationManager), nameof(Filtrate),
                 $"Starting candles with extreme price filtration for {request.AssetPairId}...");
@@ -62,7 +69,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             {
                 priceTypeTasks.Add(
                     Task.Run(() => 
-                        DoFiltrateAsync(request.AssetPairId, request.LimitLow, request.LimitHigh, priceType, analyzeOnly)
+                        DoFiltrateAsync(request.AssetPairId, request.LimitLow, request.LimitHigh, priceType, epsilon, analyzeOnly)
                             .GetAwaiter()
                             .GetResult()));
             }
@@ -84,7 +91,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             return FiltrationLaunchResult.Started;
         }
 
-        private async Task DoFiltrateAsync(string assetId, double limitLow, double limitHigh, CandlePriceType priceType, bool analyzeOnly)
+        private async Task DoFiltrateAsync(string assetId, double limitLow, double limitHigh, CandlePriceType priceType, double epsilon, bool analyzeOnly)
         {
             try
             {
@@ -92,7 +99,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                     $"Starting candles with extreme prices filtration for price type {priceType}...");
 
                 // First of all we need to find out if there are any extreme candles with the given parameters or there are not.
-                var extremeCandles = await _candlesFiltrationService.TryGetExtremeCandlesAsync(assetId, priceType, limitLow, limitHigh);
+                var extremeCandles = await _candlesFiltrationService.TryGetExtremeCandlesAsync(assetId, priceType, limitLow, limitHigh, epsilon);
 
                 if (extremeCandles == null)
                 {
