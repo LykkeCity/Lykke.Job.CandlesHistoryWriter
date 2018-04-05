@@ -99,9 +99,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 
             int deletedCount = 0, replacedCount = 0;
             DateTime dateFrom, dateTo;
-
-            var currentCandles = new List<ICandle>();
-
+            
             var candlesByInterval = extremeCandles
                 .GroupBy(c => (int)c.TimeInterval)
                 .ToSortedDictionary(g => g.Key);
@@ -110,33 +108,28 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                 throw new ArgumentException($"Something is wrong: the amount of (unique) time intervals in extreme candles list is not equal to stored intervals array length. " +
                     $"Filtration for {priceType} is impossible.");
 
-            var k = 0;
+            var countDeleted = 0;
             foreach (var candleBatch in candlesByInterval)
             {
-                var interval = Constants.StoredIntervals[k++];
+                var interval = (CandleTimeInterval)candleBatch.Key;
 
+                // The Second time interval is the smallest, so, we simply delete such a candles from storage and go next.
                 if (interval == CandleTimeInterval.Sec)
                 {
-                    var countDeleted =
+                    countDeleted =
                         await _candlesHistoryRepository.DeleteCandlesAsync(candleBatch.Value.AsEnumerable());
                     deletedCount += countDeleted;
                     continue;
                 }
 
-                var smallerInterval =
-                    Constants.StoredIntervals[k - 2]; // The previuos interval (k was incremented above)
-
-                // The following is important while calculating month candles: we can't derive em from week ones for week
-                // may start/stop not in borders of the month.
-                if (interval == CandleTimeInterval.Month &&
-                    smallerInterval == CandleTimeInterval.Week)
-                    smallerInterval = CandleTimeInterval.Day;
+                var smallerInterval = GetSmallerInterval(interval);
 
                 // My dear friend, who will read or refactor this code in future, please, excuse me for such a terrible
                 // loop cascade. Currently, I just can't imagine how to make it shorter and more comfortable for reading.
                 // And from the other side, there is no such a necessity to invent an ideal bicycle here.
                 // ReSharper disable once PossibleNullReferenceException
-                currentCandles.Clear();
+                var currentCandlesToReplace = new List<ICandle>();
+                var currentCandlesToDelete = new List<ICandle>();
                 foreach (var candle in candleBatch.Value.AsEnumerable())
                 {
                     dateFrom = candle.Timestamp;
@@ -146,6 +139,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                     var smallerCandles = await _candlesHistoryRepository.GetCandlesAsync(candle.AssetPairId,
                         smallerInterval, priceType, dateFrom, dateTo);
 
+                    // Trying to reconstruct the candle from the corresponfing smaller interval candles, if any.
                     ICandle updatedCandle = null;
                     foreach (var smallerCandle in smallerCandles)
                     {
@@ -159,11 +153,18 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                                     .RebaseToInterval(interval));
                     }
 
+                    // If the candle is not empty (e.g., there are some smaller interval candles for its construction),
+                    // we should update it in storage. Otherwise, it is to be deleted from there.
                     if (updatedCandle != null)
-                        currentCandles.Add(updatedCandle);
+                        currentCandlesToReplace.Add(updatedCandle);
+                    else
+                        currentCandlesToDelete.Add(candle);
                 }
 
-                var countReplaced = await _candlesHistoryRepository.ReplaceCandlesAsync(currentCandles);
+                countDeleted = await _candlesHistoryRepository.DeleteCandlesAsync(currentCandlesToDelete);
+                deletedCount += countDeleted;
+
+                var countReplaced = await _candlesHistoryRepository.ReplaceCandlesAsync(currentCandlesToReplace);
                 replacedCount += countReplaced;
             }
 
@@ -194,10 +195,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
         // The function we will use as predicate in LINQ to find extreme candles
         private bool IsExtremeCandle(ICandle candleToTest, double limitLow, double limitHigh, double epsilon)
         {
-            if (candleToTest.Open < epsilon ||
-                candleToTest.Close < epsilon ||
-                candleToTest.High < epsilon ||
-                candleToTest.Low < epsilon)
+            if (candleToTest.Open   < epsilon ||
+                candleToTest.Close  < epsilon ||
+                candleToTest.High   < epsilon ||
+                candleToTest.Low    < epsilon)
                 return true;
 
             if (candleToTest.Open > limitHigh || candleToTest.Open < limitLow)
@@ -210,6 +211,24 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                 return true;
 
             return candleToTest.Low > limitHigh || candleToTest.Low < limitLow;
+        }
+
+        private static CandleTimeInterval GetSmallerInterval(CandleTimeInterval interval)
+        {
+            if (!Constants.StoredIntervals.Contains(interval))
+                throw new ArgumentException($"The candle of the given time interval {interval} can not be stored.");
+
+            // The following is important while calculating month candles: we can't derive em from week ones for week
+            // may start/stop not in borders of the month.
+            if (interval == CandleTimeInterval.Month)
+                return CandleTimeInterval.Day;
+
+            var index = Constants.StoredIntervals.IndexOf(interval);
+
+            if (index == 0)
+                throw new ArgumentException($"There is no smaller stored candle time interval for {interval}.");
+
+            return Constants.StoredIntervals[index - 1];
         }
 
         #endregion
