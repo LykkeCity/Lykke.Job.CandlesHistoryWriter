@@ -115,7 +115,12 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             {
                 var candleByRows = candleByRowsChunk.ToDictionary(g => g.Key, g => g.AsEnumerable());
 
-                var existingEntities = (await _tableStorage.GetDataAsync(partitionKey, candleByRows.Keys)).ToList();
+                var existingEntities = (await _tableStorage.GetDataAsync(partitionKey, candleByRows.Keys))
+                    .ToList();
+
+                if (existingEntities.Count == 0) // Safety check
+                    continue;
+
                 var emptyEntities = new List<CandleHistoryEntity>();
 
                 foreach (var entity in existingEntities)
@@ -131,7 +136,9 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
                 // No _healthService trackig here. Monitoring of candles deletion is performed on upper layers of logic.
 
-                await _tableStorage.DeleteAsync(emptyEntities);
+                if (emptyEntities.Count > 0)
+                    await _tableStorage.DeleteAsync(emptyEntities);
+
                 await _tableStorage.InsertOrReplaceBatchAsync(existingEntities); // For we do not have a ReplaceBatchAsync method in AzureTableStorage yet.
             }
 
@@ -157,7 +164,11 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             {
                 var candleByRows = candleByRowsChunk.ToDictionary(g => g.Key, g => g.AsEnumerable());
 
-                var existingEntities = (await _tableStorage.GetDataAsync(partitionKey, candleByRows.Keys)).ToArray();
+                var existingEntities = (await _tableStorage.GetDataAsync(partitionKey, candleByRows.Keys))
+                    .ToList();
+
+                if (existingEntities.Count == 0) // Safety check
+                    continue;
 
                 foreach (var entity in existingEntities)
                 {

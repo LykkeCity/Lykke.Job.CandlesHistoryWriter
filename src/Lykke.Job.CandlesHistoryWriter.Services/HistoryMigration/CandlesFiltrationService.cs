@@ -161,11 +161,17 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                         currentCandlesToDelete.Add(candle);
                 }
 
-                countDeleted = await _candlesHistoryRepository.DeleteCandlesAsync(currentCandlesToDelete);
-                deletedCount += countDeleted;
+                if (currentCandlesToDelete.Count > 0)
+                {
+                    countDeleted = await _candlesHistoryRepository.DeleteCandlesAsync(currentCandlesToDelete);
+                    deletedCount += countDeleted;
+                }
 
-                var countReplaced = await _candlesHistoryRepository.ReplaceCandlesAsync(currentCandlesToReplace);
-                replacedCount += countReplaced;
+                if (currentCandlesToReplace.Count > 0)
+                {
+                    var countReplaced = await _candlesHistoryRepository.ReplaceCandlesAsync(currentCandlesToReplace);
+                    replacedCount += countReplaced;
+                }
             }
 
             return (deletedCandlesCount: deletedCount, replacedCandlesCount: replacedCount);
