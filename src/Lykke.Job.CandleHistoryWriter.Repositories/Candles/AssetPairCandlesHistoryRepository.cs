@@ -115,16 +115,24 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             {
                 var candleByRows = candleByRowsChunk.ToDictionary(g => g.Key, g => g.AsEnumerable());
 
-                var existingEntities = (await _tableStorage.GetDataAsync(partitionKey, candleByRows.Keys)).ToArray();
+                var existingEntities = (await _tableStorage.GetDataAsync(partitionKey, candleByRows.Keys)).ToList();
+                var emptyEntities = new List<CandleHistoryEntity>();
 
                 foreach (var entity in existingEntities)
                 {
                     deletedCandlesCount += entity.DeleteCandles(candleByRows[entity.RowKey]);
+                    // There may be a case when all of the entities' candles were deleted. We need also to delete such an entity itself.
+                    if (entity.Candles.Count == 0)
+                        emptyEntities.Add(entity);
                 }
+
+                foreach (var entity in emptyEntities)
+                    existingEntities.Remove(entity);
 
                 // No _healthService trackig here. Monitoring of candles deletion is performed on upper layers of logic.
 
-                //await _tableStorage.InsertOrReplaceBatchAsync(existingEntities); // For we do not have a ReplaceBatchAsync method in AzureTableStorage yet.
+                await _tableStorage.DeleteAsync(emptyEntities);
+                await _tableStorage.InsertOrReplaceBatchAsync(existingEntities); // For we do not have a ReplaceBatchAsync method in AzureTableStorage yet.
             }
 
             return deletedCandlesCount;
@@ -158,7 +166,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
                 // No _healthService trackig here. Monitoring of candles deletion is performed on upper layers of logic.
 
-                //await _tableStorage.InsertOrReplaceBatchAsync(existingEntities); // For we do not have a ReplaceBatchAsync method in AzureTableStorage yet.
+                await _tableStorage.InsertOrReplaceBatchAsync(existingEntities); // For we do not have a ReplaceBatchAsync method in AzureTableStorage yet.
             }
 
             return replacedCandlesCount;
