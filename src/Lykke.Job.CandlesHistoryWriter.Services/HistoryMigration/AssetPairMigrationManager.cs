@@ -6,8 +6,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
+using Lykke.Job.CandlesHistoryWriter.Core.Domain;
 using Lykke.Job.CandlesProducer.Contract;
-using Lykke.Service.Assets.Client.Custom;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Candles;
@@ -21,7 +21,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
     public class AssetPairMigrationManager
     {
         private readonly AssetPairMigrationTelemetryService _telemetryService;
-        private readonly IAssetPair _assetPair;
+        private readonly AssetPair _assetPair;
         private readonly ILog _log;
         private readonly BidAskHCacheService _bidAskHCacheService;
         private readonly IHistoryProvider _historyProvider;
@@ -47,7 +47,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             ICandlesPersistenceQueue candlesPersistenceQueue,
             MigrationCandlesGenerator candlesGenerator,
             AssetPairMigrationTelemetryService telemetryService,
-            IAssetPair assetPair,
+            AssetPair assetPair,
             ILog log,
             BidAskHCacheService bidAskHCacheService,
             IHistoryProvider historyProvider,

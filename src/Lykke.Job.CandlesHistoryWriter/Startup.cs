@@ -83,6 +83,7 @@ namespace Lykke.Job.CandlesHistoryWriter
                     settings.CurrentValue.Assets,
                     settings.CurrentValue.RedisSettings,
                     candleHistoryAssetConnection,
+                    settings.Nested(s => s.MtDataReaderLiveServiceClient),
                     candlesHistoryWriter.Nested(x => x.Db),
                     Log));
                 builder.Populate(services);

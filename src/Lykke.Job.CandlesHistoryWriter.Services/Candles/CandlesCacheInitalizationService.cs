@@ -2,8 +2,8 @@
 using System.Linq;
 using System.Threading.Tasks;
 using Common.Log;
+using Lykke.Job.CandlesHistoryWriter.Core.Domain;
 using Lykke.Job.CandlesProducer.Contract;
-using Lykke.Service.Assets.Client.Custom;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Assets;
@@ -51,7 +51,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             await _log.WriteInfoAsync(nameof(CandlesCacheInitalizationService), nameof(InitializeCacheAsync), null, "All candles history is cached");
         }
 
-        private async Task CacheAssetPairCandlesAsync(IAssetPair assetPair, DateTime toDate)
+        private async Task CacheAssetPairCandlesAsync(AssetPair assetPair, DateTime toDate)
         {
             await _log.WriteInfoAsync(nameof(CandlesCacheInitalizationService), nameof(InitializeCacheAsync), null, $"Caching {assetPair.Id} candles history...");
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using Lykke.Job.CandlesHistoryWriter.Core.Domain;
 using Lykke.Job.CandlesProducer.Contract;
 using Lykke.Service.Assets.Client.Models;
 using Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration.HistoryProviders.MeFeedHistory;
@@ -18,11 +19,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.HistoryProviders
 
             // Act
             var candles = generator.GenerateCandles(
-                    new AssetPairResponseModel
-                    {
-                        Id = "EURUSD",
-                        Accuracy = 5
-                    },
+                    new AssetPair("EURUSD", 5),
                     CandlePriceType.Ask,
                     new DateTime(2017, 08, 16, 15, 14, 49, DateTimeKind.Utc),
                     new DateTime(2017, 08, 16, 15, 14, 57, DateTimeKind.Utc),
@@ -50,11 +47,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.HistoryProviders
 
             // Act
             var candles = generator.GenerateCandles(
-                    new AssetPairResponseModel
-                    {
-                        Id = "EURUSD",
-                        Accuracy = 5
-                    },
+                    new AssetPair("EURUSD", 5),
                     CandlePriceType.Ask,
                     new DateTime(2017, 08, 16, 15, 14, 49, DateTimeKind.Utc),
                     new DateTime(2017, 08, 16, 15, 14, 57, DateTimeKind.Utc),
@@ -82,11 +75,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.HistoryProviders
 
             // Act
             var candles = generator.GenerateCandles(
-                    new AssetPairResponseModel
-                    {
-                        Id = "EURUSD",
-                        Accuracy = 5
-                    },
+                    new AssetPair("EURUSD", 5),
                     CandlePriceType.Ask,
                     new DateTime(2017, 08, 16, 15, 14, 49, DateTimeKind.Utc),
                     new DateTime(2017, 08, 16, 15, 14, 51, DateTimeKind.Utc),
@@ -111,11 +100,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.HistoryProviders
 
             // Act
             var candles = generator.GenerateCandles(
-                    new AssetPairResponseModel
-                    {
-                        Id = "EURUSD",
-                        Accuracy = 5
-                    },
+                    new AssetPair("EURUSD", 5),
                     CandlePriceType.Ask,
                     new DateTime(2017, 08, 16, 15, 14, 49, DateTimeKind.Utc),
                     new DateTime(2017, 08, 16, 15, 15, 49, DateTimeKind.Utc),
@@ -143,11 +128,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.HistoryProviders
 
             // Act
             var candles = generator.GenerateCandles(
-                    new AssetPairResponseModel
-                    {
-                        Id = "BTCEUR",
-                        Accuracy = 5
-                    },
+                    new AssetPair("BTCEUR", 5),
                     CandlePriceType.Bid,
                     new DateTime(2016, 04, 28, 10, 57, 29, DateTimeKind.Utc),
                     new DateTime(2016, 04, 28, 10, 57, 31, DateTimeKind.Utc),
@@ -169,11 +150,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.HistoryProviders
 
             // Act
             var candles = generator.GenerateCandles(
-                    new AssetPairResponseModel
-                    {
-                        Id = "BTCEUR",
-                        Accuracy = 5
-                    },
+                    new AssetPair("BTCEUR", 5),
                     CandlePriceType.Bid,
                     new DateTime(2016, 04, 28, 10, 57, 29, DateTimeKind.Utc),
                     new DateTime(2016, 04, 28, 10, 57, 30, DateTimeKind.Utc),
@@ -194,11 +171,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.HistoryProviders
 
             // Act
             var candles = generator.GenerateCandles(
-                new AssetPairResponseModel
-                {
-                    Id = "BTCEUR",
-                    Accuracy = 5
-                },
+                new AssetPair("BTCEUR", 5),
                 CandlePriceType.Bid,
                 new DateTime(2017, 10, 25, 00, 00, 00, DateTimeKind.Utc).AddSeconds(-1),
                 new DateTime(2017, 10, 26, 00, 00, 00, DateTimeKind.Utc),

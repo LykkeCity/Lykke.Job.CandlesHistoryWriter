@@ -1,21 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp2.0</TargetFramework>
     <Version>1.0.0</Version>
   </PropertyGroup>
-
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <NoWarn>1701;1702;1705;1591</NoWarn>
     <DocumentationFile>bin\Release\netcoreapp1.1\Lykke.Job.CandlesHistoryWriter.xml</DocumentationFile>
   </PropertyGroup>
-
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <NoWarn>1701;1702;1705;1591</NoWarn>
     <DocumentationFile>bin\Debug\netcoreapp1.1\Lykke.Job.CandlesHistoryWriter.xml</DocumentationFile>
   </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="Lykke.AzureStorage" Version="7.0.2" />
     <PackageReference Include="Lykke.Common" Version="6.0.0" />
@@ -36,18 +32,15 @@
     <ProjectReference Include="..\Lykke.Job.CandlesHistoryWriter.Core\Lykke.Job.CandlesHistoryWriter.Core.csproj" />
     <ProjectReference Include="..\Lykke.Job.CandlesHistoryWriter.Services\Lykke.Job.CandlesHistoryWriter.Services.csproj" />
   </ItemGroup>
-
   <ItemGroup>
     <None Update="Dockerfile">
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>
   </ItemGroup>
-
   <Target Name="PrepublishScript" BeforeTargets="PrepareForPublish">
     <ItemGroup>
       <DocFile Include="bin\*\*\Lykke.Job.CandlesHistoryWriter.xml" />
     </ItemGroup>
     <Copy SourceFiles="@(DocFile)" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" />
   </Target>
-
 </Project>

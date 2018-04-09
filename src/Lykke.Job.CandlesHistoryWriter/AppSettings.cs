@@ -28,6 +28,9 @@ namespace Lykke.Job.CandlesHistoryWriter
         [UsedImplicitly(ImplicitUseKindFlags.Assign)]
         public Dictionary<string, string> MtCandleHistoryAssetConnections { get; set; }
 
+        [Optional]
+        public MtDataReaderClientSettings MtDataReaderLiveServiceClient { get; set; }
+
         [UsedImplicitly(ImplicitUseKindFlags.Assign)]
         public AssetsSettings Assets { get; set; }
 

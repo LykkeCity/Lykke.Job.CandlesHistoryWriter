@@ -7,6 +7,7 @@ using Common;
 using Lykke.Job.CandlesProducer.Contract;
 using Lykke.Service.Assets.Client.Custom;
 using Lykke.Job.CandlesHistoryWriter.Core;
+using Lykke.Job.CandlesHistoryWriter.Core.Domain;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.HistoryProviders.MeFeedHistory;
 
@@ -28,7 +29,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration.HistoryProvid
             _rnd = new Random();
         }
 
-        public IReadOnlyList<ICandle> FillGapUpTo(IAssetPair assetPair, IFeedHistory feedHistory)
+        public IReadOnlyList<ICandle> FillGapUpTo(AssetPair assetPair, IFeedHistory feedHistory)
         {
             var key = GetKey(feedHistory.AssetPair, feedHistory.PriceType);
             var candles = feedHistory.Candles
@@ -66,7 +67,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration.HistoryProvid
             return new ReadOnlyCollection<ICandle>(result);
         }
 
-        public IReadOnlyList<ICandle> FillGapUpTo(IAssetPair assetPair, CandlePriceType priceType, DateTime dateTime, ICandle endCandle)
+        public IReadOnlyList<ICandle> FillGapUpTo(AssetPair assetPair, CandlePriceType priceType, DateTime dateTime,
+            ICandle endCandle)
         {
             var key = GetKey(assetPair.Id, priceType);
 
@@ -109,7 +111,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration.HistoryProvid
         }
 
         public IEnumerable<ICandle> GenerateCandles(
-            IAssetPair assetPair,
+            AssetPair assetPair,
             CandlePriceType priceType,
             DateTime exclusiveStartDate,
             DateTime exclusiveEndDate,
@@ -127,7 +129,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration.HistoryProvid
                 ConvertToDecimal(spread));
         }
 
-        private IList<ICandle> GenerateMissedCandles(IAssetPair assetPair, IReadOnlyList<ICandle> candles)
+        private IList<ICandle> GenerateMissedCandles(AssetPair assetPair, IReadOnlyList<ICandle> candles)
         {
             var result = new List<ICandle>();
 
@@ -178,7 +180,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration.HistoryProvid
         }
 
         private IEnumerable<ICandle> GenerateCandles(
-            IAssetPair assetPair, 
+            AssetPair assetPair, 
             CandlePriceType priceType, 
             DateTime exclusiveStartDate, 
             DateTime exclusiveEndDate, 

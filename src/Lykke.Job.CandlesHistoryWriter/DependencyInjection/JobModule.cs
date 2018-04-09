@@ -5,6 +5,7 @@ using Autofac.Extensions.DependencyInjection;
 using AzureStorage.Blob;
 using AzureStorage.Tables;
 using Common.Log;
+using Lykke.ClientGenerator;
 using Lykke.Common;
 using Lykke.Job.CandleHistoryWriter.Repositories.Candles;
 using Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryProviders.MeFeedHistory;
@@ -25,6 +26,7 @@ using Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration.HistoryProviders;
 using Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration.HistoryProviders.MeFeedHistory;
 using Lykke.Job.CandlesHistoryWriter.Services.Settings;
 using Lykke.SettingsReader;
+using MarginTrading.Backend.Contracts.DataReaderClient;
 using Microsoft.Extensions.DependencyInjection;
 using StackExchange.Redis;
 
@@ -38,6 +40,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
         private readonly AssetsSettings _assetSettings;
         private readonly RedisSettings _redisSettings;
         private readonly IReloadingManager<Dictionary<string, string>> _candleHistoryAssetConnections;
+        private readonly IReloadingManager<MtDataReaderClientSettings> _mtDataReaderClientSettings;
         private readonly IReloadingManager<DbSettings> _dbSettings;
         private readonly ILog _log;
 
@@ -46,8 +49,9 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
             CandlesHistoryWriterSettings settings,
             AssetsSettings assetSettings,
             RedisSettings redisSettings,
-            IReloadingManager<Dictionary<string, string>> candleHistoryAssetConnections,  
-            IReloadingManager<DbSettings> dbSettings,
+            IReloadingManager<Dictionary<string, string>> candleHistoryAssetConnections,
+            IReloadingManager<MtDataReaderClientSettings> mtDataReaderClientSettings,
+            IReloadingManager<DbSettings> dbSettings, 
             ILog log)
         {
             _services = new ServiceCollection();
@@ -58,6 +62,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
             _candleHistoryAssetConnections = candleHistoryAssetConnections;
             _dbSettings = dbSettings;
             _log = log;
+            _mtDataReaderClientSettings = mtDataReaderClientSettings;
         }
 
         protected override void Load(ContainerBuilder builder)
@@ -65,7 +70,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
             builder.RegisterInstance(_log)
                 .As<ILog>()
                 .SingleInstance();
-                        
+
             builder.RegisterType<Clock>().As<IClock>();
 
             RegisterResourceMonitor(builder);
@@ -114,13 +119,25 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
 
         private void RegisterAssets(ContainerBuilder builder)
         {
-            _services.UseAssetsClient(AssetServiceSettings.Create(
-                new Uri(_assetSettings.ServiceUrl),
-                _settings.AssetsCache.ExpirationPeriod));
+            if (_marketType != MarketType.Mt)
+            {
+                var settings = _mtDataReaderClientSettings.CurrentValue;
+                if (settings == null)
+                    throw new InvalidOperationException(
+                        "MtDataReaderLiveServiceClient config section not found, but market is MT");
 
-            builder.RegisterType<AssetPairsManager>()
-                .As<IAssetPairsManager>()
-                .SingleInstance();
+                _services.RegisterMtDataReaderClient(ClientProxyGenerator.CreateDefault(
+                    settings.ServiceUrl, settings.ApiKey, retryStrategy: null));
+
+                builder.RegisterType<MtAssetPairsManager>().As<IAssetPairsManager>().SingleInstance();
+            }
+            else
+            {
+                _services.UseAssetsClient(AssetServiceSettings.Create(new Uri(_assetSettings.ServiceUrl),
+                    _settings.AssetsCache.ExpirationPeriod));
+
+                builder.RegisterType<AssetPairsManager>().As<IAssetPairsManager>().SingleInstance();
+            }
         }
 
         private void RegisterCandles(ContainerBuilder builder)
@@ -174,7 +191,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
             builder.RegisterType<CandlesManager>()
                 .As<ICandlesManager>()
                 .SingleInstance();
-            
+
             builder.RegisterType<RedisCandlesCacheService>()
                 .As<ICandlesCacheService>()
                 .WithParameter(TypedParameter.From(_marketType))
@@ -202,7 +219,8 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
 
             builder.RegisterType<CandlesPersistenceQueueSnapshotRepository>()
                 .As<ICandlesPersistenceQueueSnapshotRepository>()
-                .WithParameter(TypedParameter.From(AzureBlobStorage.Create(_dbSettings.ConnectionString(x => x.SnapshotsConnectionString), TimeSpan.FromMinutes(10))));
+                .WithParameter(TypedParameter.From(AzureBlobStorage.Create(
+                    _dbSettings.ConnectionString(x => x.SnapshotsConnectionString), TimeSpan.FromMinutes(10))));
 
             builder.RegisterType<RedisCacheTruncator>()
                 .As<IStartable>()
@@ -222,9 +240,9 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
                 builder.RegisterType<FeedHistoryRepository>()
                     .As<IFeedHistoryRepository>()
                     .WithParameter(TypedParameter.From(AzureTableStorage<FeedHistoryEntity>.Create(
-                        _dbSettings.ConnectionString(x => x.FeedHistoryConnectionString), 
-                        "FeedHistory", 
-                        _log, 
+                        _dbSettings.ConnectionString(x => x.FeedHistoryConnectionString),
+                        "FeedHistory",
+                        _log,
                         maxExecutionTimeout: TimeSpan.FromMinutes(5))))
                     .SingleInstance();
             }
@@ -249,7 +267,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
             builder.RegisterType<HistoryProvidersManager>()
                 .As<IHistoryProvidersManager>()
                 .SingleInstance();
-                
+
             RegisterHistoryProvider<MeFeedHistoryProvider>(builder);
 
             builder.RegisterType<TradesMigrationManager>()
@@ -260,7 +278,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
                 .SingleInstance();
         }
 
-        private static void RegisterHistoryProvider<TProvider>(ContainerBuilder builder) 
+        private static void RegisterHistoryProvider<TProvider>(ContainerBuilder builder)
             where TProvider : IHistoryProvider
         {
             builder.RegisterType<TProvider>()

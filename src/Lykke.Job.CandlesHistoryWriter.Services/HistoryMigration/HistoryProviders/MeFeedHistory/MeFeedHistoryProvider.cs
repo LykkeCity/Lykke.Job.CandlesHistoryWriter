@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
+using Lykke.Job.CandlesHistoryWriter.Core.Domain;
 using Lykke.Job.CandlesProducer.Contract;
 using Lykke.Service.Assets.Client.Custom;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
@@ -36,12 +37,11 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration.HistoryProvid
                 .ToCandle(assetPair, priceType, oldestFeedHistory.DateTime).Timestamp;
         }
 
-        public async Task GetHistoryByChunksAsync(
-            IAssetPair assetPair, 
-            CandlePriceType priceType, 
-            DateTime endDate, 
-            ICandle endCandle, 
-            Func<IReadOnlyList<ICandle>, Task> readChunkFunc, 
+        public async Task GetHistoryByChunksAsync(AssetPair assetPair,
+            CandlePriceType priceType,
+            DateTime endDate,
+            ICandle endCandle,
+            Func<IReadOnlyList<ICandle>, Task> readChunkFunc,
             CancellationToken cancellationToken)
         {
             await _feedHistoryRepository.GetCandlesByChunksAsync(assetPair.Id, priceType, endDate, async feedHistoryItems =>
