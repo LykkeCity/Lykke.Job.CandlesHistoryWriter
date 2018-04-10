@@ -4,7 +4,7 @@
     <Version>1.0.0</Version>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Lykke.MarginTrading.Backend.Contracts" Version="3.0.0-beta01" />
+    <PackageReference Include="Lykke.MarginTrading.Backend.Contracts" Version="3.0.0-beta02" />
     <PackageReference Include="Lykke.RabbitMqBroker" Version="7.0.0" />
     <PackageReference Include="Lykke.SettingsReader" Version="2.1.0" />
     <PackageReference Include="morelinq" Version="2.10.0" />
