@@ -119,7 +119,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
 
         private void RegisterAssets(ContainerBuilder builder)
         {
-            if (_marketType != MarketType.Mt)
+            if (_marketType == MarketType.Mt)
             {
                 var settings = _mtDataReaderClientSettings.CurrentValue;
                 if (settings == null)
