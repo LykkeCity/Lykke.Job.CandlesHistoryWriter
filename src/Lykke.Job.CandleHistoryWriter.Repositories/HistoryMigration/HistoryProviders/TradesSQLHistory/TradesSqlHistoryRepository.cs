@@ -15,23 +15,30 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
         private readonly ILog _log;
 
         private readonly SqlConnection _sqlConnection;
-
         private int StartingRowOffset { get; set; }
+
         private string AssetPairId { get; }
+        private string SearchToken { get; }
+        private string ReverseSearchToken { get; }
+        private DateTime MigrateByDate { get; }
 
         public TradesSqlHistoryRepository(
             string sqlConnString,
             int sqlQueryBatchSize,
             ILog log,
-            int startingRowOffset,
-            string assetPairId
+            DateTime migrateByDate,
+            string assetPairId,
+            string searchToken,
+            string reverseSearchToken
             )
         {
             _sqlQueryBatchSize = sqlQueryBatchSize;
             _log = log;
 
-            StartingRowOffset = startingRowOffset;
             AssetPairId = assetPairId;
+            SearchToken = searchToken;
+            ReverseSearchToken = reverseSearchToken;
+            MigrateByDate = migrateByDate;
 
             _sqlConnection = new SqlConnection(sqlConnString);
             _sqlConnection.Open();
