@@ -49,27 +49,27 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
             {
                 await _log.WriteInfoAsync(nameof(ShutdownAsync), "", "Stopping candles subscriber...");
 
-                _candlesSubcriber.Stop();
+                //_candlesSubcriber.Stop();
             }
 
             await _log.WriteInfoAsync(nameof(ShutdownAsync), "", "Stopping persistence manager...");
                 
-            _persistenceManager.Stop();
+            //_persistenceManager.Stop();
 
             await _log.WriteInfoAsync(nameof(ShutdownAsync), "", "Stopping persistence queue...");
                 
-            _persistenceQueue.Stop();
+            //_persistenceQueue.Stop();
             
             await _log.WriteInfoAsync(nameof(ShutdownAsync), "", "Serializing state...");
 
-            await _snapshotSerializer.SerializeAsync(_persistenceQueue, _persistenceQueueSnapshotRepository);
+            //await _snapshotSerializer.SerializeAsync(_persistenceQueue, _persistenceQueueSnapshotRepository);
 
             // We can not combine it with the previous if(!_migration...) due to launch order importance.
             if (_migrationEnabled)
             {
                 await _log.WriteInfoAsync(nameof(ShutdownAsync), "", "Stopping candles migration manager...");
 
-                _migrationManager.Stop();
+                //_migrationManager.Stop();
             }
 
             await _log.WriteInfoAsync(nameof(ShutdownAsync), "", "Shutted down");
