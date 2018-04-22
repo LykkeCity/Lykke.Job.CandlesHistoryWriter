@@ -2,36 +2,48 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Common.Log;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.HistoryProviders.TradesSQLHistory;
+using Lykke.Job.CandlesProducer.Contract;
 
 namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryProviders.TradesSQLHistory
 {
     public class TradesSqlHistoryRepository : ITradesSqlHistoryRepository, IDisposable
     {
         private readonly int _sqlQueryBatchSize;
+        private readonly SqlConnection _sqlConnection;
+        private readonly TimeSpan _sqlTimeout;
+
         private readonly ILog _log;
 
-        private readonly SqlConnection _sqlConnection;
-
         private int StartingRowOffset { get; set; }
+
         private string AssetPairId { get; }
+        private string SearchToken { get; }
+        private DateTime? MigrateByDate { get; }
 
         public TradesSqlHistoryRepository(
             string sqlConnString,
             int sqlQueryBatchSize,
+            TimeSpan sqlTimeout,
             ILog log,
-            int startingRowOffset,
-            string assetPairId
+            DateTime? migrateByDate,
+            string assetPairId,
+            string searchToken
             )
         {
             _sqlQueryBatchSize = sqlQueryBatchSize;
+            _sqlTimeout = sqlTimeout;
             _log = log;
 
-            StartingRowOffset = startingRowOffset;
+            StartingRowOffset = 0;
+
             AssetPairId = assetPairId;
+            SearchToken = searchToken;
+            MigrateByDate = migrateByDate;
 
             _sqlConnection = new SqlConnection(sqlConnString);
             _sqlConnection.Open();
@@ -52,7 +64,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
                 
                 using (var sqlCommand = new SqlCommand(BuildCurrentQueryCommand(), _sqlConnection))
                 {
-                    sqlCommand.CommandTimeout = 180; // 3 minutes
+                    sqlCommand.CommandTimeout = (int)_sqlTimeout.TotalSeconds;
                     using (var reader = await sqlCommand.ExecuteReaderAsync())
                     {
                         while (await reader.ReadAsync())
@@ -60,10 +72,12 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
                             result.Add(new TradeHistoryItem
                             {
                                 Id = reader.GetInt64(0),
-                                Volume = reader.GetDecimal(1),
-                                Price = reader.GetDecimal(2),
-                                DateTime = reader.GetDateTime(3),
-                                OppositeVolume = reader.GetDecimal(4)
+                                AssetToken = reader.GetString(1),
+                                Direction = (TradeDirection)Enum.Parse(typeof(TradeDirection), reader.GetString(2)),
+                                Volume = reader.GetDecimal(3),
+                                Price = reader.GetDecimal(4),
+                                DateTime = reader.GetDateTime(5),
+                                OppositeVolume = reader.GetDecimal(6)
                             });
                         }
                     }
@@ -71,6 +85,22 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
 
                 if (result.Count > 0)
                 {
+                    // Now we need to remove the last several trades which have the same date and time (accuracy - to seconds).
+                    // This will guarantee that we did not peek up some orders of the one trade on this iteration, and others
+                    // on the next. On the next iteration we will read them again for the next batch. No temporary buffer, for
+                    // it can't save any observable value of time.
+
+                    // I do not want to use Linq.Remove(func) for it might case full sequence iterating which is slower than
+                    // the following messy code. Actually, we need to iterate only a bit of elements from the tail-side.
+                    var lastDateTime = result.Last().DateTime.TruncateTo(CandleTimeInterval.Sec);
+                    var equalTimestampCandlesAtTailCount = 0;
+                    while (result.Any() && result[result.Count - equalTimestampCandlesAtTailCount - 1].DateTime.TruncateTo(CandleTimeInterval.Sec) == lastDateTime) // Looking through the list starting at the last element.
+                        equalTimestampCandlesAtTailCount++;
+                    // Now remove the candles with the same (to seconds) timestamp ONLY in case if we do have any other candles in the list.
+                    if (equalTimestampCandlesAtTailCount < result.Count)
+                        result.RemoveRange(result.Count - equalTimestampCandlesAtTailCount, equalTimestampCandlesAtTailCount);
+
+                    // Reporting.
                     await _log.WriteInfoAsync(nameof(TradesSqlHistoryRepository), nameof(GetNextBatchAsync),
                         $"Starting offset = {StartingRowOffset}, asset pair ID = {AssetPairId}",
                         $"Fetched {result.Count} rows successfully.");
@@ -100,10 +130,12 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
             var commandBld = new StringBuilder();
 
             // TODO: implement a query with pagination.
-            commandBld.Append($@"SELECT Id, Volume, Price, ""DateTime"", OppositeVolume ");
+            commandBld.Append($@"SELECT Id, (Asset + OppositeAsset) AS AssetToken, Direction, Volume, Price, ""DateTime"", OppositeVolume ");
             commandBld.Append("FROM Trades ");
             commandBld.Append("WHERE ");
-            commandBld.Append($@"OrderType = 'Limit' AND Asset + OppositeAsset = '{AssetPairId}' AND Direction IN ('Buy', 'Sell') ");
+            commandBld.Append($@"OrderType = 'Limit' AND (Asset + OppositeAsset = '{SearchToken}' OR OppositeAsset + Asset = '{SearchToken}') AND Direction IN ('Buy', 'Sell') ");
+            if (MigrateByDate.HasValue)
+                commandBld.Append($@"AND ""DateTime"" < {MigrateByDate} ");
             commandBld.Append(@"ORDER BY ""DateTime"", Id ASC ");
             commandBld.Append($"OFFSET {StartingRowOffset} ROWS FETCH NEXT {_sqlQueryBatchSize} ROWS ONLY;");
 
