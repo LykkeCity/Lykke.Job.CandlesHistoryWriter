@@ -1,6 +1,5 @@
 ﻿using Common.Log;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
-using Lykke.Job.CandlesHistoryWriter.Services.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.HistoryMigration;
 using Lykke.Job.CandlesProducer.Contract;
 using System;
@@ -20,46 +19,44 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 
         private readonly string _sqlConnString;
         private readonly int _sqlQueryBatchSize;
-        
+        private readonly TimeSpan _sqlTimeout;
+
         public TradesMigrationService(
             ICandlesHistoryRepository candlesHistoryRepository,
             ILog log,
             string sqlConnString,
-            int sqlQueryBatchSize)
+            int sqlQueryBatchSize,
+            TimeSpan sqlTimeout
+            )
         {
             _candlesHistoryRepository = candlesHistoryRepository ?? throw new ArgumentNullException("candlesHistoryRepository");
             _log = log ?? throw new ArgumentNullException("log");
 
             _sqlConnString = sqlConnString;
             _sqlQueryBatchSize = sqlQueryBatchSize;
+            _sqlTimeout = sqlTimeout;
         }
 
-        /// <inheritdoc />
-        public void RemoveTradesCandlesAsync(string assetPairId, DateTime removeByDate)
+        #region Public
+
+        /// <inheritdoc/>
+        public async Task MigrateTradesCandlesAsync(bool preliminaryRemoval, DateTime? migrateByDate, List<(string AssetPairId, string SearchToken, string ReverseSearchToken)> assetSearchTokens)
         {
-            var removalTasks = new List<Task>();
-
-            foreach (var interval in Candles.Constants.StoredIntervals)
-                removalTasks.Add(_candlesHistoryRepository.DeleteCandlesAsync(assetPairId, interval, CandlePriceType.Trades, null, removeByDate)); // Remove from the oldest candles to removeByDate.
-
-            Task.WaitAll(removalTasks.ToArray());
-        }
-
-        public async Task MigrateTradesCandlesAsync(DateTime migrateByDate, List<(string AssetPairId, string SearchToken, string ReverseSearchToken)> assetSearchTokens)
-        {
-            // Creating a blank health report
-            //_tradesMigrationHealthService.Prepare(_sqlQueryBatchSize, preliminaryRemoval, removeByDate);
-
             foreach (var searchToken in assetSearchTokens)
             {
-                using (var sqlRepo = new TradesSqlHistoryRepository(_sqlConnString, _sqlQueryBatchSize, _log,
-                    migrateByDate, searchToken.AssetPairId, searchToken.SearchToken, searchToken.ReverseSearchToken))
+                using (var sqlRepo = new TradesSqlHistoryRepository(_sqlConnString, _sqlQueryBatchSize, _sqlTimeout, _log,
+                    migrateByDate, searchToken.AssetPairId, searchToken.SearchToken))
                 {
                     await _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(MigrateTradesCandlesAsync),
                         $"Starting trades migration for {searchToken.AssetPairId}.");
 
                     try
                     {
+                        // Removing old candles first, is it is requested to do.
+                        if (preliminaryRemoval)
+                            await RemoveTradesCandles(searchToken.AssetPairId, migrateByDate);
+
+                        // And now migrate trades.
                         while (true)
                         {
                             var tradesBatch = await sqlRepo.GetNextBatchAsync();
@@ -84,7 +81,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                                 // It's important for Constants.StoredIntervals to be ordered by time period increase,
                                 // because we will calculate candles for each period based on previous period candles.
                                 var currentCandles = interval == CandleTimeInterval.Sec
-                                    ? new TradesCandleBatch(searchToken.AssetPairId, interval, tradesBatch)
+                                    ? new TradesCandleBatch(searchToken.AssetPairId, searchToken.SearchToken, searchToken.ReverseSearchToken, interval, tradesBatch)
                                     : new TradesCandleBatch(searchToken.AssetPairId, interval, smallerCandles);
 
                                 ExtendStoredCandles(ref currentCandles);
@@ -109,7 +106,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 
                             _tradesMigrationHealthService[searchToken.AssetPairId].SummaryFetchedTrades += batchCount;
 
-                            Task.WaitAll(batchInsertTasks.ToArray());
+                            await Task.WhenAll(batchInsertTasks.ToArray());
 
                             await _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(MigrateTradesCandlesAsync),
                                 $"Batch of {batchCount} records for {searchToken.AssetPairId} processed.");
@@ -133,6 +130,26 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             _tradesMigrationHealthService.State = TradesMigrationState.Finished;
         }
 
+        #endregion
+
+        #region Private
+
+        /// <summary>
+        /// Asynchronous trades candles removal from all the time interval tables for the specified asset pair.
+        /// </summary>
+        private async Task RemoveTradesCandles(string assetPairId, DateTime? removeByDate)
+        {
+            var removalTasks = new List<Task>();
+
+            foreach (var interval in Candles.Constants.StoredIntervals)
+                removalTasks.Add(_candlesHistoryRepository.DeleteCandlesAsync(assetPairId, interval, CandlePriceType.Trades, null, removeByDate)); // Remove since the oldest candles till removeByDate.
+
+            await Task.WhenAll(removalTasks);
+        }
+
+        /// <summary>
+        /// Tries to load candles from the storage and then extends em by the given newly-calculated candles batch for the same time stamps.
+        /// </summary>
         private void ExtendStoredCandles(ref TradesCandleBatch current)
         {
             var storedCandles =
@@ -153,5 +170,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                 }
             }
         }
+
+        #endregion
     }
 }
