@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Lykke.Common.Api.Contract.Responses;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.HistoryMigration.HistoryProviders;
@@ -86,9 +87,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
         /// Starts execution of the trades-to-candles migration process.
         /// </summary>
         /// <param name="preliminaryRemoval">Use this, if you want to remove the existing trades candles first.</param>
-        /// <param name="removeByDate">Optional. The date (and time, if needed) which defines the upper limit (exclusive) for preliminary removal for all asset pairs. It can be empty if
-        /// the prelimiary removal is not needed.</param>
-        /// <param name="assetPairs">The list of asset pair IDs to migrate.</param>
+        /// <param name="removeByDate">Optional. The date (and time, if needed) which defines the upper limit (exclusive) for preliminary removal for all asset pairs. 
+        /// If it is empty, it is interpreted as "Remove all existing trades candles".</param>
+        /// <param name="assetPairIds">The list of asset pair IDs to migrate.</param>
         /// <returns></returns>
         [HttpPost]
         [Route("trades")]
@@ -97,26 +98,16 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
             if (!_tradesMigrationManager.MigrationEnabled)
                 return Ok("Migration is currently disabled in application settings.");
 
-            if (preliminaryRemoval)
-            {
-                var errorMessage = "Please, check the remove-by date.";
-
-                if (removeByDate == null)
-                    errorMessage = "If you need to preliminary remove the old trades candle data, please, specify the remove-by date (exclusive).";
-                else if (removeByDate > DateTime.UtcNow)
-                    errorMessage = "Remove-by date should not be in the past.";
-
-                return BadRequest(
-                    ErrorResponse.Create(errorMessage));
+            if (removeByDate.HasValue && removeByDate > DateTime.UtcNow)
+                ErrorResponse.Create("Remove-by date-time should not be in the future.");
                 
-            }
 
-            if (assetPairIds == null || assetPairIds.Length == 0)
+            if (!assetPairIds?.Any() ?? true)
                 return BadRequest(
                     ErrorResponse.Create("Please, specify at least one asset pair ID to migrate."));
 
             // This method is sync but internally starts a new task and returns
-            var migrationStarted = true;// _tradesMigrationManager.Migrate(request);
+            var migrationStarted = _tradesMigrationManager.Migrate(preliminaryRemoval, removeByDate, assetPairIds);
 
             if (migrationStarted)
                 return Ok();

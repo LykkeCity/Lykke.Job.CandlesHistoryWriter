@@ -35,6 +35,8 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             _tableStorage = tableStorage;
         }
 
+        #region CreateUpdate
+
         /// <summary>
         /// Assumed that all candles have the same AssetPair, PriceType, and Timeinterval
         /// </summary>
@@ -208,6 +210,84 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                 .ToCandle(_assetPairId, priceType, candleEntity.DateTime, timeInterval);
         }
 
+        #endregion
+
+        #region Delete
+
+        public async Task DeleteAsync(CandlePriceType priceType, CandleTimeInterval interval, DateTime fromIncluding, DateTime toNotIncluding)
+        {
+            // Candles are stored in rows (each of which is represented by CandlesHistoryEntity) grouping them by the bigger time interval.
+            // Thus, second candles are stored in rows containing all the candles for the given minute. Minute candles are grouped in the
+            // row with all the minute candles for the same hour. Hours - in day rows. Days - in months. Weeks and months itself - in years.
+            // So, first of all, we need to adjust the given date\time limits to the corresponding row time period. It will enable us to
+            // iterate the rows in table for the given time interval and make a decision: if we can delete the whole row, or only some of
+            // its candles and the update the row.
+
+            var partitionKey = CandleHistoryEntity.GeneratePartitionKey(priceType);
+            // The first-going row key and date:
+            var rowKey = CandleHistoryEntity.GenerateRowKey(fromIncluding, interval);
+            var rowKeyDate = DateTime.Parse(rowKey);
+            // For future use:
+            DateTime nextRowKeyDate;
+
+            while (rowKeyDate < toNotIncluding)
+            {
+                // On every iteration we have the current row's begining date\time and the next row's begining date\time.
+                switch (interval)
+                {
+                    case CandleTimeInterval.Sec:
+                        nextRowKeyDate = rowKeyDate.AddMinutes(1);
+                        break;
+
+                    case CandleTimeInterval.Minute:
+                        nextRowKeyDate = rowKeyDate.AddHours(1);
+                        break;
+
+                    case CandleTimeInterval.Hour:
+                        nextRowKeyDate = rowKeyDate.AddDays(1);
+                        break;
+
+                    case CandleTimeInterval.Day:
+                        nextRowKeyDate = rowKeyDate.AddMonths(1);
+                        break;
+
+                    default: // Week or Month
+                        nextRowKeyDate = rowKeyDate.AddYears(1);
+                        break;
+                }
+
+                // Delete the whole row if it is inside [fromIncluding; toNotIncluding).
+                if (rowKeyDate >= fromIncluding &&
+                    nextRowKeyDate < toNotIncluding)
+                    await _tableStorage.DeleteIfExistAsync(partitionKey, rowKey); 
+                else
+                {
+                    // Otherwise, we need to make a decision about every Entity: which candles are to be deleted.
+                    var entity = await _tableStorage.GetDataAsync(partitionKey, rowKey);
+                    if (entity.Candles.Any())
+                    {
+                        entity.Candles.RemoveAll(c =>
+                            c.LastUpdateTimestamp.TruncateTo(interval) >= fromIncluding &&
+                            c.LastUpdateTimestamp.TruncateTo(interval) < toNotIncluding);
+
+                        // If there are still any candles, we update the entity.
+                        if (entity.Candles.Any())
+                            await _tableStorage.InsertOrReplaceAsync(entity);
+                        else
+                            await _tableStorage.DeleteIfExistAsync(partitionKey, rowKey); // Otherwise, remove the entity to avoid it remaining empty in storage.
+                    }
+                }
+
+                // For the next iteration:
+                rowKeyDate = nextRowKeyDate;
+                rowKey = CandleHistoryEntity.GenerateRowKey(rowKeyDate, interval);
+            }
+        }
+
+        #endregion
+
+        #region Private
+
         private static TableQuery<CandleHistoryEntity> GetTableQuery(
             CandlePriceType priceType,
             CandleTimeInterval interval,
@@ -229,5 +309,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                 FilterString = TableQuery.CombineFilters(pkeyFilter, TableOperators.And, rowkeyFilter)
             };
         }
+
+        #endregion
     }
 }
