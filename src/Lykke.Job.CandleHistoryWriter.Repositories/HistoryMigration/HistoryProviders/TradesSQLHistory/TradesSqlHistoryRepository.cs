@@ -39,7 +39,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
             _sqlTimeout = sqlTimeout;
             _log = log;
 
-            StartingRowOffset = 0;
+            StartingRowOffset = 0; // Will read everything.
 
             AssetPairId = assetPairId;
             SearchToken = searchToken;
@@ -52,6 +52,12 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
         public async Task<IEnumerable<TradeHistoryItem>> GetNextBatchAsync()
         {
             var result = new List<TradeHistoryItem>();
+
+            // First of all: if the last obtained batch was smaller than usual batch size, it means,
+            // we have already reached the limit. We know that the new query will return empty result,
+            // thus, we do not actually need to execute it.
+            if (StartingRowOffset % _sqlQueryBatchSize > 0)
+                return result;
 
             try
             {
@@ -86,19 +92,31 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
                 if (result.Count > 0)
                 {
                     // Now we need to remove the last several trades which have the same date and time (accuracy - to seconds).
-                    // This will guarantee that we did not peek up some orders of the one trade on this iteration, and others
+                    // This will guarantee that we did not peek up some orders of the same trade on this iteration, and others
                     // on the next. On the next iteration we will read them again for the next batch. No temporary buffer, for
-                    // it can't save any observable value of time.
+                    // it can't save any observable value of time. NOTE: if we have got less records than _sqlQueryBatchSize,
+                    // this means that we obtained the last )or the single) data pack, and there is no reason to delete "tail"
+                    // trades.
 
-                    // I do not want to use Linq.Remove(func) for it might case full sequence iterating which is slower than
-                    // the following messy code. Actually, we need to iterate only a bit of elements from the tail-side.
-                    var lastDateTime = result.Last().DateTime.TruncateTo(CandleTimeInterval.Sec);
-                    var equalTimestampCandlesAtTailCount = 0;
-                    while (result.Any() && result[result.Count - equalTimestampCandlesAtTailCount - 1].DateTime.TruncateTo(CandleTimeInterval.Sec) == lastDateTime) // Looking through the list starting at the last element.
-                        equalTimestampCandlesAtTailCount++;
-                    // Now remove the candles with the same (to seconds) timestamp ONLY in case if we do have any other candles in the list.
-                    if (equalTimestampCandlesAtTailCount < result.Count)
-                        result.RemoveRange(result.Count - equalTimestampCandlesAtTailCount, equalTimestampCandlesAtTailCount);
+                    if (result.Count == _sqlQueryBatchSize)
+                    {
+                        // I do not want to use Linq.Remove(func) for it might case full sequence iterating which is slower than
+                        // the following messy code. Actually, we need to iterate only a bit of elements from the tail-side.
+                        var lastDateTime = result.Last().DateTime.TruncateTo(CandleTimeInterval.Sec);
+                        var equalTimestampCandlesAtTailCount = 1;
+                        while (equalTimestampCandlesAtTailCount++ < result.Count) // Looking through the list starting from the last element. No additional work.
+                        {
+                            if (result[result.Count - equalTimestampCandlesAtTailCount].DateTime.TruncateTo(CandleTimeInterval.Sec) != lastDateTime)
+                            {
+                                equalTimestampCandlesAtTailCount--; // When we got the first inconsistent element, we need to step back.
+                                break;
+                            }
+                        }
+
+                        // Now remove the candles with the same (to seconds) timestamp ONLY in case if we do have any other candles in the list.
+                        if (equalTimestampCandlesAtTailCount < result.Count)
+                            result.RemoveRange(result.Count - equalTimestampCandlesAtTailCount, equalTimestampCandlesAtTailCount);
+                    }
 
                     // Reporting.
                     await _log.WriteInfoAsync(nameof(TradesSqlHistoryRepository), nameof(GetNextBatchAsync),
@@ -115,6 +133,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
             catch (Exception ex)
             {
                 await _log.WriteErrorAsync(nameof(TradesSqlHistoryRepository), nameof(GetNextBatchAsync), ex);
+                result?.Clear();
             }
 
             return result;
@@ -135,7 +154,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
             commandBld.Append("WHERE ");
             commandBld.Append($@"OrderType = 'Limit' AND (Asset + OppositeAsset = '{SearchToken}' OR OppositeAsset + Asset = '{SearchToken}') AND Direction IN ('Buy', 'Sell') ");
             if (MigrateByDate.HasValue)
-                commandBld.Append($@"AND ""DateTime"" < {MigrateByDate} ");
+                commandBld.Append($@"AND ""DateTime"" < TRY_PARSE('{MigrateByDate.Value.ToString("o")}' AS DateTime) ");
             commandBld.Append(@"ORDER BY ""DateTime"", Id ASC ");
             commandBld.Append($"OFFSET {StartingRowOffset} ROWS FETCH NEXT {_sqlQueryBatchSize} ROWS ONLY;");
 

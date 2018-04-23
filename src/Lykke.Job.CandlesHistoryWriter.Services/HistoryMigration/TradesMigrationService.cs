@@ -23,6 +23,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 
         public TradesMigrationService(
             ICandlesHistoryRepository candlesHistoryRepository,
+            TradesMigrationHealthService tradesMigrationHealthService,
             ILog log,
             string sqlConnString,
             int sqlQueryBatchSize,
@@ -30,6 +31,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             )
         {
             _candlesHistoryRepository = candlesHistoryRepository ?? throw new ArgumentNullException("candlesHistoryRepository");
+            _tradesMigrationHealthService = tradesMigrationHealthService ?? throw new ArgumentNullException("tradesMigrationHealthService");
             _log = log ?? throw new ArgumentNullException("log");
 
             _sqlConnString = sqlConnString;
@@ -54,7 +56,15 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                     {
                         // Removing old candles first, is it is requested to do.
                         if (preliminaryRemoval)
-                            await RemoveTradesCandles(searchToken.AssetPairId, migrateByDate);
+                        {
+                            await _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(MigrateTradesCandlesAsync),
+                                $"Starting preliminary trade candles removal...");
+
+                            await RemoveTradesCandlesAsync(searchToken.AssetPairId, migrateByDate);
+
+                            await _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(MigrateTradesCandlesAsync),
+                                migrateByDate.HasValue ? $"Trade candles are removed till {migrateByDate}" : "All trade candles are removed. Going to migrate...");
+                        }
 
                         // And now migrate trades.
                         while (true)
@@ -137,7 +147,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
         /// <summary>
         /// Asynchronous trades candles removal from all the time interval tables for the specified asset pair.
         /// </summary>
-        private async Task RemoveTradesCandles(string assetPairId, DateTime? removeByDate)
+        private async Task RemoveTradesCandlesAsync(string assetPairId, DateTime? removeByDate)
         {
             var removalTasks = new List<Task>();
 
