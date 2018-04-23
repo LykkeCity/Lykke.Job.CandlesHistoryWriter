@@ -181,7 +181,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                 {
                     // Otherwise, we need to make a decision about every Entity: which candles are to be deleted.
                     var entity = await _tableStorage.GetDataAsync(partitionKey, rowKey);
-                    if (entity.Candles.Any())
+                    if (entity?.Candles.Any() ?? false)
                     {
                         entity.Candles.RemoveAll(c =>
                             c.LastUpdateTimestamp.TruncateTo(interval) >= fromIncluding &&
