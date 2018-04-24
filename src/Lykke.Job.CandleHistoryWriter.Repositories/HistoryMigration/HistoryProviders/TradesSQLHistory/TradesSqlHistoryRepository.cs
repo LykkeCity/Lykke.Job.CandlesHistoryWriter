@@ -84,8 +84,8 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
                                 Price = reader.GetDecimal(4),
                                 DateTime = reader.GetDateTime(5),
                                 OppositeVolume = reader.GetDecimal(6),
-                                OrderId = reader.GetGuid(7),
-                                OppositeOrderId = reader.GetGuid(8)
+                                OrderId = Guid.Parse(reader.GetString(7)),
+                                OppositeOrderId = Guid.Parse(reader.GetString(8))
                             });
                         }
                     }
