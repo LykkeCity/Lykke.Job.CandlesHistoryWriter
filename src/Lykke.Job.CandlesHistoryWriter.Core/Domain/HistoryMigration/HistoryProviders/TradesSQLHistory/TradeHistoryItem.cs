@@ -11,6 +11,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.HistoryPro
         public decimal Volume { get; set; }
         public decimal OppositeVolume { get; set; }
         public DateTime DateTime { get; set; }
+        public Guid OrderId { get; set; }
+        public Guid OppositeOrderId { get; set; }
     }
 
     public enum TradeDirection
