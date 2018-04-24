@@ -20,6 +20,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
         private readonly ILog _log;
 
         private int StartingRowOffset { get; set; }
+        private bool _gotTheLastBatch;
 
         private string AssetPairId { get; }
         private string SearchToken { get; }
@@ -53,10 +54,9 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
         {
             var result = new List<TradeHistoryItem>();
 
-            // First of all: if the last obtained batch was smaller than usual batch size, it means,
-            // we have already reached the limit. We know that the new query will return empty result,
-            // thus, we do not actually need to execute it.
-            if (StartingRowOffset % _sqlQueryBatchSize > 0)
+            // If we got the last batch in the previous iteration, there is no reason to execute one more query
+            // with empty result. Just return.
+            if (_gotTheLastBatch)
                 return result;
 
             try
@@ -119,6 +119,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
                         if (equalTimestampCandlesAtTailCount < result.Count)
                             result.RemoveRange(result.Count - equalTimestampCandlesAtTailCount, equalTimestampCandlesAtTailCount);
                     }
+                    else _gotTheLastBatch = true; // If we have got smaller amount of records than _sqlQueryBatchSize, this only means we have the last batch now.
 
                     // Reporting.
                     await _log.WriteInfoAsync(nameof(TradesSqlHistoryRepository), nameof(GetNextBatchAsync),
