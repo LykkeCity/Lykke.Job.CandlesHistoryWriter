@@ -28,6 +28,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
             _historyProvidersManager = historyProvidersManager;
         }
 
+        /// <summary>
+        /// Initiates a candles history migration session for the given asset pair.
+        /// </summary>
+        /// <param name="assetPair">Asset pair Id.</param>
         [HttpPost]
         [Route("{assetPair}")]
         public async Task<IActionResult> Migrate(string assetPair)
@@ -42,6 +46,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
             return Ok(result);
         }
 
+        /// <summary>
+        /// Shows the state of the actual candles migration session for all included asset pairs.
+        /// </summary>
         [HttpGet]
         [Route("health")]
         public IActionResult Health()
@@ -52,6 +59,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
             return Ok(_candlesMigrationManager.Health);
         }
 
+        /// <summary>
+        /// Shows the state of the actual candles migration session for the given asset pair.
+        /// </summary>
+        /// <param name="assetPair">Asset pair Id.</param>
         [HttpGet]
         [Route("health/{assetPair}")]
         public IActionResult Health(string assetPair)
@@ -67,6 +78,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
             return Ok(_candlesMigrationManager.Health[assetPair]);
         }
 
+        /// <summary>
+        /// Initiates a trades history migration session.
+        /// </summary>
+        /// <param name="request">Migration session parameters (see model description).</param>
         [HttpPost]
         [Route("trades")]
         public IActionResult MigrateTrades([FromBody] TradesMigrationRequestModel request)
@@ -84,6 +99,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
                 ErrorResponse.Create("The previous migration session still has not been finished. Parallel execution is not supported."));
         }
 
+        /// <summary>
+        /// Shows the state of the actual trades migration session for all included asset pairs.
+        /// </summary>
         [HttpGet]
         [Route("trades/health")]
         public IActionResult TradesHealth()
@@ -100,6 +118,11 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
             return Ok(healthReport);
         }
 
+        /// <summary>
+        /// Initiates search and correction of candles with extremal prices session.
+        /// </summary>
+        /// <param name="request">Filtration session parameters (see model description).</param>
+        /// <param name="analyzeOnly">Set this flag to True if it is only needed to estimate the amount of incorrect candles without any correction. Otherwise, set it False.</param>
         [HttpPost]
         [Route("extremumFilter")]
         public IActionResult FilterExtremumCandles([FromBody] CandlesFiltrationRequestModel request, bool analyzeOnly)
@@ -131,6 +154,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
             }
         }
 
+        /// <summary>
+        /// Shows the state of the actual candles filtration session.
+        /// </summary>
         [HttpGet]
         [Route("extremumFilter/health")]
         public IActionResult ExtremumFilterHealth()

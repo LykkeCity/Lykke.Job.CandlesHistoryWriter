@@ -21,19 +21,18 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 
         public async Task<IReadOnlyList<ICandle>> TryGetExtremeCandlesAsync(string assetPairId, CandlePriceType priceType, double limitLow, double limitHigh, double epsilon)
         {
-            var (dateFrom, dateTo) = await GetDateTimeRangAsynce(assetPairId, priceType);
+            var (dateFrom, dateTo) = await GetDateTimeRangeAsync(assetPairId, priceType);
 
             // May be, we have got fake DateTime range. If so, this means there are no candles for the specified asset
             // pair at all and we should skip its filtration in the caller code. Return null.
             if (dateFrom == DateTime.MinValue || dateTo == DateTime.MinValue)
-                return null;
+                return new List<ICandle>();
 
-            var prevMonthLastDate = dateTo; // The same, but we will use it several times below
+            var currentMonthBeginingDateTime = dateTo; // We will use it several times below for data query limiting.
 
             // The list of extreme candles for all stored time periods (there will be not so disastrous amount of them
             // to run out of memory).
             var extremeCandles = new List<ICandle>();
-            List<ICandle> currentCandles = null;
             List<ICandle> lastCandles = null;
 
             // Now we will go through the candle storage deeps from the biggest candle time interval to the smallest one.
@@ -47,6 +46,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 
             for (var i = Constants.StoredIntervals.Length - 1; i >= 0; i--)
             {
+                List<ICandle> currentCandles = null;
+
                 var interval = Constants.StoredIntervals[i];
                 if (i == Constants.StoredIntervals.Length - 1)
                 {
@@ -59,7 +60,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 
                     // There are no incorrect candles at all - returning.
                     if (!currentCandles.Any())
-                        return null;
+                        return extremeCandles; // Empty collection here.
                 }
                 else
                 {
@@ -69,15 +70,13 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                     {
                         dateFrom = candle.Timestamp.TruncateTo(interval);
                         dateTo = candle.LastUpdateTimestamp.TruncateTo(interval).AddIntervalTicks(1, interval);
-                        if (dateTo > prevMonthLastDate)
-                            dateTo = prevMonthLastDate;
+                        if (dateTo > currentMonthBeginingDateTime)
+                            dateTo = currentMonthBeginingDateTime;
 
                         var candles = await _candlesHistoryRepository.GetCandlesAsync(assetPairId, interval, priceType, dateFrom, dateTo);
 
-                        currentCandles.AddRange(
-                            candles
-                                .Where(c => IsExtremeCandle(c, limitLow, limitHigh, epsilon))
-                                .ToList());
+                        currentCandles.AddRange(candles
+                            .Where(c => IsExtremeCandle(c, limitLow, limitHigh, epsilon)));
                     }
                 }
 
@@ -85,10 +84,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                 extremeCandles.AddRange(currentCandles);
             }
 
-            return 
-                extremeCandles.Count > 0 
-                ? extremeCandles 
-                : null;
+            return extremeCandles;
         }
 
         public async Task<(int deletedCandlesCount, int replacedCandlesCount)> FixExtremeCandlesAsync(IReadOnlyList<ICandle> extremeCandles, CandlePriceType priceType)
@@ -97,7 +93,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             // smallest interval to the biggest, back. But now we will delete the smallest candles at all, and then
             // recalculate (and replace in storage) the bigger candles.
 
-            int deletedCount = 0, replacedCount = 0;
+            int deletedCountSummary = 0, replacedCountSummary = 0;
             DateTime dateFrom, dateTo;
             
             var candlesByInterval = extremeCandles
@@ -108,7 +104,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                 throw new ArgumentException($"Something is wrong: the amount of (unique) time intervals in extreme candles list is not equal to stored intervals array length. " +
                     $"Filtration for {priceType} is impossible.");
 
-            var countDeleted = 0;
             foreach (var candleBatch in candlesByInterval)
             {
                 var interval = (CandleTimeInterval)candleBatch.Key;
@@ -116,9 +111,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                 // The Second time interval is the smallest, so, we simply delete such a candles from storage and go next.
                 if (interval == CandleTimeInterval.Sec)
                 {
-                    countDeleted =
-                        await _candlesHistoryRepository.DeleteCandlesAsync(candleBatch.Value.AsEnumerable());
-                    deletedCount += countDeleted;
+                    var deletedCountQuant =
+                        await _candlesHistoryRepository.DeleteCandlesAsync(candleBatch.Value.ToList());
+                    deletedCountSummary += deletedCountQuant;
                     continue;
                 }
 
@@ -144,8 +139,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                     foreach (var smallerCandle in smallerCandles)
                     {
                         if (updatedCandle == null)
-                            updatedCandle = Candle
-                                .Copy(smallerCandle)
+                            updatedCandle = smallerCandle
                                 .RebaseToInterval(interval);
                         else
                             updatedCandle = updatedCandle
@@ -163,24 +157,24 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 
                 if (currentCandlesToDelete.Count > 0)
                 {
-                    countDeleted = await _candlesHistoryRepository.DeleteCandlesAsync(currentCandlesToDelete);
-                    deletedCount += countDeleted;
+                    var deletedCountQuant = await _candlesHistoryRepository.DeleteCandlesAsync(currentCandlesToDelete);
+                    deletedCountSummary += deletedCountQuant;
                 }
 
                 if (currentCandlesToReplace.Count > 0)
                 {
-                    var countReplaced = await _candlesHistoryRepository.ReplaceCandlesAsync(currentCandlesToReplace);
-                    replacedCount += countReplaced;
+                    var replacedCountQuant = await _candlesHistoryRepository.ReplaceCandlesAsync(currentCandlesToReplace);
+                    replacedCountSummary += replacedCountQuant;
                 }
             }
 
-            return (deletedCandlesCount: deletedCount, replacedCandlesCount: replacedCount);
+            return (deletedCandlesCount: deletedCountSummary, replacedCandlesCount: replacedCountSummary);
         }
 
         #region "Private"
 
         // Calculating the earliest and the latest dates for the biggest interval candles fetching
-        private async Task<(DateTime dateFrom, DateTime dateTo)> GetDateTimeRangAsynce(string assetPairId, CandlePriceType priceType)
+        private async Task<(DateTime dateFrom, DateTime dateTo)> GetDateTimeRangeAsync(string assetPairId, CandlePriceType priceType)
         {
             var firstBiggestCandle =
                 await _candlesHistoryRepository.TryGetFirstCandleAsync(assetPairId,
@@ -192,8 +186,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                 return (dateFrom: DateTime.MinValue, dateTo: DateTime.MinValue);
 
             var dtFrom = firstBiggestCandle.Timestamp; // The first candle's in storage timestamp
-            var dtTo = DateTime.UtcNow.AddDays(-DateTime.UtcNow.Day).TruncateTo(CandleTimeInterval.Day)
-                .AddDays(1); // The last day of the prevous month (since now)
+            var dtTo = DateTime.UtcNow.TruncateTo(CandleTimeInterval.Month); // The begining of the current month (for further candles reading with exclusive upper date-time border).
 
             return (dateFrom: dtFrom, dateTo: dtTo);
         }
