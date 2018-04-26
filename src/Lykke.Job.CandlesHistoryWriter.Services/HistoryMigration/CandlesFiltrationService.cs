@@ -68,8 +68,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                     // ReSharper disable once PossibleNullReferenceException
                     foreach (var candle in lastCandles)
                     {
-                        dateFrom = candle.Timestamp.TruncateTo(interval);
-                        dateTo = candle.LastUpdateTimestamp.TruncateTo(interval).AddIntervalTicks(1, interval);
+                        dateFrom = candle.Timestamp.TruncateTo(interval); // Truncating is important when searching weeks by months: the first week of month may start earlier than the month. In other cases, TruncateTo is redundant.
+                        dateTo = candle.Timestamp.AddIntervalTicks(1, GetBiggerInterval(interval));
                         if (dateTo > currentMonthBeginingDateTime)
                             dateTo = currentMonthBeginingDateTime;
 
@@ -94,7 +94,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             // recalculate (and replace in storage) the bigger candles.
 
             int deletedCountSummary = 0, replacedCountSummary = 0;
-            DateTime dateFrom, dateTo;
             
             var candlesByInterval = extremeCandles
                 .GroupBy(c => (int)c.TimeInterval)
@@ -127,9 +126,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                 var currentCandlesToDelete = new List<ICandle>();
                 foreach (var candle in candleBatch.Value.AsEnumerable())
                 {
-                    dateFrom = candle.Timestamp;
-                    dateTo = candle.LastUpdateTimestamp.TruncateTo(smallerInterval)
-                        .AddIntervalTicks(1, smallerInterval);
+                    var dateFrom = candle.Timestamp;
+                    var dateTo = candle.Timestamp.AddIntervalTicks(1, interval);
 
                     var smallerCandles = await _candlesHistoryRepository.GetCandlesAsync(candle.AssetPairId,
                         smallerInterval, priceType, dateFrom, dateTo);
@@ -221,13 +219,24 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             // may start/stop not in borders of the month.
             if (interval == CandleTimeInterval.Month)
                 return CandleTimeInterval.Day;
-
-            var index = Constants.StoredIntervals.IndexOf(interval);
-
-            if (index == 0)
+            
+            if (interval == CandleTimeInterval.Sec)
                 throw new ArgumentException($"There is no smaller stored candle time interval for {interval}.");
 
+            var index = Constants.StoredIntervals.IndexOf(interval);
             return Constants.StoredIntervals[index - 1];
+        }
+
+        private static CandleTimeInterval GetBiggerInterval(CandleTimeInterval interval)
+        {
+            if (!Constants.StoredIntervals.Contains(interval))
+                throw new ArgumentException($"The candle of the given time interval {interval} can not be stored.");
+
+            if (interval == CandleTimeInterval.Month)
+                throw new ArgumentException($"There is no bigger stored candle time interval for {interval}.");
+
+            var index = Constants.StoredIntervals.IndexOf(interval);
+            return Constants.StoredIntervals[index + 1];
         }
 
         #endregion
