@@ -30,9 +30,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             TimeSpan sqlTimeout
             )
         {
-            _candlesHistoryRepository = candlesHistoryRepository ?? throw new ArgumentNullException("candlesHistoryRepository");
-            _tradesMigrationHealthService = tradesMigrationHealthService ?? throw new ArgumentNullException("tradesMigrationHealthService");
-            _log = log ?? throw new ArgumentNullException("log");
+            _candlesHistoryRepository = candlesHistoryRepository ?? throw new ArgumentNullException(nameof(candlesHistoryRepository));
+            _tradesMigrationHealthService = tradesMigrationHealthService ?? throw new ArgumentNullException(nameof(tradesMigrationHealthService));
+            _log = log ?? throw new ArgumentNullException(nameof(log));
 
             _sqlConnString = sqlConnString;
             _sqlQueryBatchSize = sqlQueryBatchSize;
@@ -70,7 +70,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                         while (true)
                         {
                             var tradesBatch = await sqlRepo.GetNextBatchAsync();
-                            var batchCount = tradesBatch.Count();
+                            var batchCount = tradesBatch.Count;
 
                             if (batchCount == 0)
                                 break;
@@ -94,10 +94,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                                     ? new TradesCandleBatch(searchToken.AssetPairId, searchToken.SearchToken, searchToken.ReverseSearchToken, interval, tradesBatch)
                                     : new TradesCandleBatch(searchToken.AssetPairId, interval, smallerCandles);
 
-                                ExtendStoredCandles(ref currentCandles);
+                                ExtendStoredCandles(currentCandles);
 
                                 _tradesMigrationHealthService[searchToken.AssetPairId].SummarySavedCandles +=
-                                    currentCandles.CandlesCount;
+                                    currentCandles.Candles.Count;
 
                                 // We can not derive month candles from weeks for they may lay out of the borders
                                 // of the month. While generating a month candles, we should use day candles as a
@@ -160,7 +160,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
         /// <summary>
         /// Tries to load candles from the storage and then extends em by the given newly-calculated candles batch for the same time stamps.
         /// </summary>
-        private void ExtendStoredCandles(ref TradesCandleBatch current)
+        private void ExtendStoredCandles(TradesCandleBatch current)
         {
             var storedCandles =
                 _candlesHistoryRepository.GetCandlesAsync(current.AssetId, current.TimeInterval, TradesCandleBatch.PriceType, current.MinTimeStamp,
@@ -168,14 +168,13 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             if (!storedCandles.Any())
                 return;
 
-            for (int i = 0; i < current.CandlesCount; i++)
+            foreach (var candle in current.Candles.Values)
             {
-                var timestamp = current.Candles.Values.ElementAt(i).Timestamp;
+                var timestamp = candle.Timestamp;
                 var stored = storedCandles.FirstOrDefault(s => s.Timestamp == timestamp);
                 if (stored != null)
                 {
-                    current.Candles[timestamp.ToFileTimeUtc()] =
-                        stored.ExtendBy(current.Candles[timestamp.ToFileTimeUtc()]);
+                    current.Candles[timestamp] = stored.ExtendBy(candle);
                     storedCandles.Remove(stored);
                 }
             }
