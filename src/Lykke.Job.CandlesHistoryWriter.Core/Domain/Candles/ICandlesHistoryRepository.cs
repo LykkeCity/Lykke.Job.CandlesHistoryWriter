@@ -13,7 +13,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles
         Task<ICandle> TryGetFirstCandleAsync(string assetPairId, CandleTimeInterval interval, CandlePriceType priceType);
         IReadOnlyList<string> GetStoredAssetPairs();
         Task<bool> DeleteCandlesAsync(string assetPairId, CandleTimeInterval interval, CandlePriceType priceType, DateTime? from = null, DateTime? to = null);
-        Task<int> DeleteCandlesAsync(IEnumerable<ICandle> candlesToDelete);
-        Task<int> ReplaceCandlesAsync(IEnumerable<ICandle> candlesToReplace);
+        Task<int> DeleteCandlesAsync(IReadOnlyList<ICandle> candlesToDelete);
+        Task<int> ReplaceCandlesAsync(IReadOnlyList<ICandle> candlesToReplace);
     }
 }
