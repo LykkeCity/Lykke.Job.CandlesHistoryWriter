@@ -213,6 +213,8 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
                 .AutoActivate();
 
             RegisterCandlesMigration(builder);
+
+            RegisterCandlesFiltration(builder);
         }
 
         private void RegisterCandlesMigration(ContainerBuilder builder)
@@ -257,6 +259,17 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
                 .WithParameter(TypedParameter.From(_settings.Migration.Trades.SqlTradesDataSourceConnString))
                 .WithParameter(TypedParameter.From(_settings.Migration.Trades.SqlQueryBatchSize))
                 .WithParameter(TypedParameter.From(_settings.Migration.MigrationEnabled))
+                .SingleInstance();
+        }
+
+        private void RegisterCandlesFiltration(ContainerBuilder builder)
+        {
+            builder.RegisterType<CandlesFiltrationService>()
+                .As<ICandlesFiltrationService>()
+                .SingleInstance();
+
+            builder.RegisterType<CandlesFiltrationManager>()
+                .AsSelf()
                 .SingleInstance();
         }
 

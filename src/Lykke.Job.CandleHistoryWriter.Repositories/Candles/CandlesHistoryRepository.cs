@@ -85,6 +85,68 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             }
         }
 
+        public async Task<int> DeleteCandlesAsync(IReadOnlyList<ICandle> candlesToDelete)
+        {
+            // ReSharper disable once PossibleMultipleEnumeration
+            (var assetPairId, var interval, var priceType) = PreEvaluateInputCandleSet(candlesToDelete);
+
+            var repo = GetRepo(assetPairId, interval);
+            try
+            {
+                return 
+                    // ReSharper disable once PossibleMultipleEnumeration
+                    await repo.DeleteCandlesAsync(candlesToDelete, priceType);
+            }
+            catch
+            {
+                ResetRepo(assetPairId, interval);
+                throw;
+            }
+        }
+
+        public async Task<int> ReplaceCandlesAsync(IReadOnlyList<ICandle> candlesToReplace)
+        {
+            // ReSharper disable once PossibleMultipleEnumeration
+            (var assetPairId, var interval, var priceType) = PreEvaluateInputCandleSet(candlesToReplace);
+
+            var repo = GetRepo(assetPairId, interval);
+            try
+            {
+                return 
+                    // ReSharper disable once PossibleMultipleEnumeration
+                    await repo.ReplaceCandlesAsync(candlesToReplace, priceType);
+            }
+            catch
+            {
+                ResetRepo(assetPairId, interval);
+                throw;
+            }
+        }
+
+        private (string assetPairId, CandleTimeInterval interval, CandlePriceType priceType) PreEvaluateInputCandleSet(
+            IEnumerable<ICandle> candlesToCheck)
+        {
+            // ReSharper disable once PossibleMultipleEnumeration
+            var firstCandle = candlesToCheck?.FirstOrDefault();
+            if (firstCandle == null)
+                throw new ArgumentException("The input candle set is null or empty.");
+
+            var assetPairId = firstCandle.AssetPairId;
+            var interval = firstCandle.TimeInterval;
+            var priceType = firstCandle.PriceType;
+
+            // ReSharper disable once PossibleMultipleEnumeration
+            if (candlesToCheck.Any(c =>
+                c.AssetPairId != firstCandle.AssetPairId ||
+                c.TimeInterval != firstCandle.TimeInterval ||
+                c.PriceType != firstCandle.PriceType))
+                throw new ArgumentException("The input set contains candles with different asset pair IDs, time intervals and/or price types.");
+
+            return (assetPairId: assetPairId, 
+                interval: interval, 
+                priceType: priceType);
+        }
+
         private void ResetRepo(string assetPairId, CandleTimeInterval interval)
         {
             var tableName = interval.ToString().ToLowerInvariant();
