@@ -9,12 +9,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 {
     public class TradesCandleBatch
     {
-        public int CandlesCount { get; }
-
         public string AssetId { get; }
-        private string _assetToken;
-        private string _reverseAssetToken;
-
+        
         public CandleTimeInterval TimeInterval { get; }
 
         public static CandlePriceType PriceType =>
@@ -23,10 +19,14 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
         public DateTime MinTimeStamp { get; private set; }
         public DateTime MaxTimeStamp { get; private set; }
 
-        public Dictionary<long, ICandle> Candles { get; }
+        public IDictionary<DateTime, ICandle> Candles { get; }
+
+        private readonly string _assetToken;
+        // TODO: Remove unused field
+        private readonly string _reverseAssetToken;
 
         public TradesCandleBatch(string assetId, string assetToken, string reverseAssetToken,
-            CandleTimeInterval interval, IEnumerable<TradeHistoryItem> trades)
+            CandleTimeInterval interval, IReadOnlyCollection<TradeHistoryItem> trades)
         {
             AssetId = assetId;
             _assetToken = assetToken;
@@ -36,9 +36,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             MinTimeStamp = DateTime.MaxValue;
             MaxTimeStamp = DateTime.MinValue;
 
-            Candles = new Dictionary<long, ICandle>();
-
-            CandlesCount = MakeFromTrades(trades);
+            Candles = MakeFromTrades(trades);
         }
 
         public TradesCandleBatch(string assetId, CandleTimeInterval interval, TradesCandleBatch basis)
@@ -50,12 +48,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             MinTimeStamp = DateTime.MaxValue;
             MaxTimeStamp = DateTime.MinValue;
 
-            Candles = new Dictionary<long, ICandle>();
-
-            CandlesCount = DeriveFromSmallerInterval(basis);
+            Candles = DeriveFromSmallerInterval(basis);
         }
 
-        private int MakeFromTrades(IEnumerable<TradeHistoryItem> trades)
+        private IDictionary<DateTime, ICandle> MakeFromTrades(IReadOnlyCollection<TradeHistoryItem> trades)
         {
             // While making a new candle based on trades, we consider the following rules to be good enough:
             // 1. For each trade should be checked, if opposite order is limit order (is it pressented in the batch?). 
@@ -66,8 +62,11 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             //    volume = trade volume, quoting voule = trade opposite volume. Otherwise, base volume = trade opposite 
             //    volume, quoting voule = trade volume.
 
-            var count = 0;
-            var similarTrades = new List<TradeHistoryItem>();
+            var limitOrderIds = trades
+                .Select(t => t.OrderId)
+                .ToHashSet();
+            var candles = new Dictionary<DateTime, ICandle>();
+
             foreach (var trade in trades)
             {
                 // While iterating the whole trades batch, we form a temporary list of the similar trades (which have
@@ -78,91 +77,80 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                 // the straight ones, it will thus increase performance of such a search, as we do not iterate a large
                 // sequence multiple times.
 
-                if (!similarTrades.Any() ||
-                    trade.DateTime == similarTrades.Last().DateTime &&
-                    trade.Price == similarTrades.Last().Price)
-                    similarTrades.Add(trade);
-                else
+                // If the trade is straight or reverse.
+                var isStraight = trade.AssetToken == _assetToken;
+                var hasOppositeLimitOrder = limitOrderIds.Contains(trade.OppositeOrderId);
+
+                if (isStraight && hasOppositeLimitOrder && trade.Direction == TradeDirection.Buy)
                 {
-                    foreach (var item in similarTrades)
-                    {
-                        // If the trade is straight or reverse.
-                        var isStraight = item.AssetToken == _assetToken;
-
-                        if (isStraight &&
-                            item.Direction == TradeDirection.Buy &&
-                            similarTrades.Any(t => t.OrderId == item.OppositeOrderId))
-                            continue;
-
-                        var truncatedDate = item.DateTime.TruncateTo(TimeInterval);
-                        var timestamp = truncatedDate.ToFileTimeUtc();
-
-                        var tradeCandle = Candle.Create(
-                            AssetId,
-                            PriceType,
-                            TimeInterval,
-                            truncatedDate,
-                            (double)item.Price,
-                            (double)item.Price,
-                            (double)item.Price,
-                            (double)item.Price,
-                            isStraight ? (double)item.Volume : (double)item.OppositeVolume,
-                            isStraight ? (double)item.OppositeVolume : (double)item.Volume,
-                            0, // Last Trade Price is enforced to be = 0
-                            item.DateTime
-                        );
-
-                        if (!Candles.TryGetValue(timestamp, out var existingCandle))
-                        {
-                            Candles.Add(timestamp, tradeCandle);
-                            count++;
-                            if (truncatedDate < MinTimeStamp)
-                                MinTimeStamp = truncatedDate;
-                            if (truncatedDate > MaxTimeStamp)
-                                MaxTimeStamp = truncatedDate;
-                        }
-                        else
-                            Candles[timestamp] = existingCandle.ExtendBy(tradeCandle);
-                    }
-
-                    // Let's prepare for the next stricted trades batch filling.
-                    similarTrades.Clear();
-                    similarTrades.Add(trade);
+                    continue;
                 }
-            }
 
-            return count;
-        }
+                var truncatedDate = trade.DateTime.TruncateTo(TimeInterval);
 
-        private int DeriveFromSmallerInterval(TradesCandleBatch basis)
-        {
-            if ((int)(basis.TimeInterval) >= (int)TimeInterval)
-                throw new InvalidOperationException($"Can't derive candles for time interval {TimeInterval.ToString()} from candles of {basis.TimeInterval.ToString()}.");
+                var tradeCandle = Candle.Create(
+                    AssetId,
+                    PriceType,
+                    TimeInterval,
+                    truncatedDate,
+                    (double) trade.Price,
+                    (double) trade.Price,
+                    (double) trade.Price,
+                    (double) trade.Price,
+                    isStraight ? (double) trade.Volume : (double) trade.OppositeVolume,
+                    isStraight ? (double) trade.OppositeVolume : (double) trade.Volume,
+                    0, // Last Trade Price is enforced to be = 0
+                    trade.DateTime
+                );
 
-            if (basis.AssetId != AssetId)
-                throw new InvalidOperationException($"Can't derive candles for asset pair ID {AssetId} from candles of {basis.AssetId}");
-
-            var count = 0;
-
-            foreach (var candle in basis.Candles)
-            {
-                var truncatedDate = candle.Value.Timestamp.TruncateTo(TimeInterval);
-                var timestamp = truncatedDate.ToFileTimeUtc();
-
-                if (!Candles.TryGetValue(timestamp, out var existingCandle))
+                if (!candles.TryGetValue(truncatedDate, out var existingCandle))
                 {
-                    Candles.Add(timestamp, candle.Value.RebaseToInterval(TimeInterval));
-                    count++;
+                    candles.Add(truncatedDate, tradeCandle);
+
                     if (truncatedDate < MinTimeStamp)
                         MinTimeStamp = truncatedDate;
                     if (truncatedDate > MaxTimeStamp)
                         MaxTimeStamp = truncatedDate;
                 }
                 else
-                    Candles[timestamp] = existingCandle.ExtendBy(candle.Value.RebaseToInterval(TimeInterval));
+                {
+                    candles[truncatedDate] = existingCandle.ExtendBy(tradeCandle);
+                }
             }
 
-            return count;
+            return candles;
+        }
+
+        private IDictionary<DateTime, ICandle> DeriveFromSmallerInterval(TradesCandleBatch basis)
+        {
+            if ((int)basis.TimeInterval >= (int)TimeInterval)
+                throw new InvalidOperationException($"Can't derive candles for time interval {TimeInterval.ToString()} from candles of {basis.TimeInterval.ToString()}.");
+
+            if (basis.AssetId != AssetId)
+                throw new InvalidOperationException($"Can't derive candles for asset pair ID {AssetId} from candles of {basis.AssetId}");
+
+            var candles = new Dictionary<DateTime, ICandle>();
+
+            foreach (var candle in basis.Candles)
+            {
+                var truncatedDate = candle.Value.Timestamp.TruncateTo(TimeInterval);
+
+                if (!candles.TryGetValue(truncatedDate, out var existingCandle))
+                {
+                    candles.Add(truncatedDate, candle.Value.RebaseToInterval(TimeInterval));
+
+                    if (truncatedDate < MinTimeStamp)
+                        MinTimeStamp = truncatedDate;
+                    if (truncatedDate > MaxTimeStamp)
+                        MaxTimeStamp = truncatedDate;
+                }
+                else
+                {
+                    candles[truncatedDate] = existingCandle.ExtendBy(candle.Value.RebaseToInterval(TimeInterval));
+                }
+            }
+
+            return candles;
         }
     }
 }

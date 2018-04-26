@@ -5,6 +5,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.HistoryPro
 {
     public interface ITradesSqlHistoryRepository
     {
-        Task<IEnumerable<TradeHistoryItem>> GetNextBatchAsync();
+        Task<IReadOnlyCollection<TradeHistoryItem>> GetNextBatchAsync();
     }
 }

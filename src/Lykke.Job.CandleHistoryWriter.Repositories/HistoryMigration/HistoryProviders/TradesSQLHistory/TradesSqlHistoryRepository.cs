@@ -50,7 +50,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
             _sqlConnection.Open();
         }
         
-        public async Task<IEnumerable<TradeHistoryItem>> GetNextBatchAsync()
+        public async Task<IReadOnlyCollection<TradeHistoryItem>> GetNextBatchAsync()
         {
             var result = new List<TradeHistoryItem>();
 
