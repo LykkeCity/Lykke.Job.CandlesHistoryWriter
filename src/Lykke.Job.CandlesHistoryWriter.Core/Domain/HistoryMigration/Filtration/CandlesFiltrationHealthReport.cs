@@ -6,8 +6,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.Filtration
 {
     public class CandlesFiltrationHealthReport
     {
-        private readonly object _stateLocker = new object();
-
         public bool AnalyzeOnly { get; }
 
         private CandlesFiltrationState _state;
@@ -16,12 +14,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.Filtration
             get => _state;
             set
             {
-                lock (_stateLocker)
-                {
-                    if (value != CandlesFiltrationState.InProgress)
-                        FinishTime = DateTime.UtcNow;
-                    _state = value;
-                }
+                if (value != CandlesFiltrationState.InProgress)
+                    FinishTime = DateTime.UtcNow;
             }
         }
         public DateTime StartTime { get; }

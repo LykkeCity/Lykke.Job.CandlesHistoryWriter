@@ -98,11 +98,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             await _tableStorage.InsertOrReplaceBatchAsync(existingEntities.Concat(newEntities));
         }
 
-        #endregion
-
-        #region Get
-
-        public async Task<int> DeleteCandlesAsync(IEnumerable<ICandle> candlesToDelete, CandlePriceType priceType)
+        public async Task<int> DeleteCandlesAsync(IReadOnlyList<ICandle> candlesToDelete, CandlePriceType priceType)
         {
             if (candlesToDelete == null || !candlesToDelete.Any())
                 throw new ArgumentException("Candles set should not be empty.");
@@ -124,7 +120,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                 var existingEntities = (await _tableStorage.GetDataAsync(partitionKey, candleByRows.Keys))
                     .ToList();
 
-                if (existingEntities.Count == 0) // Safety check
+                if (!existingEntities.Any()) // Safety check
                     continue;
 
                 var emptyEntities = new List<CandleHistoryEntity>();
@@ -133,7 +129,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                 {
                     deletedCandlesCount += entity.DeleteCandles(candleByRows[entity.RowKey]);
                     // There may be a case when all of the entities' candles were deleted. We need also to delete such an entity itself.
-                    if (entity.Candles.Count == 0)
+                    if (!entity.Candles.Any())
                         emptyEntities.Add(entity);
                 }
 
@@ -142,7 +138,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
                 // No _healthService trackig here. Monitoring of candles deletion is performed on upper layers of logic.
 
-                if (emptyEntities.Count > 0)
+                if (emptyEntities.Any())
                     await _tableStorage.DeleteAsync(emptyEntities);
 
                 await _tableStorage.InsertOrReplaceBatchAsync(existingEntities); // For we do not have a ReplaceBatchAsync method in AzureTableStorage yet.

@@ -68,10 +68,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             foreach (var priceType in Constants.StoredPriceTypes)
             {
                 priceTypeTasks.Add(
-                    Task.Run(() => 
-                        DoFiltrateAsync(request.AssetPairId, request.LimitLow, request.LimitHigh, priceType, epsilon, analyzeOnly)
-                            .GetAwaiter()
-                            .GetResult()));
+                    DoFiltrateAsync(request.AssetPairId, request.LimitLow, request.LimitHigh, priceType, epsilon, analyzeOnly));
             }
 
             Task.WhenAll(priceTypeTasks.ToArray()).ContinueWith(t =>
@@ -101,7 +98,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                 // First of all we need to find out if there are any extreme candles with the given parameters or there are not.
                 var extremeCandles = await _candlesFiltrationService.TryGetExtremeCandlesAsync(assetId, priceType, limitLow, limitHigh, epsilon);
 
-                if (extremeCandles == null)
+                if (!extremeCandles.Any())
                 {
                     await _log.WriteInfoAsync(nameof(CandlesFiltrationManager), nameof(DoFiltrateAsync),
                         $"There are no extreme price candles for price type {priceType}. Skipping.");

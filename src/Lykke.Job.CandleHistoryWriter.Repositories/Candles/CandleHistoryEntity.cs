@@ -140,7 +140,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
         {
             var ticksToDelete = candlesToDelete
                 .Select(c => GetIntervalTick(c.Timestamp, c.TimeInterval))
-                .Distinct();
+                .ToHashSet();
 
             return Candles.RemoveAll(c => 
                 ticksToDelete.Contains(c.Tick));
@@ -162,14 +162,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             }
 
             // Sorting candles for storing in DB in proper order.
-            Candles.Sort((a, b) =>
-            {
-                if (a.Tick > b.Tick)
-                    return 1;
-                if (a.Tick < b.Tick)
-                    return -1;
-                return 0;
-            });
+            Candles.Sort((a, b) => a.Tick.CompareTo(b.Tick));
 
             return replacedCount;
         }
