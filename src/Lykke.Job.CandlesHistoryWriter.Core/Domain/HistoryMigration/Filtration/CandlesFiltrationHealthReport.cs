@@ -16,6 +16,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.Filtration
             {
                 if (value != CandlesFiltrationState.InProgress)
                     FinishTime = DateTime.UtcNow;
+                _state = value;
             }
         }
         public DateTime StartTime { get; }
