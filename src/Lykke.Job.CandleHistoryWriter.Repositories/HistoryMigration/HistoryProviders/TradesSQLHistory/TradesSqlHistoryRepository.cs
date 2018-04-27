@@ -85,7 +85,8 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
                                 DateTime = reader.GetDateTime(5),
                                 OppositeVolume = reader.GetDecimal(6),
                                 OrderId = Guid.Parse(reader.GetString(7)),
-                                OppositeOrderId = Guid.Parse(reader.GetString(8))
+                                OppositeOrderId = Guid.Parse(reader.GetString(8)),
+                                TradeId = reader.GetString(9)
                             });
                         }
                     }
@@ -152,7 +153,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
             var commandBld = new StringBuilder();
 
             // TODO: implement a query with pagination.
-            commandBld.Append($@"SELECT Id, (Asset + OppositeAsset) AS AssetToken, Direction, Volume, Price, ""DateTime"", OppositeVolume, OrderId, OppositeOrderId ");
+            commandBld.Append($@"SELECT Id, (Asset + OppositeAsset) AS AssetToken, Direction, Volume, Price, ""DateTime"", OppositeVolume, OrderId, OppositeOrderId, TradeId ");
             commandBld.Append("FROM Trades ");
             commandBld.Append("WHERE ");
             commandBld.Append($@"OrderType = 'Limit' AND (Asset + OppositeAsset = '{SearchToken}' OR OppositeAsset + Asset = '{SearchToken}') AND Direction IN ('Buy', 'Sell') ");

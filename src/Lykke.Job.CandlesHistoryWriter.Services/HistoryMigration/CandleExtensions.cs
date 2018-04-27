@@ -38,8 +38,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                 selfIsOlder ? newCandle.Close : self.Close,
                 Math.Max(self.High, newCandle.High),
                 Math.Min(self.Low, newCandle.Low),
-                self.TradingVolume + newCandle.TradingVolume,
-                self.TradingOppositeVolume + newCandle.TradingOppositeVolume,
+                Convert.ToDouble((decimal)self.TradingVolume + (decimal)newCandle.TradingVolume), // It's a bit messy, but really allows to keep precision in addiction operation.
+                Convert.ToDouble((decimal)self.TradingOppositeVolume + (decimal)newCandle.TradingOppositeVolume),
                 selfIsOlder ? newCandle.LastTradePrice : self.LastTradePrice,
                 selfIsOlder ? newCandle.LastUpdateTimestamp : self.LastUpdateTimestamp
             );

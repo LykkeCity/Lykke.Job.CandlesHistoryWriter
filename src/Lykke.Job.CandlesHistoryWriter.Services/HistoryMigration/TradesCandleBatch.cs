@@ -53,38 +53,13 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 
         private IDictionary<DateTime, ICandle> MakeFromTrades(IReadOnlyCollection<TradeHistoryItem> trades)
         {
-            // While making a new candle based on trades, we consider the following rules to be good enough:
-            // 1. For each trade should be checked, if opposite order is limit order (is it pressented in the batch?). 
-            //    If so, then buy order trades should be skipped. This is needed to avoid volume duplication when 
-            //    there are two limit orders in the trade.
-            // 2. Base and quoting volumes should be calculated according to direction of the trade asset pair.
-            //    If asset pair is direct (trade asset is equal to base asset of the asset pair), then base 
-            //    volume = trade volume, quoting voule = trade opposite volume. Otherwise, base volume = trade opposite 
-            //    volume, quoting voule = trade volume.
-
-            var limitOrderIds = trades
-                .Select(t => t.OrderId)
-                .ToHashSet();
             var candles = new Dictionary<DateTime, ICandle>();
 
             foreach (var trade in trades)
             {
-                // While iterating the whole trades batch, we form a temporary list of the similar trades (which have
-                // the same DateTime and Price values). Such a list contains all the straight and reverse, buy and 
-                // sell trades which correspond to the single deal. Next, we analyze the temporary list instead of the
-                // whole trades list. Imagine: the whole list may contain 10 000 or more trades while the stricted
-                // list contains not more than 10-20 trades. For we need to find the reverse asset pair trades for
-                // the straight ones, it will thus increase performance of such a search, as we do not iterate a large
-                // sequence multiple times.
-
                 // If the trade is straight or reverse.
-                var isStraight = trade.AssetToken == _assetToken;
-                var hasOppositeLimitOrder = limitOrderIds.Contains(trade.OppositeOrderId);
-
-                if (isStraight && hasOppositeLimitOrder && trade.Direction == TradeDirection.Buy)
-                {
-                    continue;
-                }
+                var isStraight = trade.Volume * trade.Price == trade.OppositeVolume; // Decimals are safe for comparation with ==.
+                var volumeMultiplier = 1.0M / Math.Max(trades.Count(t => t.TradeId == trade.TradeId), 1.0M);
 
                 var truncatedDate = trade.DateTime.TruncateTo(TimeInterval);
 
@@ -97,8 +72,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                     (double) trade.Price,
                     (double) trade.Price,
                     (double) trade.Price,
-                    isStraight ? (double) trade.Volume : (double) trade.OppositeVolume,
-                    isStraight ? (double) trade.OppositeVolume : (double) trade.Volume,
+                    Convert.ToDouble((isStraight ? trade.Volume : trade.OppositeVolume) * volumeMultiplier),
+                    Convert.ToDouble((isStraight ? trade.OppositeVolume : trade.Volume) * volumeMultiplier),
                     0, // Last Trade Price is enforced to be = 0
                     trade.DateTime
                 );
