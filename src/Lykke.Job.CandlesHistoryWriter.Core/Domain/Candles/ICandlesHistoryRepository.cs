@@ -12,7 +12,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles
         bool CanStoreAssetPair(string assetPairId);
         Task<ICandle> TryGetFirstCandleAsync(string assetPairId, CandleTimeInterval interval, CandlePriceType priceType);
         IReadOnlyList<string> GetStoredAssetPairs();
-        Task<bool> DeleteCandlesAsync(string assetPairId, CandleTimeInterval interval, CandlePriceType priceType, DateTime? from = null, DateTime? to = null);
         Task<int> DeleteCandlesAsync(IReadOnlyList<ICandle> candlesToDelete);
         Task<int> ReplaceCandlesAsync(IReadOnlyList<ICandle> candlesToReplace);
         Task<bool> DeleteCandlesAsync(string assetPairId, CandleTimeInterval interval, CandlePriceType priceType, DateTime? from = null, DateTime? to = null);
