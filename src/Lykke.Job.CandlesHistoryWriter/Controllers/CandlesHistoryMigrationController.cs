@@ -21,9 +21,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
         public CandlesHistoryMigrationController(
             CandlesMigrationManager candlesMigrationManager, 
             TradesMigrationManager tradesMigrationManager,
+            CandlesFiltrationManager candlesFiltrationManager,
             IHistoryProvidersManager historyProvidersManager,
-            TradesMigrationHealthService tradesMigrationHealthService,
-            CandlesFiltrationManager candlesFiltrationManager)
+            TradesMigrationHealthService tradesMigrationHealthService)
         {
             _candlesMigrationManager = candlesMigrationManager;
             _tradesMigrationManager = tradesMigrationManager;

@@ -31,10 +31,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             bool migrationEnabled
             )
         {
-            _assetPairsManager = assetPairsManager ?? throw new ArgumentNullException("assetPairsManager");
-            _tradesMigrationService = tradesMigrationServicey ?? throw new ArgumentNullException("tradesMigrationServicey");
-            _tradesMigrationHealthService = tradesMigrationHealthService ?? throw new ArgumentNullException("tradesMigrationHealthService");
-            _log = log ?? throw new ArgumentNullException("log");
+            _assetPairsManager = assetPairsManager ?? throw new ArgumentNullException(nameof(assetPairsManager));
+            _tradesMigrationService = tradesMigrationServicey ?? throw new ArgumentNullException(nameof(tradesMigrationServicey));
+            _tradesMigrationHealthService = tradesMigrationHealthService ?? throw new ArgumentNullException(nameof(tradesMigrationHealthService));
+            _log = log ?? throw new ArgumentNullException(nameof(log));
 
             _sqlQueryBatchSize = sqlQueryBatchSize;
 

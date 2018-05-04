@@ -137,7 +137,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
             catch (Exception ex)
             {
                 await _log.WriteErrorAsync(nameof(TradesSqlHistoryRepository), nameof(GetNextBatchAsync), ex);
-                result?.Clear();
+                result.Clear();
             }
 
             return result;
