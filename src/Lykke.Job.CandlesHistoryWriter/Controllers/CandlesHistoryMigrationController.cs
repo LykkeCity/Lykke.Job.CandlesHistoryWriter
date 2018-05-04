@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using Lykke.Common.Api.Contract.Responses;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.HistoryMigration.HistoryProviders;
 using Lykke.Job.CandlesHistoryWriter.Models.Filtration;
-using Lykke.Job.CandlesHistoryWriter.Models.Migration;
 using Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration;
 using Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration.HistoryProviders.MeFeedHistory;
 using Microsoft.AspNetCore.Mvc;
