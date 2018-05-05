@@ -8,9 +8,11 @@ using System.Threading.Tasks;
 using Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryProviders.TradesSQLHistory;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration;
 using System.Linq;
+using JetBrains.Annotations;
 
 namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 {
+    [UsedImplicitly]
     public class TradesMigrationService : ITradesMigrationService
     {
         private readonly ICandlesHistoryRepository _candlesHistoryRepository;
@@ -41,7 +43,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 
         #region Public
 
-        /// <inheritdoc/>
+        /// <inheritdoc cref="ITradesMigrationService"/>
         public async Task MigrateTradesCandlesAsync(bool preliminaryRemoval, DateTime? migrateByDate, List<(string AssetPairId, string SearchToken, string ReverseSearchToken)> assetSearchTokens)
         {
             foreach (var searchToken in assetSearchTokens)
@@ -91,7 +93,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                                 // It's important for Constants.StoredIntervals to be ordered by time period increase,
                                 // because we will calculate candles for each period based on previous period candles.
                                 var currentCandles = interval == CandleTimeInterval.Sec
-                                    ? new TradesCandleBatch(searchToken.AssetPairId, searchToken.SearchToken, searchToken.ReverseSearchToken, interval, tradesBatch)
+                                    ? new TradesCandleBatch(searchToken.AssetPairId, interval, tradesBatch)
                                     : new TradesCandleBatch(searchToken.AssetPairId, interval, smallerCandles);
 
                                 ExtendStoredCandles(currentCandles);

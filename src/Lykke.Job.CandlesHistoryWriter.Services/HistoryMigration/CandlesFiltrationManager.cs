@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Common;
 using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
@@ -136,7 +135,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             {
                 Health.Errors.Add($"{assetId} - {priceType}: {ex.Message}");
                 await _log.WriteErrorAsync(nameof(CandlesFiltrationManager), nameof(DoFiltrateAsync), ex);
-                return;
             }
         }
     }

@@ -9,6 +9,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 {
     public class TradesCandleBatch
     {
+        private const decimal Epsilon = 0.000_000_000_001M; // That should be enough.
+
         public string AssetId { get; }
         
         public CandleTimeInterval TimeInterval { get; }
@@ -20,17 +22,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
         public DateTime MaxTimeStamp { get; private set; }
 
         public IDictionary<DateTime, ICandle> Candles { get; }
-
-        private readonly string _assetToken;
-        // TODO: Remove unused field
-        private readonly string _reverseAssetToken;
-
-        public TradesCandleBatch(string assetId, string assetToken, string reverseAssetToken,
-            CandleTimeInterval interval, IReadOnlyCollection<TradeHistoryItem> trades)
+        
+        public TradesCandleBatch(string assetId, CandleTimeInterval interval, IReadOnlyCollection<TradeHistoryItem> trades)
         {
             AssetId = assetId;
-            _assetToken = assetToken;
-            _reverseAssetToken = reverseAssetToken;
             TimeInterval = interval;
 
             MinTimeStamp = DateTime.MaxValue;
@@ -58,7 +53,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             foreach (var trade in trades)
             {
                 // If the trade is straight or reverse.
-                var isStraight = trade.Volume * trade.Price == trade.OppositeVolume; // Decimals are safe for comparation with ==.
+                var isStraight = Math.Abs(trade.Volume * trade.Price - trade.OppositeVolume)  < Epsilon; // Decimals are not always safe for comparation with ==. My life will never be the same ((
                 var volumeMultiplier = 1.0M / Math.Max(trades.Count(t => t.TradeId == trade.TradeId), 1.0M);
 
                 var truncatedDate = trade.DateTime.TruncateTo(TimeInterval);

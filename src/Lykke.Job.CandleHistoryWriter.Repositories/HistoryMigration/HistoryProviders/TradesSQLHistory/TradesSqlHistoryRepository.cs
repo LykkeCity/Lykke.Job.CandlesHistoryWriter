@@ -14,7 +14,8 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
     public class TradesSqlHistoryRepository : ITradesSqlHistoryRepository, IDisposable
     {
         private readonly int _sqlQueryBatchSize;
-        private readonly SqlConnection _sqlConnection;
+        private readonly string _sqlConnString;
+        private SqlConnection _sqlConnection;
         private readonly TimeSpan _sqlTimeout;
 
         private readonly ILog _log;
@@ -37,6 +38,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
             )
         {
             _sqlQueryBatchSize = sqlQueryBatchSize;
+            _sqlConnString = sqlConnString;
             _sqlTimeout = sqlTimeout;
             _log = log;
 
@@ -45,9 +47,6 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
             AssetPairId = assetPairId;
             SearchToken = searchToken;
             MigrateByDate = migrateByDate;
-
-            _sqlConnection = new SqlConnection(sqlConnString);
-            _sqlConnection.Open();
         }
         
         public async Task<IReadOnlyCollection<TradeHistoryItem>> GetNextBatchAsync()
@@ -61,7 +60,11 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
 
             try
             {
-                if (_sqlConnection == null || _sqlConnection.State != ConnectionState.Open)
+                // Renew the connection on every call.
+                _sqlConnection = new SqlConnection(_sqlConnString);
+                _sqlConnection.Open();
+
+                if (_sqlConnection.State != ConnectionState.Open)
                     throw new InvalidOperationException("Can't fetch from DB while connection is not opened.");
 
                 await _log.WriteInfoAsync(nameof(TradesSqlHistoryRepository), nameof(GetNextBatchAsync),
@@ -92,37 +95,27 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
                     }
                 }
 
+                _sqlConnection.Close();
+
                 if (result.Count > 0)
                 {
                     // Now we need to remove the last several trades which have the same date and time (accuracy - to seconds).
                     // This will guarantee that we did not peek up some orders of the same trade on this iteration, and others
                     // on the next. On the next iteration we will read them again for the next batch. No temporary buffer, for
                     // it can't save any observable value of time. NOTE: if we have got less records than _sqlQueryBatchSize,
-                    // this means that we obtained the last )or the single) data pack, and there is no reason to delete "tail"
+                    // this means that we obtained the last (or the single) data pack, and there is no reason to delete "tail"
                     // trades.
 
                     if (result.Count == _sqlQueryBatchSize)
                     {
-                        // I do not want to use Linq.Remove(func) for it might case full sequence iterating which is slower than
-                        // the following messy code. Actually, we need to iterate only a bit of elements from the tail-side.
                         var lastDateTime = result.Last().DateTime.TruncateTo(CandleTimeInterval.Sec);
-                        var equalTimestampCandlesAtTailCount = 1;
-                        while (equalTimestampCandlesAtTailCount++ < result.Count) // Looking through the list starting from the last element. No additional work.
-                        {
-                            if (result[result.Count - equalTimestampCandlesAtTailCount].DateTime.TruncateTo(CandleTimeInterval.Sec) != lastDateTime)
-                            {
-                                equalTimestampCandlesAtTailCount--; // When we got the first inconsistent element, we need to step back.
-                                break;
-                            }
-                        }
+                        var resultWithoutTail = result.TakeWhile(t => t.DateTime < lastDateTime).ToList();
 
-                        // Now remove the candles with the same (to seconds) timestamp ONLY in case if we do have any other candles in the list.
-                        if (equalTimestampCandlesAtTailCount < result.Count)
-                            result.RemoveRange(result.Count - equalTimestampCandlesAtTailCount, equalTimestampCandlesAtTailCount);
+                        if (resultWithoutTail.Count != result.Count)
+                            result = resultWithoutTail;
                     }
                     else _gotTheLastBatch = true; // If we have got smaller amount of records than _sqlQueryBatchSize, this only means we have the last batch now.
 
-                    // Reporting.
                     await _log.WriteInfoAsync(nameof(TradesSqlHistoryRepository), nameof(GetNextBatchAsync),
                         $"Starting offset = {StartingRowOffset}, asset pair ID = {AssetPairId}",
                         $"Fetched {result.Count} rows successfully.");
@@ -137,7 +130,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
             catch (Exception ex)
             {
                 await _log.WriteErrorAsync(nameof(TradesSqlHistoryRepository), nameof(GetNextBatchAsync), ex);
-                result.Clear();
+                // We can just report about the error and return an empty list - this will be interpreted as "no data".
             }
 
             return result;
@@ -158,7 +151,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
             commandBld.Append("WHERE ");
             commandBld.Append($@"OrderType = 'Limit' AND (Asset + OppositeAsset = '{SearchToken}' OR OppositeAsset + Asset = '{SearchToken}') AND Direction IN ('Buy', 'Sell') ");
             if (MigrateByDate.HasValue)
-                commandBld.Append($@"AND ""DateTime"" < TRY_PARSE('{MigrateByDate.Value.ToString("o")}' AS DateTime) ");
+                commandBld.Append($@"AND ""DateTime"" < TRY_PARSE('{MigrateByDate.Value:o}' AS DateTime) ");
             commandBld.Append(@"ORDER BY ""DateTime"", Id ASC ");
             commandBld.Append($"OFFSET {StartingRowOffset} ROWS FETCH NEXT {_sqlQueryBatchSize} ROWS ONLY;");
 

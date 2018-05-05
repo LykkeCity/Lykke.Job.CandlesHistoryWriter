@@ -149,6 +149,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
         public async Task<int> ReplaceCandlesAsync(IEnumerable<ICandle> candlesToReplace, CandlePriceType priceType)
         {
+            // ReSharper disable once PossibleMultipleEnumeration
             if (candlesToReplace == null || !candlesToReplace.Any())
                 throw new ArgumentException("Candles set should not be empty.");
 
@@ -156,6 +157,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
             // Splitting to chunks, just like in InsertOrMergeAsync
 
+            // ReSharper disable once PossibleMultipleEnumeration
             var candleByRowsChunks = candlesToReplace
                 .GroupBy(candle => CandleHistoryEntity.GenerateRowKey(candle.Timestamp, _timeInterval))
                 .Batch(100);
@@ -214,24 +216,46 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
         #region Delete
 
-        public async Task DeleteAsync(CandlePriceType priceType, CandleTimeInterval interval, DateTime fromIncluding, DateTime toNotIncluding)
+        public async Task DeleteAsync(CandlePriceType priceType, CandleTimeInterval interval, DateTime? fromInclusive, DateTime? toExclusive)
         {
+            var firstCandle = await TryGetFirstCandleAsync(priceType, interval);
+            // Return if there are no candles.
+            if (firstCandle == null)
+                return;
+
+            var realUpperLimit = toExclusive ?? DateTime.UtcNow.TruncateTo(interval).AddIntervalTicks(1, interval); // For being able to delete all the history till UtcNow.
+
+            // Also return if there are no candles before toExclusive.
+            if (realUpperLimit <= firstCandle.Timestamp)
+                return;
+
+            DateTime realLowerLimit;
+
+            if (fromInclusive == null || fromInclusive < firstCandle.Timestamp)
+                realLowerLimit = firstCandle.Timestamp;
+            else realLowerLimit = fromInclusive.Value;
+
+            // And the last check
+            if (realLowerLimit >= realUpperLimit)
+                return;
+
+            // Well, here we go)
+
             // Candles are stored in rows (each of which is represented by CandlesHistoryEntity) grouping them by the bigger time interval.
             // Thus, second candles are stored in rows containing all the candles for the given minute. Minute candles are grouped in the
             // row with all the minute candles for the same hour. Hours - in day rows. Days - in months. Weeks and months itself - in years.
             // So, first of all, we need to adjust the given date\time limits to the corresponding row time period. It will enable us to
             // iterate the rows in table for the given time interval and make a decision: if we can delete the whole row, or only some of
-            // its candles and the update the row.
+            // its candles and then update the row.
 
             var partitionKey = CandleHistoryEntity.GeneratePartitionKey(priceType);
             // The first-going row key and date:
-            var rowKey = CandleHistoryEntity.GenerateRowKey(fromIncluding, interval);
-            var rowKeyDate = DateTime.Parse(rowKey);
-            // For future use:
-            DateTime nextRowKeyDate;
+            var rowKey = CandleHistoryEntity.GenerateRowKey(realLowerLimit, interval);
+            var rowKeyDate = CandleHistoryEntity.ParseRowKey(rowKey);
 
-            while (rowKeyDate < toNotIncluding)
+            while (rowKeyDate < realUpperLimit)
             {
+                DateTime nextRowKeyDate;
                 // On every iteration we have the current row's begining date\time and the next row's begining date\time.
                 switch (interval)
                 {
@@ -251,24 +275,31 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                         nextRowKeyDate = rowKeyDate.AddMonths(1);
                         break;
 
-                    default: // Week or Month
+                    // Both week and month candles are stored in rows by year.
+                    case CandleTimeInterval.Week:
+                    case CandleTimeInterval.Month:
                         nextRowKeyDate = rowKeyDate.AddYears(1);
                         break;
+
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(interval), interval, null);
                 }
 
-                // Delete the whole row if it is inside [fromIncluding; toNotIncluding).
-                if (rowKeyDate >= fromIncluding &&
-                    nextRowKeyDate < toNotIncluding)
-                    await _tableStorage.DeleteIfExistAsync(partitionKey, rowKey); 
+                // Delete the whole row if it is inside [fromInclusive; toExclusive).
+                if (rowKeyDate >= realLowerLimit &&
+                    nextRowKeyDate <= realUpperLimit)
+                {
+                    await _tableStorage.DeleteIfExistAsync(partitionKey, rowKey);
+                }
                 else
                 {
                     // Otherwise, we need to make a decision about every Entity: which candles are to be deleted.
                     var entity = await _tableStorage.GetDataAsync(partitionKey, rowKey);
-                    if (entity?.Candles.Any() ?? false)
+                    if (entity != null)
                     {
                         entity.Candles.RemoveAll(c =>
-                            c.LastUpdateTimestamp.TruncateTo(interval) >= fromIncluding &&
-                            c.LastUpdateTimestamp.TruncateTo(interval) < toNotIncluding);
+                            c.LastUpdateTimestamp.TruncateTo(interval) >= realLowerLimit &&
+                            c.LastUpdateTimestamp.TruncateTo(interval) < realUpperLimit);
 
                         // If there are still any candles, we update the entity.
                         if (entity.Candles.Any())

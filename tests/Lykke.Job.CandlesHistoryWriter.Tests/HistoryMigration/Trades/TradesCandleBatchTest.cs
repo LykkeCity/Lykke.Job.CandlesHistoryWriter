@@ -15,8 +15,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
         private TradeHistoryItem[] _oneByManyTrades;
 
         private const string AssetPairId = "LTCUSD";
-        private const string AssetToken  = "663a1d65-cb66-4e8c-b51a-5b7f0f4817ecUSD";
-        private const string ReverseAssetToken = "USD663a1d65-cb66-4e8c-b51a-5b7f0f4817ec";
+        // ReSharper disable once UnusedMember.Local
+        private const string AssetToken  = "663a1d65-cb66-4e8c-b51a-5b7f0f4817ecUSD"; // Reserved
+        // ReSharper disable once UnusedMember.Local
+        private const string ReverseAssetToken = "USD663a1d65-cb66-4e8c-b51a-5b7f0f4817ec"; // Reserved
         private const double PriceEpsilon = 0.00001; // Price zccuracy for LTCUSD asset pair.
         private const double VolumeEpsilon = 0.0000000001; // Common volume accuracy (supposed to be good enougth).
 
@@ -199,8 +201,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
         {
             // Arrange
             // Act
-            var result = new TradesCandleBatch(AssetPairId, AssetToken, ReverseAssetToken, CandleTimeInterval.Sec,
-                _oneByOneTrades);
+            var result = new TradesCandleBatch(AssetPairId, CandleTimeInterval.Sec, _oneByOneTrades);
             var candle = result.Candles.FirstOrDefault();
 
             // Assert
@@ -221,8 +222,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
         {
             // Arrange
             // Act
-            var result = new TradesCandleBatch(AssetPairId, AssetToken, ReverseAssetToken, CandleTimeInterval.Sec,
-                _oneByTwoTrades);
+            var result = new TradesCandleBatch(AssetPairId, CandleTimeInterval.Sec, _oneByTwoTrades);
             var candle = result.Candles.FirstOrDefault();
 
             // Assert
@@ -243,8 +243,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
         {
             // Arrange
             // Act
-            var result = new TradesCandleBatch(AssetPairId, AssetToken, ReverseAssetToken, CandleTimeInterval.Sec,
-                _oneByManyTrades);
+            var result = new TradesCandleBatch(AssetPairId, CandleTimeInterval.Sec, _oneByManyTrades);
             var candle = result.Candles.FirstOrDefault();
 
             // Assert
