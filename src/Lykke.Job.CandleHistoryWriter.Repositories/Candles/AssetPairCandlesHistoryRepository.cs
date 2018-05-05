@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AzureStorage;
+using Common;
 using Common.Log;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services;
@@ -275,8 +276,10 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                         nextRowKeyDate = rowKeyDate.AddMonths(1);
                         break;
 
-                    // Both week and month candles are stored in rows by year.
                     case CandleTimeInterval.Week:
+                        nextRowKeyDate = DateTimeUtils.GetFirstWeekOfYear(rowKeyDate.AddYears(1));
+                        break;
+
                     case CandleTimeInterval.Month:
                         nextRowKeyDate = rowKeyDate.AddYears(1);
                         break;
