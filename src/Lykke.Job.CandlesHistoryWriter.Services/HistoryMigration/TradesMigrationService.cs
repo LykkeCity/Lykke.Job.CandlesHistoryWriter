@@ -93,7 +93,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                             // It's important for Constants.StoredIntervals to be ordered by time period increase,
                             // because we will calculate candles for each period based on previous period candles.
                             var currentCandles = interval == CandleTimeInterval.Sec
-                                ? new TradesCandleBatch(searchToken.AssetPairId, interval, tradesBatch)
+                                ? new TradesCandleBatch(searchToken.AssetPairId, searchToken.SearchToken, interval, tradesBatch)
                                 : new TradesCandleBatch(searchToken.AssetPairId, interval, smallerCandles);
 
                             ExtendStoredCandles(currentCandles);

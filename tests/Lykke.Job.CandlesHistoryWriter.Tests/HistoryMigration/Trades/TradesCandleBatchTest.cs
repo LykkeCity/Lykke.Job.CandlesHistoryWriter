@@ -15,11 +15,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
         private TradeHistoryItem[] _oneByManyTrades;
 
         private const string AssetPairId = "LTCUSD";
-        // ReSharper disable once UnusedMember.Local
-        private const string AssetToken  = "663a1d65-cb66-4e8c-b51a-5b7f0f4817ecUSD"; // Reserved
+        private const string AssetToken  = "663a1d65-cb66-4e8c-b51a-5b7f0f4817ecUSD";
         // ReSharper disable once UnusedMember.Local
         private const string ReverseAssetToken = "USD663a1d65-cb66-4e8c-b51a-5b7f0f4817ec"; // Reserved
-        private const double PriceEpsilon = 0.00001; // Price zccuracy for LTCUSD asset pair.
+        private const double PriceEpsilon = 0.00001; // Price accuracy for LTCUSD asset pair.
         private const double VolumeEpsilon = 0.0000000001; // Common volume accuracy (supposed to be good enougth).
 
         #region Initialization
@@ -31,13 +30,13 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
             {
                 new TradeHistoryItem
                 {
-                    Id = 1037222, AssetToken = "USD663a1d65-cb66-4e8c-b51a-5b7f0f4817ec", DateTime = DateTime.Parse("2018-02-05T09:58:27.4200000"), Direction = TradeDirection.Sell, Price = 1_000M,
+                    Id = 1037222, AssetToken = "663a1d65-cb66-4e8c-b51a-5b7f0f4817ecUSD", DateTime = DateTime.Parse("2018-02-05T09:58:27.4200000"), Direction = TradeDirection.Sell, Price = 1_000M,
                     OppositeOrderId = Guid.Parse("b18b46be-e8f9-43f2-a129-c028c8c72a13"), OppositeVolume = 1_000M, OrderId = Guid.Parse("bfaad618-359a-4403-9ccf-2f58009c9076"), Volume = 1M,
                     TradeId = "b18b46be-e8f9-43f2-a129-c028c8c72a13_bfaad618-359a-4403-9ccf-2f58009c9076"
                 },
                 new TradeHistoryItem
                 {
-                    Id = 1037223, AssetToken = "663a1d65-cb66-4e8c-b51a-5b7f0f4817ecUSD", DateTime = DateTime.Parse("2018-02-05T09:58:27.4200000"), Direction = TradeDirection.Buy, Price = 1_000M,
+                    Id = 1037223, AssetToken = "USD663a1d65-cb66-4e8c-b51a-5b7f0f4817ec", DateTime = DateTime.Parse("2018-02-05T09:58:27.4200000"), Direction = TradeDirection.Buy, Price = 1_000M,
                     OppositeOrderId = Guid.Parse("bfaad618-359a-4403-9ccf-2f58009c9076"), OppositeVolume = 1M, OrderId = Guid.Parse("b18b46be-e8f9-43f2-a129-c028c8c72a13"), Volume = 1_000M,
                     TradeId = "b18b46be-e8f9-43f2-a129-c028c8c72a13_bfaad618-359a-4403-9ccf-2f58009c9076"
                 },
@@ -201,7 +200,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
         {
             // Arrange
             // Act
-            var result = new TradesCandleBatch(AssetPairId, CandleTimeInterval.Sec, _oneByOneTrades);
+            var result = new TradesCandleBatch(AssetPairId, AssetToken, CandleTimeInterval.Sec, _oneByOneTrades);
             var candle = result.Candles.FirstOrDefault();
 
             // Assert
@@ -222,7 +221,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
         {
             // Arrange
             // Act
-            var result = new TradesCandleBatch(AssetPairId, CandleTimeInterval.Sec, _oneByTwoTrades);
+            var result = new TradesCandleBatch(AssetPairId, AssetToken, CandleTimeInterval.Sec, _oneByTwoTrades);
             var candle = result.Candles.FirstOrDefault();
 
             // Assert
@@ -243,7 +242,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
         {
             // Arrange
             // Act
-            var result = new TradesCandleBatch(AssetPairId, CandleTimeInterval.Sec, _oneByManyTrades);
+            var result = new TradesCandleBatch(AssetPairId, AssetToken, CandleTimeInterval.Sec, _oneByManyTrades);
             var candle = result.Candles.FirstOrDefault();
 
             // Assert

@@ -12,6 +12,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
         private const decimal Epsilon = 0.000_000_000_001M; // That should be enough.
 
         public string AssetId { get; }
+        private readonly string _assetToken;
         
         public CandleTimeInterval TimeInterval { get; }
 
@@ -23,9 +24,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 
         public IDictionary<DateTime, ICandle> Candles { get; }
         
-        public TradesCandleBatch(string assetId, CandleTimeInterval interval, IReadOnlyCollection<TradeHistoryItem> trades)
+        public TradesCandleBatch(string assetId, string assetToken, CandleTimeInterval interval, IReadOnlyCollection<TradeHistoryItem> trades)
         {
             AssetId = assetId;
+            _assetToken = assetToken;
             TimeInterval = interval;
 
             MinTimeStamp = DateTime.MaxValue;
@@ -53,7 +55,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             foreach (var trade in trades)
             {
                 // If the trade is straight or reverse.
-                var isStraight = Math.Abs(trade.Volume * trade.Price - trade.OppositeVolume)  < Epsilon; // Decimals are not always safe for comparation with ==. My life will never be the same ((
+                var isStraight = _assetToken == trade.AssetToken;
                 var volumeMultiplier = 1.0M / Math.Max(trades.Count(t => t.TradeId == trade.TradeId), 1.0M);
 
                 var truncatedDate = trade.DateTime.TruncateTo(TimeInterval);
