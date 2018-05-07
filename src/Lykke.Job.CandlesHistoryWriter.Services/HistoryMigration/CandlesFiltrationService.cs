@@ -46,7 +46,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 
             for (var i = Constants.StoredIntervals.Length - 1; i >= 0; i--)
             {
-                List<ICandle> currentCandles = null;
+                List<ICandle> currentCandles;
 
                 var interval = Constants.StoredIntervals[i];
                 if (i == Constants.StoredIntervals.Length - 1)

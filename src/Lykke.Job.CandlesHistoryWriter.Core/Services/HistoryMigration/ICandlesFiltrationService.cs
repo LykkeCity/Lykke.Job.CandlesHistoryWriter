@@ -1,8 +1,6 @@
 ﻿using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesProducer.Contract;
-using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Lykke.Job.CandlesHistoryWriter.Core.Services.HistoryMigration

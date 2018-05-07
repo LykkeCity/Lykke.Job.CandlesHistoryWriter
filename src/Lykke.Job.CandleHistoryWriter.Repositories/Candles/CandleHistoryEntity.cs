@@ -136,6 +136,26 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             return FormatRowKey(time);
         }
 
+        public static DateTime ParseRowKey(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                throw new ArgumentNullException(nameof(value));
+            }
+
+            if (DateTime.TryParseExact(value, "s", DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AdjustToUniversal, out var date))
+            {
+                return DateTime.SpecifyKind(date, DateTimeKind.Utc);
+            }
+
+            if (long.TryParse(value, out var ticks))
+            {
+                return new DateTime(ticks, DateTimeKind.Utc);
+            }
+
+            throw new InvalidOperationException($"Failed to parse RowKey '{value}' as DateTime");
+        }
+
         public int DeleteCandles(IEnumerable<ICandle> candlesToDelete)
         {
             var ticksToDelete = candlesToDelete
@@ -270,26 +290,6 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
         private static string FormatRowKey(DateTime dateUtc)
         {
             return dateUtc.ToString("s"); // sortable format
-        }
-
-        private static DateTime ParseRowKey(string value)
-        {
-            if (string.IsNullOrEmpty(value))
-            {
-                throw new ArgumentNullException(nameof(value));
-            }
-
-            if (DateTime.TryParseExact(value, "s", DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AdjustToUniversal, out var date))
-            {
-                return DateTime.SpecifyKind(date, DateTimeKind.Utc);
-            }
-
-            if (long.TryParse(value, out var ticks))
-            {
-                return new DateTime(ticks, DateTimeKind.Utc);
-            }
-
-            throw new InvalidOperationException($"Failed to parse RowKey '{value}' as DateTime");
         }
     }
 }

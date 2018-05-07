@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration;
@@ -82,12 +81,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                 return true;
             }
 
-            // We do not parallel the migration of different asset pairs consciously.
-            // If we have no upper date-time limit for migration, we migrate everything.
-            Task.Run(() => 
-                _tradesMigrationService.MigrateTradesCandlesAsync(preliminaryRemoval, removeByDate, assetSearchTokens)
-                    .GetAwaiter()
-                    .GetResult()); 
+            // 1. We do not parallel the migration of different asset pairs consciously.
+            // 2. If we have no upper date-time limit for migration, we migrate everything.
+            // 3. We do not await while the migration process is finished for it may take a lot of time. Immediately return to a caller code instead.
+            _tradesMigrationService.MigrateTradesCandlesAsync(preliminaryRemoval, removeByDate, assetSearchTokens); 
 
             return true;
         }
