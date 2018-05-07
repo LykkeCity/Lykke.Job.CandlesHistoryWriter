@@ -110,11 +110,14 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
 
                     if (result.Count == _sqlQueryBatchSize)
                     {
-                        var lastDateTime = result.Last().DateTime.TruncateTo(CandleTimeInterval.Sec);
+                        var lastDateTime = result.Last().DateTime;
                         var resultWithoutTail = result.TakeWhile(t => t.DateTime < lastDateTime).ToList();
 
-                        if (resultWithoutTail.Count != result.Count)
-                            result = resultWithoutTail;
+                        if (!resultWithoutTail.Any())
+                            throw new InvalidOperationException($"Got an SQL data batch of {result.Count} trade records with the same timestamp {lastDateTime:O}. " +
+                                                                $"Migration for asset pair {AssetPairId} will be terminated. Row offset was {StartingRowOffset} before the incident.");
+
+                        result = resultWithoutTail;
                     }
                     else _gotTheLastBatch = true; // If we have got smaller amount of records than _sqlQueryBatchSize, this only means we have the last batch now.
 
