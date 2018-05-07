@@ -22,6 +22,7 @@ using Lykke.Job.CandlesHistoryWriter.Models;
 using Lykke.Job.CandlesHistoryWriter.Services.Settings;
 using AzureQueueSettings = Lykke.AzureQueueIntegration.AzureQueueSettings;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
+using Lykke.MonitoringServiceApiCaller;
 
 namespace Lykke.Job.CandlesHistoryWriter
 {
@@ -137,6 +138,10 @@ namespace Lykke.Job.CandlesHistoryWriter
             try
             {
                 await ApplicationContainer.Resolve<IStartupManager>().StartAsync();
+
+                await AutoRegistrationInMonitoring.RegisterAsync(Configuration,
+                    Configuration.LoadSettings<AppSettings>().CurrentValue.MonitoringServiceClient.MonitoringServiceUrl, 
+                    Log);
 
                 await Log.WriteMonitorAsync("", "", "Started");
             }

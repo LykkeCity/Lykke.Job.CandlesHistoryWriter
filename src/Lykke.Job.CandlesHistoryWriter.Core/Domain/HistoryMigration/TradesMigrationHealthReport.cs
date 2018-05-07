@@ -1,11 +1,14 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 
-namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.HistoryProviders.TradesSQLHistory
+namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration
 {
     public class TradesMigrationHealthReport
     {
         public int SqlQueryBatchSize { get; }
+        public bool PreliminaryRemoval { get; }
+        public DateTime? RemoveByDate { get; }
 
         private TradesMigrationState _state;
         public TradesMigrationState State
@@ -27,27 +30,22 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.HistoryPro
 
         public IDictionary<string, TradesMigrationHealthReportItem> AssetReportItems { get; }
 
-        public TradesMigrationHealthReport(int sqlQueryBatchSize)
+        public TradesMigrationHealthReport(int sqlQueryBatchSize, bool preliminaryRemoval, DateTime? removeByDate)
         {
             SqlQueryBatchSize = sqlQueryBatchSize;
+            PreliminaryRemoval = preliminaryRemoval;
+            RemoveByDate = removeByDate;
             State = TradesMigrationState.InProgress;
             StartTime = DateTime.UtcNow;
             FinishTime = null;
-            AssetReportItems = new Dictionary<string, TradesMigrationHealthReportItem>();
+            AssetReportItems = new ConcurrentDictionary<string, TradesMigrationHealthReportItem>();
         }
     }
 
     public class TradesMigrationHealthReportItem
     {
-        public int StartingOffset { get; }
         public int SummaryFetchedTrades { get; set; }
         public int SummarySavedCandles { get; set; }
-
-        public TradesMigrationHealthReportItem(int startingOffset)
-        {
-            StartingOffset = startingOffset;
-            SummaryFetchedTrades = SummarySavedCandles = 0;
-        }
     }
 
     public enum TradesMigrationState

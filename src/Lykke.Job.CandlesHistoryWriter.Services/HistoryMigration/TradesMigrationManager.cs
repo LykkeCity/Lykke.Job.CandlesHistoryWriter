@@ -1,15 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using Common.Log;
 using JetBrains.Annotations;
-using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
-using Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.HistoryProviders.TradesSQLHistory;
-using Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryProviders.TradesSQLHistory;
-using Lykke.Job.CandlesProducer.Contract;
-using Constants = Lykke.Job.CandlesHistoryWriter.Services.Candles.Constants;
+using Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Assets;
+using Lykke.Job.CandlesHistoryWriter.Core.Services.HistoryMigration;
 
 namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 {
@@ -17,169 +13,80 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
     public class TradesMigrationManager
     {
         private readonly IAssetPairsManager _assetPairsManager;
-        private readonly ICandlesHistoryRepository _candlesHistoryRepository;
+        private readonly ITradesMigrationService _tradesMigrationService;
+        private readonly TradesMigrationHealthService _tradesMigrationHealthService;
         private readonly ILog _log;
 
-        private readonly string _sqlConnString;
         private readonly int _sqlQueryBatchSize;
-
-        public TradesMigrationHealthReport Health;
 
         public bool MigrationEnabled { get; }
 
         public TradesMigrationManager(
             IAssetPairsManager assetPairsManager,
-            ICandlesHistoryRepository candlesHistoryRepository,
+            ITradesMigrationService tradesMigrationServicey,
+            TradesMigrationHealthService tradesMigrationHealthService,
             ILog log,
-            string sqlConnString,
             int sqlQueryBatchSize,
             bool migrationEnabled
             )
         {
-            _assetPairsManager = assetPairsManager;
-            _candlesHistoryRepository = candlesHistoryRepository;
-            _log = log;
+            _assetPairsManager = assetPairsManager ?? throw new ArgumentNullException(nameof(assetPairsManager));
+            _tradesMigrationService = tradesMigrationServicey ?? throw new ArgumentNullException(nameof(tradesMigrationServicey));
+            _tradesMigrationHealthService = tradesMigrationHealthService ?? throw new ArgumentNullException(nameof(tradesMigrationHealthService));
+            _log = log ?? throw new ArgumentNullException(nameof(log));
 
-            _sqlConnString = sqlConnString;
             _sqlQueryBatchSize = sqlQueryBatchSize;
-
-            Health = null;
 
             MigrationEnabled = migrationEnabled;
         }
 
-        public bool Migrate(ITradesMigrationRequest request)
+        public bool Migrate(bool preliminaryRemoval, DateTime? removeByDate, string[] assetPairIds)
         {
             if (!MigrationEnabled)
                 return false;
 
             // We should not run migration multiple times before the first attempt ends.
-            if (Health != null && Health.State == TradesMigrationState.InProgress)
+            if (!_tradesMigrationHealthService.CanStartMigration)
                 return false;
-
-            Task.Run(() => DoMigrateAsync(request).GetAwaiter().GetResult());
-            return true;
-        }
-
-        private async Task DoMigrateAsync(ITradesMigrationRequest request)
-        {
-            Health = new TradesMigrationHealthReport(_sqlQueryBatchSize);
-
-            foreach (var migrationItem in request.MigrationItems)
+            
+            // First of all, we will check if we can store the requested asset pairs. Additionally, let's
+            // generate asset search tokens for using it in TradesSqlHistoryRepository (which has no access
+            // to AssetPairsManager).
+            var assetSearchTokens = new List<(string AssetPairId, string SearchToken, string ReverseSearchToken)>();
+            foreach (var assetPairId in assetPairIds)
             {
-                // First of all, we will check if we can store the requested asset pair via this instance of the job.
-                var storedAssetPair = await _assetPairsManager.TryGetEnabledPairAsync(migrationItem.AssetPairId);
+                var storedAssetPair = _assetPairsManager.TryGetEnabledPairAsync(assetPairId).GetAwaiter().GetResult();
                 if (storedAssetPair == null)
                 {
-                    await _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(DoMigrateAsync),
-                        $"Asset pair {migrationItem.AssetPairId} is not currently enabled. Skipping.");
+                     _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(Migrate),
+                        $"Trades migration: Asset pair {assetPairId} is not currently enabled. Skipping.").GetAwaiter().GetResult();
                     continue;
                 }
 
-                // The real asset ID + opposite asset ID:
-                var assetSearchToken = storedAssetPair.BaseAssetId + storedAssetPair.QuotingAssetId;
-
-                Health.AssetReportItems[migrationItem.AssetPairId] = new TradesMigrationHealthReportItem(migrationItem.OffsetFromTop);
-
-                using (var sqlRepo = new TradesSqlHistoryRepository(_sqlConnString, _sqlQueryBatchSize, _log,
-                    migrationItem.OffsetFromTop, assetSearchToken))
-                {
-                    await _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(DoMigrateAsync),
-                        $"Starting migration for {migrationItem.AssetPairId}, except firts {migrationItem.OffsetFromTop} records.");
-
-                    try
-                    {
-                        while (true)
-                        {
-                            var tradesBatch = await sqlRepo.GetNextBatchAsync();
-                            var batchCount = tradesBatch.Count();
-
-                            if (batchCount == 0)
-                                break;
-
-                            TradesCandleBatch smallerCandles = null;
-
-                            var batchInsertTasks = new List<Task>();
-
-                            // Now we can build sequentally candle batches for all the stored time intervals.
-                            // To avoid looking through the whole trades batch several times, we derive the
-                            // bigger time intervals from the smaller ones. For example, let's assume that we
-                            // generate 1000 sec candles from our batch of 2381 trades. Then, for calculating
-                            // minute candles we need to iterate only 1000 second candles, and this will give
-                            // us 16 minute candles. Next, we iterate 16 minute candles to get 1 hour candle,
-                            // and so on, instead of looking through 2381 trades for each time interval.
-                            foreach (var interval in Constants.StoredIntervals)
-                            {
-                                // It's important for Constants.StoredIntervals to be ordered by time period increase,
-                                // because we will calculate candles for each period based on previous period candles.
-                                var currentCandles = interval == CandleTimeInterval.Sec
-                                    ? new TradesCandleBatch(migrationItem.AssetPairId, interval, tradesBatch)
-                                    : new TradesCandleBatch(migrationItem.AssetPairId, interval, smallerCandles);
-
-                                ExtendStoredCandles(ref currentCandles);
-
-                                Health.AssetReportItems[migrationItem.AssetPairId].SummarySavedCandles +=
-                                    currentCandles.CandlesCount;
-
-                                // We can not derive month candles from weeks for they may lay out of the borders
-                                // of the month. While generating a month candles, we should use day candles as a
-                                // data source instead.
-                                if (interval != CandleTimeInterval.Week)
-                                    smallerCandles = currentCandles;
-
-                                // Preffered to perform inserting in parralel style.
-                                batchInsertTasks.Add(
-                                    _candlesHistoryRepository.InsertOrMergeAsync(
-                                        currentCandles.Candles.Values,
-                                        currentCandles.AssetId,
-                                        TradesCandleBatch.PriceType,
-                                        currentCandles.TimeInterval));
-                            }
-
-                            Health.AssetReportItems[migrationItem.AssetPairId].SummaryFetchedTrades += batchCount;
-
-                            Task.WaitAll(batchInsertTasks.ToArray());
-
-                            await _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(DoMigrateAsync),
-                                $"Batch of {batchCount} records for {migrationItem.AssetPairId} processed.");
-                        }
-
-                        await _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(DoMigrateAsync),
-                            $"Migration for {migrationItem.AssetPairId} finished. Total records migrated: {Health.AssetReportItems[migrationItem.AssetPairId].SummaryFetchedTrades}, total candles stored: {Health.AssetReportItems[migrationItem.AssetPairId].SummarySavedCandles}.");
-                    }
-                    catch (Exception ex)
-                    {
-                        Health.State = TradesMigrationState.Error;
-                        await _log.WriteErrorAsync(nameof(TradesMigrationManager), nameof(DoMigrateAsync), ex);
-                        await _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(DoMigrateAsync),
-                            $"Migration for {migrationItem.AssetPairId} interrupted due to error. Please, check error log for details.");
-                        return;
-                    }
-                }
+                assetSearchTokens.Add((
+                    AssetPairId: assetPairId,
+                    SearchToken: storedAssetPair.BaseAssetId + storedAssetPair.QuotingAssetId,
+                    ReverseSearchToken: storedAssetPair.QuotingAssetId + storedAssetPair.BaseAssetId));
             }
 
-            Health.State = TradesMigrationState.Finished;
-        }
+            // Creating a blank health report
+            _tradesMigrationHealthService.Prepare(_sqlQueryBatchSize, preliminaryRemoval, removeByDate);
 
-        private void ExtendStoredCandles(ref TradesCandleBatch current)
-        {
-            var storedCandles =
-                _candlesHistoryRepository.GetCandlesAsync(current.AssetId, current.TimeInterval, TradesCandleBatch.PriceType, current.MinTimeStamp,
-                    current.MaxTimeStamp.AddSeconds((int)current.TimeInterval)).GetAwaiter().GetResult().ToList();
-            if (!storedCandles.Any())
-                return;
-
-            for (int i = 0; i < current.CandlesCount; i++)
+            // If there is nothing to migrate, just return "success".
+            if (!assetSearchTokens.Any())
             {
-                var timestamp = current.Candles.Values.ElementAt(i).Timestamp;
-                var stored = storedCandles.FirstOrDefault(s => s.Timestamp == timestamp);
-                if (stored != null)
-                {
-                    current.Candles[timestamp.ToFileTimeUtc()] =
-                        stored.ExtendBy(current.Candles[timestamp.ToFileTimeUtc()]);
-                    storedCandles.Remove(stored);
-                }
+                _tradesMigrationHealthService.State = TradesMigrationState.Finished;
+                _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(Migrate),
+                        $"Trades migration: None of the requested asset pairs can be stored. Migration canceled.").GetAwaiter().GetResult();
+                return true;
             }
+
+            // 1. We do not parallel the migration of different asset pairs consciously.
+            // 2. If we have no upper date-time limit for migration, we migrate everything.
+            // 3. We do not await while the migration process is finished for it may take a lot of time. Immediately return to a caller code instead.
+            _tradesMigrationService.MigrateTradesCandlesAsync(preliminaryRemoval, removeByDate, assetSearchTokens); 
+
+            return true;
         }
     }
 }

@@ -71,6 +71,20 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             }
         }
 
+        public async Task DeleteCandlesAsync(string assetPairId, CandleTimeInterval interval, CandlePriceType priceType, DateTime? fromInclusive = null, DateTime? toExclusive = null)
+        {
+            var repo = GetRepo(assetPairId, interval);
+            try
+            {
+                await repo.DeleteAsync(priceType, interval, fromInclusive, toExclusive);
+            }
+            catch
+            {
+                ResetRepo(assetPairId, interval);
+                throw;
+            }
+        }
+
         public async Task<ICandle> TryGetFirstCandleAsync(string assetPairId, CandleTimeInterval interval, CandlePriceType priceType)
         {
             var repo = GetRepo(assetPairId, interval);
