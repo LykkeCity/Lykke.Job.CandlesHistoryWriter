@@ -156,7 +156,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
             commandBld.Append(@"SELECT Id, (Asset + OppositeAsset) AS AssetToken, Direction, Volume, Price, ""DateTime"", OppositeVolume, OrderId, OppositeOrderId, TradeId ");
             commandBld.Append("FROM Trades ");
             commandBld.Append("WHERE ");
-            commandBld.Append(@"OrderType = 'Limit' AND (Asset + OppositeAsset = '@SearchToken' OR OppositeAsset + Asset = '@SearchToken') AND Direction IN ('Buy', 'Sell') ");
+            commandBld.Append(@"OrderType = 'Limit' AND (Asset + OppositeAsset = @SearchToken OR OppositeAsset + Asset = @SearchToken) AND Direction IN ('Buy', 'Sell') ");
             if (MigrateByDate.HasValue)
             {
                 sqlParameters.Add(new SqlParameter("@MigrateByDate", MigrateByDate));
