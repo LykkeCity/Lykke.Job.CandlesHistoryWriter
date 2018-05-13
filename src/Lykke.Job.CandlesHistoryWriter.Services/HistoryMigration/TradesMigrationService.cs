@@ -96,7 +96,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                                 ? new TradesCandleBatch(searchToken.AssetPairId, searchToken.SearchToken, interval, tradesBatch)
                                 : new TradesCandleBatch(searchToken.AssetPairId, interval, smallerCandles);
 
-                            ExtendStoredCandles(currentCandles);
+                            await ExtendStoredCandles(currentCandles);
 
                             _tradesMigrationHealthService[searchToken.AssetPairId].SummarySavedCandles +=
                                 currentCandles.Candles.Count;
@@ -161,22 +161,27 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
         /// <summary>
         /// Tries to load candles from the storage and then extends em by the given newly-calculated candles batch for the same time stamps.
         /// </summary>
-        private void ExtendStoredCandles(TradesCandleBatch current)
+        private async Task ExtendStoredCandles(TradesCandleBatch current)
         {
-            var storedCandles =
-                _candlesHistoryRepository.GetCandlesAsync(current.AssetId, current.TimeInterval, TradesCandleBatch.PriceType, current.MinTimeStamp,
-                    current.MaxTimeStamp.AddSeconds((int)current.TimeInterval)).GetAwaiter().GetResult().ToList();
-            if (!storedCandles.Any())
+            var storedCandles = await _candlesHistoryRepository.GetCandlesAsync(
+                current.AssetId,
+                current.TimeInterval,
+                TradesCandleBatch.PriceType,
+                current.MinTimeStamp,
+                current.MaxTimeStamp.AddSeconds((int) current.TimeInterval));
+
+            var storedCandlesDictionary = storedCandles.ToDictionary(c => c.Timestamp, c => c);
+
+            if (!storedCandlesDictionary.Any())
                 return;
 
-            foreach (var candle in current.Candles.Values)
+            foreach (var candle in current.Candles.Values.ToArray())
             {
                 var timestamp = candle.Timestamp;
-                var stored = storedCandles.FirstOrDefault(s => s.Timestamp == timestamp);
-                if (stored != null)
+                
+                if (storedCandlesDictionary.TryGetValue(timestamp, out var stored))
                 {
                     current.Candles[timestamp] = stored.ExtendBy(candle);
-                    storedCandles.Remove(stored);
                 }
             }
         }
