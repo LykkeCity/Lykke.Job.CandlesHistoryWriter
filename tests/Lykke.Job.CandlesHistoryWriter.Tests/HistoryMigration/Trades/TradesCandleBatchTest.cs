@@ -24,6 +24,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
         private const string ReverseAssetToken = "USD663a1d65-cb66-4e8c-b51a-5b7f0f4817ec"; // Reserved
         private const double PriceEpsilon = 0.00001; // Price accuracy for LTCUSD asset pair.
         private const double VolumeEpsilon = 0.0000000001; // Common volume accuracy (supposed to be good enougth).
+        private const int PersistenceQueueLimit = 10_000;
 
         #region Initialization
 
@@ -205,7 +206,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
             // Arrange
             var healthService = new TradesMigrationHealthService();
             healthService.Prepare(10_000, null);
-            var historyMaker = new TradesMigrationService.TradesProcessor(healthService, new CandlesHistoryRepositoryMock(), AssetToken);
+            var historyMaker = new TradesMigrationService.TradesProcessor(healthService, new CandlesHistoryRepositoryMock(), AssetToken, PersistenceQueueLimit);
 
             // Act
             historyMaker.ProcessTradesBatch(_oneByOneTrades).GetAwaiter().GetResult();
@@ -231,7 +232,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
             // Arrange
             var healthService = new TradesMigrationHealthService();
             healthService.Prepare(10_000, null);
-            var historyMaker = new TradesMigrationService.TradesProcessor(healthService, new CandlesHistoryRepositoryMock(), AssetToken);
+            var historyMaker = new TradesMigrationService.TradesProcessor(healthService, new CandlesHistoryRepositoryMock(), AssetToken, PersistenceQueueLimit);
 
             // Act
             historyMaker.ProcessTradesBatch(_oneByTwoTrades).GetAwaiter().GetResult();
@@ -257,7 +258,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
             // Arrange
             var healthService = new TradesMigrationHealthService();
             healthService.Prepare(10_000, null);
-            var historyMaker = new TradesMigrationService.TradesProcessor(healthService, new CandlesHistoryRepositoryMock(), AssetToken);
+            var historyMaker = new TradesMigrationService.TradesProcessor(healthService, new CandlesHistoryRepositoryMock(), AssetToken, PersistenceQueueLimit);
 
             // Act
             historyMaker.ProcessTradesBatch(_oneByManyTrades).GetAwaiter().GetResult();
