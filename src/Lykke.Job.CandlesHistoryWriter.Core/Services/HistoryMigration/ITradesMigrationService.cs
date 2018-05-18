@@ -9,9 +9,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Services.HistoryMigration
         /// <summary>
         /// Performs data migration from Trades SQL source to candles history repository.
         /// </summary>
-        /// <param name="preliminaryRemoval">Defines if it is needed to remove the earlier-migrated candles from storage.</param>
         /// <param name="migrateByDate">The date and time upper limit (exclusive) for candles migration.</param>
         /// <param name="assetSearchTokens">Search parameters for asset pairs.</param>
-        Task MigrateTradesCandlesAsync(bool preliminaryRemoval, DateTime? migrateByDate, List<(string AssetPairId, string SearchToken, string ReverseSearchToken)> assetSearchTokens);
+        Task MigrateTradesCandlesAsync(DateTime? migrateByDate, List<(string AssetPairId, string SearchToken, string ReverseSearchToken)> assetSearchTokens);
     }
 }

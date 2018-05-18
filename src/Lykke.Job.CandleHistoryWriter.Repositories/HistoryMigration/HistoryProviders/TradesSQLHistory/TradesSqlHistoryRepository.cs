@@ -90,7 +90,8 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
                                     OppositeVolume = reader.GetDecimal(6),
                                     OrderId = Guid.Parse(reader.GetString(7)),
                                     OppositeOrderId = Guid.Parse(reader.GetString(8)),
-                                    TradeId = reader.GetString(9)
+                                    TradeId = reader.GetString(9),
+                                    IsStraight = reader.GetString(1) == SearchToken // If the trade is straight or reverse.
                                 });
                             }
                         }
@@ -110,7 +111,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
 
                     if (result.Count == _sqlQueryBatchSize)
                     {
-                        var lastDateTime = result.Last().DateTime;
+                        var lastDateTime = result.Last().DateTime.TruncateTo(CandleTimeInterval.Sec);
                         var resultWithoutTail = result.TakeWhile(t => t.DateTime < lastDateTime).ToList();
 
                         if (!resultWithoutTail.Any())
@@ -123,7 +124,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
 
                     await _log.WriteInfoAsync(nameof(TradesSqlHistoryRepository), nameof(GetNextBatchAsync),
                         $"Starting offset = {StartingRowOffset}, asset pair ID = {AssetPairId}",
-                        $"Fetched {result.Count} rows successfully.");
+                        $"Fetched {result.Count} rows successfully. First date is {result.First().DateTime:O}, last date is {result.Last().DateTime:O}");
 
                     StartingRowOffset += result.Count;
                 }

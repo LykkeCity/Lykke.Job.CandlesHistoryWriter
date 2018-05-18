@@ -14,6 +14,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.HistoryPro
         public Guid OrderId { get; set; }
         public Guid OppositeOrderId { get; set; }
         public string TradeId { get; set; }
+        public bool IsStraight { get; set; }
     }
 
     public enum TradeDirection

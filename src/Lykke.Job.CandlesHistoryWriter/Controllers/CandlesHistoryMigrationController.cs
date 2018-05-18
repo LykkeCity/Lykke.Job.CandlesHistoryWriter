@@ -1,9 +1,8 @@
-﻿using System;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using Lykke.Common.Api.Contract.Responses;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.HistoryMigration.HistoryProviders;
 using Lykke.Job.CandlesHistoryWriter.Models.Filtration;
+using Lykke.Job.CandlesHistoryWriter.Models.Migration;
 using Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration;
 using Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration.HistoryProviders.MeFeedHistory;
 using Microsoft.AspNetCore.Mvc;
@@ -12,11 +11,17 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
     [Route("api/[controller]")]
     public class CandlesHistoryMigrationController : Controller
     {
+        #region PrivateFields
+
         private readonly CandlesMigrationManager _candlesMigrationManager;
         private readonly TradesMigrationManager _tradesMigrationManager;
         private readonly CandlesFiltrationManager _candlesFiltrationManager;
         private readonly IHistoryProvidersManager _historyProvidersManager;
         private readonly TradesMigrationHealthService _tradesMigrationHealthService;
+
+        #endregion
+
+        #region Init
 
         public CandlesHistoryMigrationController(
             CandlesMigrationManager candlesMigrationManager, 
@@ -31,6 +36,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
             _historyProvidersManager = historyProvidersManager;
             _tradesMigrationHealthService = tradesMigrationHealthService;
         }
+
+        #endregion
+
+        #region QuotesMigration
 
         /// <summary>
         /// Initiates a candles history migration session for the given asset pair.
@@ -82,31 +91,33 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
             return Ok(_candlesMigrationManager.Health[assetPair]);
         }
 
+        #endregion
+
+        #region TradesMigration
+
         /// <summary>
         /// Starts execution of the trades-to-candles migration process.
         /// </summary>
-        /// <param name="preliminaryRemoval">Use this, if you want to remove the existing trades candles first.</param>
-        /// <param name="removeByDate">Optional. The date (and time, if needed) which defines the upper limit (exclusive) for preliminary removal for all asset pairs. 
-        /// If it is empty, it is interpreted as "Remove all existing trades candles".</param>
-        /// <param name="assetPairIds">The list of asset pair IDs to migrate.</param>
-        /// <returns></returns>
         [HttpPost]
         [Route("trades")]
-        public IActionResult MigrateTrades(bool preliminaryRemoval, DateTime? removeByDate, string[] assetPairIds)
+        public IActionResult MigrateTrades([FromBody] TradesMigrationRequestModel request)
         {
-            if (!_tradesMigrationManager.MigrationEnabled)
-                return Ok("Migration is currently disabled in application settings.");
+            if (request == null)
+                return BadRequest("The request data is corrupted - unable to deserialize.");
 
-            if (removeByDate.HasValue && removeByDate > DateTime.UtcNow)
-                ErrorResponse.Create("Remove-by date-time should not be in the future.");
-                
+            if (!request.CheckupModel(out var modelErrors))
+            {
+                return BadRequest(new ErrorResponse
+                    {
+                        ErrorMessage = "Inconsistent request.",
+                        ModelErrors = modelErrors
+                    });
+            }
 
-            if (!assetPairIds?.Any() ?? true)
-                return BadRequest(
-                    ErrorResponse.Create("Please, specify at least one asset pair ID to migrate."));
+            // ---
 
-            // This method is sync but internally starts a new task and returns
-            var migrationStarted = _tradesMigrationManager.Migrate(preliminaryRemoval, removeByDate, assetPairIds);
+            // This method is sync but internally it starts a new task and returns
+            var migrationStarted = _tradesMigrationManager.Migrate(request.TimestampUpperLimit, request.AssetPairIds);
 
             if (migrationStarted)
                 return Ok();
@@ -133,6 +144,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
 
             return Ok(healthReport);
         }
+
+        #endregion
+
+        #region CandlesFiltration
 
         /// <summary>
         /// Initiates search and correction of candles with extremal prices session.
@@ -184,5 +199,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
 
             return Ok(healthReport);
         }
+
+        #endregion
     }
 }

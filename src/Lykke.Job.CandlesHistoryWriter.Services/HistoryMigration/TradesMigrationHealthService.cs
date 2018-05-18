@@ -18,9 +18,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             set => _health.State = value;
         }
 
-        public void Prepare(int sqlQueryBatchSize, bool preliminaryRemoval, DateTime? removeByDate)
+        public void Prepare(int sqlQueryBatchSize, DateTime? removeByDate)
         {
-            _health = new TradesMigrationHealthReport(sqlQueryBatchSize, preliminaryRemoval, removeByDate);
+            _health = new TradesMigrationHealthReport(sqlQueryBatchSize, removeByDate);
         }
 
         public TradesMigrationHealthReportItem this [string key]
