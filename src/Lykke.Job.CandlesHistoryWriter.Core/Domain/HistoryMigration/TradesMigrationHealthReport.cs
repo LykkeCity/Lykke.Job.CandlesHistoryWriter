@@ -7,8 +7,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration
     public class TradesMigrationHealthReport
     {
         public int SqlQueryBatchSize { get; }
-        public bool PreliminaryRemoval { get; }
         public DateTime? RemoveByDate { get; }
+        public int PersistenceQueueSize { get; set; }
 
         private TradesMigrationState _state;
         public TradesMigrationState State
@@ -30,10 +30,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration
 
         public IDictionary<string, TradesMigrationHealthReportItem> AssetReportItems { get; }
 
-        public TradesMigrationHealthReport(int sqlQueryBatchSize, bool preliminaryRemoval, DateTime? removeByDate)
+        public TradesMigrationHealthReport(int sqlQueryBatchSize, DateTime? removeByDate)
         {
             SqlQueryBatchSize = sqlQueryBatchSize;
-            PreliminaryRemoval = preliminaryRemoval;
             RemoveByDate = removeByDate;
             State = TradesMigrationState.InProgress;
             StartTime = DateTime.UtcNow;
@@ -46,6 +45,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration
     {
         public int SummaryFetchedTrades { get; set; }
         public int SummarySavedCandles { get; set; }
+        public DateTime CurrentTradeBatchBegining { get; set; }
+        public DateTime CurrentTradeBatchEnding { get; set; }
     }
 
     public enum TradesMigrationState

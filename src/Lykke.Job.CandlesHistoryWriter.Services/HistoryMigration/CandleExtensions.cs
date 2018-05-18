@@ -1,21 +1,15 @@
 ﻿using System;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
+using Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.HistoryProviders.TradesSQLHistory;
 using Lykke.Job.CandlesProducer.Contract;
 
 namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 {
-    static class CandleExtensions
+    internal static class CandleExtensions
     {
         /// <summary>
-        /// This method was originally developed for the purpose of Trades migrations from Azure SQL table.
-        /// The table' structure allows only to operate with Id (autoincremental integer) and DateTime
-        /// (rounded to seconds) fields. So, if we have 2 second candles with equal DateTime properties, we 
-        /// need to checkup IDs: the lower is the older one. But this logic stops working when we do not
-        /// have a warranty of candle processing order ascending by Id.
+        /// Extends a candle by another one candle. These two candles must be compatible by TimeStamp, TimeInterval and PriceType.
         /// </summary>
-        /// <param name="self"></param>
-        /// <param name="newCandle"></param>
-        /// <returns></returns>
         public static ICandle ExtendBy(this ICandle self, ICandle newCandle)
         {
             if (self.Timestamp != newCandle.Timestamp)
@@ -45,6 +39,19 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             );
         }
 
+        /// <summary>
+        /// Extends a candle by a trade, if trade's DateTime corresponds to candle's TimeStamp (i.e., the trade belongs to the same time period).
+        /// </summary>
+        public static ICandle ExtendBy(this ICandle self, TradeHistoryItem trade, decimal volumeMultiplier = 1.0M)
+        {
+            var tradeCandle = trade.CreateCandle(self.AssetPairId, self.PriceType, self.TimeInterval, volumeMultiplier);
+
+            return self.ExtendBy(tradeCandle);
+        }
+
+        /// <summary>
+        /// Creates a new candle with all of the parameter values from self but with new time interval.
+        /// </summary>
         public static ICandle RebaseToInterval(this ICandle self, CandleTimeInterval newInterval)
         {
             return Candle.Create(
@@ -60,6 +67,38 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                 self.TradingOppositeVolume,
                 self.LastTradePrice,
                 self.LastUpdateTimestamp
+            );
+        }
+    }
+
+    internal static class TradeHistoryItemExtensions
+    {
+        /// <summary>
+        /// Detects if the given trade item lays in time borders of the given candle.
+        /// </summary>
+        public static bool BelongsTo(this TradeHistoryItem trade, ICandle candle)
+        {
+            var nextCandleTimestamp = candle.Timestamp.AddIntervalTicks(1, candle.TimeInterval);
+
+            return trade.DateTime >= candle.Timestamp && 
+                   trade.DateTime < nextCandleTimestamp;
+        }
+
+        public static ICandle CreateCandle(this TradeHistoryItem trade, string assetPairId, CandlePriceType priceType, CandleTimeInterval interval, decimal volumeMultiplier = 1.0M)
+        {
+            return Candle.Create(
+                assetPairId,
+                priceType,
+                interval,
+                trade.DateTime.TruncateTo(interval),
+                (double)trade.Price,
+                (double)trade.Price,
+                (double)trade.Price,
+                (double)trade.Price,
+                Convert.ToDouble((trade.IsStraight ? trade.Volume : trade.OppositeVolume) * volumeMultiplier),
+                Convert.ToDouble((trade.IsStraight ? trade.OppositeVolume : trade.Volume) * volumeMultiplier),
+                0, // Last Trade Price is enforced to be = 0
+                trade.DateTime
             );
         }
     }

@@ -40,7 +40,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             MigrationEnabled = migrationEnabled;
         }
 
-        public bool Migrate(bool preliminaryRemoval, DateTime? removeByDate, string[] assetPairIds)
+        public bool Migrate(DateTime? removeByDate, string[] assetPairIds)
         {
             if (!MigrationEnabled)
                 return false;
@@ -70,7 +70,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             }
 
             // Creating a blank health report
-            _tradesMigrationHealthService.Prepare(_sqlQueryBatchSize, preliminaryRemoval, removeByDate);
+            _tradesMigrationHealthService.Prepare(_sqlQueryBatchSize, removeByDate);
 
             // If there is nothing to migrate, just return "success".
             if (!assetSearchTokens.Any())
@@ -84,7 +84,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             // 1. We do not parallel the migration of different asset pairs consciously.
             // 2. If we have no upper date-time limit for migration, we migrate everything.
             // 3. We do not await while the migration process is finished for it may take a lot of time. Immediately return to a caller code instead.
-            _tradesMigrationService.MigrateTradesCandlesAsync(preliminaryRemoval, removeByDate, assetSearchTokens); 
+            _tradesMigrationService.MigrateTradesCandlesAsync(removeByDate, assetSearchTokens); 
 
             return true;
         }
