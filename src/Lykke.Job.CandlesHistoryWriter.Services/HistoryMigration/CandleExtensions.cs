@@ -78,10 +78,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
         /// </summary>
         public static bool BelongsTo(this TradeHistoryItem trade, ICandle candle)
         {
-            var nextCandleTimestamp = candle.Timestamp.AddIntervalTicks(1, candle.TimeInterval);
-
-            return trade.DateTime >= candle.Timestamp && 
-                   trade.DateTime < nextCandleTimestamp;
+            return trade.DateTime.TruncateTo(candle.TimeInterval) == candle.Timestamp;
         }
 
         public static ICandle CreateCandle(this TradeHistoryItem trade, string assetPairId, CandlePriceType priceType, CandleTimeInterval interval, decimal volumeMultiplier = 1.0M)

@@ -206,7 +206,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
             // Arrange
             var healthService = new TradesMigrationHealthService();
             healthService.Prepare(10_000, null);
-            var historyMaker = new TradesMigrationService.TradesProcessor(healthService, new CandlesHistoryRepositoryMock(), AssetToken, PersistenceQueueLimit);
+            var historyMaker = new TradesMigrationService.TradesProcessor(healthService, new CandlesHistoryRepositoryMock(), AssetToken, PersistenceQueueLimit, null);
 
             // Act
             historyMaker.ProcessTradesBatch(_oneByOneTrades).GetAwaiter().GetResult();
@@ -232,7 +232,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
             // Arrange
             var healthService = new TradesMigrationHealthService();
             healthService.Prepare(10_000, null);
-            var historyMaker = new TradesMigrationService.TradesProcessor(healthService, new CandlesHistoryRepositoryMock(), AssetToken, PersistenceQueueLimit);
+            var historyMaker = new TradesMigrationService.TradesProcessor(healthService, new CandlesHistoryRepositoryMock(), AssetToken, PersistenceQueueLimit, null);
 
             // Act
             historyMaker.ProcessTradesBatch(_oneByTwoTrades).GetAwaiter().GetResult();
@@ -258,7 +258,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
             // Arrange
             var healthService = new TradesMigrationHealthService();
             healthService.Prepare(10_000, null);
-            var historyMaker = new TradesMigrationService.TradesProcessor(healthService, new CandlesHistoryRepositoryMock(), AssetToken, PersistenceQueueLimit);
+            var historyMaker = new TradesMigrationService.TradesProcessor(healthService, new CandlesHistoryRepositoryMock(), AssetToken, PersistenceQueueLimit, null);
 
             // Act
             historyMaker.ProcessTradesBatch(_oneByManyTrades).GetAwaiter().GetResult();
