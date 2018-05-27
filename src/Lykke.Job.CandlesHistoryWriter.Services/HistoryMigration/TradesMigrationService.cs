@@ -42,7 +42,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             _sqlConnString = sqlConnString;
             _sqlQueryBatchSize = sqlQueryBatchSize;
             _sqlTimeout = sqlTimeout;
-            _candlesPersistenceQueueMaxSize = candlesPersistenceQueueMaxSize;
+            _candlesPersistenceQueueMaxSize = Convert.ToInt32(candlesPersistenceQueueMaxSize * 1.1);  // Safe reserve
         }
 
         #region Public
@@ -120,7 +120,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 
                 PersistenceCandleQueue = new Dictionary<CandleTimeInterval, List<ICandle>>();
                 foreach (var si in Candles.Constants.StoredIntervals)
-                    PersistenceCandleQueue.Add(si, new List<ICandle>(Convert.ToInt32(_persistenceQueueMaxSize * 1.1))); // Safe reserve
+                    PersistenceCandleQueue.Add(si, new List<ICandle>(_persistenceQueueMaxSize));
 
                 _activeCandles = new Dictionary<CandleTimeInterval, ICandle>();
             }
@@ -138,31 +138,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                     await ProcessTrade(trade, volumeMultiplier);
                 }
 
-                // If there still remain any active candles which have not been added to persistent queue till this moment.
-                foreach (var interval in Candles.Constants.StoredIntervals)
-                {
-                    if (!_activeCandles.TryGetValue(interval, out var unsavedActiveCandle))
-                        continue;
-
-                    if (PersistenceCandleQueue[interval].Any(c => c.Timestamp == unsavedActiveCandle.Timestamp))
-                        continue;
-
-                    // But we save only candles which are fully completed by the _upperDateLimit moment.
-                    // I.e., if we have _upperDateLimit = 2018.03.05 16:00:15, we should store only the:
-                    // - second candles with timestamp not later than 16:00:14;
-                    // - minute candles not later than 15:59:00;
-                    // - hour candles not later than 15:00:00;
-                    // - day candle not later than 2018.03.04;
-                    // - week candles not later than 2018.02.26;
-                    // - and, finally, month candles not later than 2018.02.
-                    if (_upperDateLimit != null &&
-                        unsavedActiveCandle.Timestamp
-                            .AddIntervalTicks(1, unsavedActiveCandle.TimeInterval) > _upperDateLimit)
-                        continue;
-
-                    PersistenceCandleQueue[interval].Add(unsavedActiveCandle);
-                }
-
                 _healthService.Health.PersistenceQueueSize = PersistenceQueueSize;
             }
 
@@ -172,8 +147,24 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 
                 foreach (var interval in Candles.Constants.StoredIntervals)
                 {
-                    
+                    // If there still remain any active candles which have not been added to persistent queue till this moment.
+                    if (_activeCandles.TryGetValue(interval, out var unsavedActiveCandle) &&
+                        PersistenceCandleQueue[interval].All(c => c.Timestamp != unsavedActiveCandle.Timestamp))
+                    {
+                        // But we save only candles which are fully completed by the _upperDateLimit moment.
+                        // I.e., if we have _upperDateLimit = 2018.03.05 16:00:15, we should store only the:
+                        // - second candles with timestamp not later than 16:00:14;
+                        // - minute candles not later than 15:59:00;
+                        // - hour candles not later than 15:00:00;
+                        // - day candle not later than 2018.03.04;
+                        // - week candles not later than 2018.02.26;
+                        // - and, finally, month candles not later than 2018.02.
+                        if (_upperDateLimit == null || 
+                            unsavedActiveCandle.Timestamp.AddIntervalTicks(1, unsavedActiveCandle.TimeInterval) <= _upperDateLimit)
+                            PersistenceCandleQueue[interval].Add(unsavedActiveCandle);
+                    }
 
+                    // And now, we save the resulting candles to storage (if any).
                     if (!PersistenceCandleQueue[interval].Any()) continue;
 
                     dataWritingTasks.Add(_historyRepo.ReplaceCandlesAsync(PersistenceCandleQueue[interval]));
@@ -223,7 +214,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                     _healthService[_assetPairId].SummarySavedCandles +=
                         PersistenceCandleQueue[interval].Count;
 
-                    PersistenceCandleQueue[interval] = new List<ICandle>();
+                    PersistenceCandleQueue[interval] = new List<ICandle>(_persistenceQueueMaxSize);
                 }
 
                 await Task.WhenAll(dataWritingTasks);
