@@ -206,15 +206,17 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
             // Arrange
             var healthService = new TradesMigrationHealthService();
             healthService.Prepare(10_000, null);
-            var historyMaker = new TradesMigrationService.TradesProcessor(healthService, new CandlesHistoryRepositoryMock(), AssetToken, PersistenceQueueLimit, null);
+            var repo = new CandlesHistoryRepositoryMock();
+            var historyMaker = new TradesMigrationService.TradesProcessor(healthService, repo, AssetToken, PersistenceQueueLimit, null);
 
             // Act
             historyMaker.ProcessTradesBatch(_oneByOneTrades).GetAwaiter().GetResult();
+            historyMaker.FlushCandlesIfAny().Wait();
 
             // Assert
-            Assert.AreEqual(historyMaker.PersistenceCandleQueue.Count, 6);
+            Assert.AreEqual(repo.Candles.Count, 6);
 
-            var secondsCandle = historyMaker.PersistenceCandleQueue[CandleTimeInterval.Sec].Single();
+            var secondsCandle = repo.Candles[CandleTimeInterval.Sec].Single();
 
             Assert.IsTrue(Math.Abs(secondsCandle.Open  - 1_000) < PriceEpsilon);
             Assert.IsTrue(Math.Abs(secondsCandle.Close - 1_000) < PriceEpsilon);
@@ -232,15 +234,17 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
             // Arrange
             var healthService = new TradesMigrationHealthService();
             healthService.Prepare(10_000, null);
-            var historyMaker = new TradesMigrationService.TradesProcessor(healthService, new CandlesHistoryRepositoryMock(), AssetToken, PersistenceQueueLimit, null);
+            var repo = new CandlesHistoryRepositoryMock();
+            var historyMaker = new TradesMigrationService.TradesProcessor(healthService, repo, AssetToken, PersistenceQueueLimit, null);
 
             // Act
             historyMaker.ProcessTradesBatch(_oneByTwoTrades).GetAwaiter().GetResult();
+            historyMaker.FlushCandlesIfAny().Wait();
 
             // Assert
-            Assert.AreEqual(historyMaker.PersistenceCandleQueue.Count, 6);
+            Assert.AreEqual(repo.Candles.Count, 6);
 
-            var secondsCandle = historyMaker.PersistenceCandleQueue[CandleTimeInterval.Sec].Single();
+            var secondsCandle = repo.Candles[CandleTimeInterval.Sec].Single();
 
             Assert.IsTrue(Math.Abs(secondsCandle.Open  - 100_000) < PriceEpsilon);
             Assert.IsTrue(Math.Abs(secondsCandle.Close - 100_000) < PriceEpsilon);
@@ -258,15 +262,17 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
             // Arrange
             var healthService = new TradesMigrationHealthService();
             healthService.Prepare(10_000, null);
-            var historyMaker = new TradesMigrationService.TradesProcessor(healthService, new CandlesHistoryRepositoryMock(), AssetToken, PersistenceQueueLimit, null);
+            var repo = new CandlesHistoryRepositoryMock();
+            var historyMaker = new TradesMigrationService.TradesProcessor(healthService, repo, AssetToken, PersistenceQueueLimit, null);
 
             // Act
             historyMaker.ProcessTradesBatch(_oneByManyTrades).GetAwaiter().GetResult();
+            historyMaker.FlushCandlesIfAny().Wait();
 
             // Assert
-            Assert.AreEqual(historyMaker.PersistenceCandleQueue.Count, 6);
+            Assert.AreEqual(repo.Candles.Count, 6);
 
-            var secondsCandle = historyMaker.PersistenceCandleQueue[CandleTimeInterval.Sec].Single();
+            var secondsCandle = repo.Candles[CandleTimeInterval.Sec].Single();
 
             Assert.IsTrue(Math.Abs(secondsCandle.Open  - 10) < PriceEpsilon);
             Assert.IsTrue(Math.Abs(secondsCandle.Close - 10) < PriceEpsilon);
@@ -282,8 +288,19 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
 
     public class CandlesHistoryRepositoryMock : ICandlesHistoryRepository
     {
+        public readonly Dictionary<CandleTimeInterval, List<ICandle>> Candles;
+
+        public CandlesHistoryRepositoryMock()
+        {
+            Candles = new Dictionary<CandleTimeInterval, List<ICandle>>();
+            foreach (var si in Services.Candles.Constants.StoredIntervals)
+                Candles.Add(si, new List<ICandle>());
+        }
+
         public async Task<int> ReplaceCandlesAsync(IReadOnlyList<ICandle> candlesToReplace)
         {
+            Candles[candlesToReplace.First().TimeInterval].AddRange(candlesToReplace);
+
             await Task.Delay(10);
             return 0;
         }
