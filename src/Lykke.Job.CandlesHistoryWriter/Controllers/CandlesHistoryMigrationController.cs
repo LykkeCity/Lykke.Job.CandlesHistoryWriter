@@ -105,14 +105,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
             if (request == null)
                 return BadRequest("The request data is corrupted - unable to deserialize.");
 
-            if (!request.CheckupModel(out var modelErrors))
-            {
-                return BadRequest(new ErrorResponse
-                    {
-                        ErrorMessage = "Inconsistent request.",
-                        ModelErrors = modelErrors
-                    });
-            }
+            var checkupResult = request.CheckupModel();
+            if (!checkupResult.IsValid)
+                return BadRequest(checkupResult);
 
             // ---
 

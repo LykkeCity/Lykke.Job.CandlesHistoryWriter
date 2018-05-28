@@ -42,7 +42,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             _sqlConnString = sqlConnString;
             _sqlQueryBatchSize = sqlQueryBatchSize;
             _sqlTimeout = sqlTimeout;
-            _candlesPersistenceQueueMaxSize = candlesPersistenceQueueMaxSize;
+            _candlesPersistenceQueueMaxSize = Convert.ToInt32(candlesPersistenceQueueMaxSize * 1.1);  // Safe reserve
         }
 
         #region Public
@@ -61,7 +61,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                 try
                 {
                     var historyMaker = new TradesProcessor(_tradesMigrationHealthService, _candlesHistoryRepository,
-                        searchToken.AssetPairId, _candlesPersistenceQueueMaxSize);
+                        searchToken.AssetPairId, _candlesPersistenceQueueMaxSize, migrateByDate);
 
                     while (true)
                     {
@@ -103,11 +103,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             private readonly Dictionary<CandleTimeInterval, ICandle> _activeCandles;
             private readonly string _assetPairId;
             private readonly int _persistenceQueueMaxSize;
+            private readonly DateTime? _upperDateLimit;
+            private readonly Dictionary<CandleTimeInterval, List<ICandle>> _persistenceCandleQueue;
 
-            // ReSharper disable once MemberCanBePrivate.Global
-            public readonly Dictionary<CandleTimeInterval, List<ICandle>> PersistenceCandleQueue; // It's better to make it private, but we need to unit test the class.
-
-            public TradesProcessor(TradesMigrationHealthService healthService, ICandlesHistoryRepository historyRepo, string assetPairId, int persistenceQueueMaxSize)
+            public TradesProcessor(TradesMigrationHealthService healthService, ICandlesHistoryRepository historyRepo, string assetPairId, int persistenceQueueMaxSize, DateTime? upperDateLimit)
             {
                 _healthService = healthService ?? throw new ArgumentNullException(nameof(healthService));
                 _historyRepo = historyRepo ?? throw new ArgumentNullException(nameof(_historyRepo));
@@ -115,10 +114,11 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                     ? assetPairId
                     : throw new ArgumentNullException(nameof(assetPairId));
                 _persistenceQueueMaxSize = persistenceQueueMaxSize;
+                _upperDateLimit = upperDateLimit;
 
-                PersistenceCandleQueue = new Dictionary<CandleTimeInterval, List<ICandle>>();
+                _persistenceCandleQueue = new Dictionary<CandleTimeInterval, List<ICandle>>();
                 foreach (var si in Candles.Constants.StoredIntervals)
-                    PersistenceCandleQueue.Add(si, new List<ICandle>());
+                    _persistenceCandleQueue.Add(si, new List<ICandle>(_persistenceQueueMaxSize));
 
                 _activeCandles = new Dictionary<CandleTimeInterval, ICandle>();
             }
@@ -136,39 +136,52 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                     await ProcessTrade(trade, volumeMultiplier);
                 }
 
-                // If there still remain any active candles which have not been added to persistent queue till this moment.
-                foreach (var interval in Candles.Constants.StoredIntervals)
-                {
-                    if (!_activeCandles.TryGetValue(interval, out var unsavedActiveCandle)) continue;
-
-                    if (PersistenceCandleQueue[interval].All(c => c.Timestamp != unsavedActiveCandle.Timestamp))
-                        PersistenceCandleQueue[interval].Add(unsavedActiveCandle);
-                }
-
                 _healthService.Health.PersistenceQueueSize = PersistenceQueueSize;
             }
 
             public async Task FlushCandlesIfAny()
             {
+                var dataWritingTasks = new List<Task>();
+
                 foreach (var interval in Candles.Constants.StoredIntervals)
                 {
-                    
+                    // If there still remain any active candles which have not been added to persistent queue till this moment.
+                    if (_activeCandles.TryGetValue(interval, out var unsavedActiveCandle) &&
+                        _persistenceCandleQueue[interval].All(c => c.Timestamp != unsavedActiveCandle.Timestamp))
+                    {
+                        // But we save only candles which are fully completed by the _upperDateLimit moment.
+                        // I.e., if we have _upperDateLimit = 2018.03.05 16:00:15, we should store only the:
+                        // - second candles with timestamp not later than 16:00:14;
+                        // - minute candles not later than 15:59:00;
+                        // - hour candles not later than 15:00:00;
+                        // - day candle not later than 2018.03.04;
+                        // - week candles not later than 2018.02.26;
+                        // - and, finally, month candles not later than 2018.02.
+                        if (_upperDateLimit == null || 
+                            unsavedActiveCandle.Timestamp.AddIntervalTicks(1, unsavedActiveCandle.TimeInterval) <= _upperDateLimit)
+                            _persistenceCandleQueue[interval].Add(unsavedActiveCandle);
+                    }
 
-                    if (!PersistenceCandleQueue[interval].Any()) continue;
+                    // And now, we save the resulting candles to storage (if any).
+                    if (!_persistenceCandleQueue[interval].Any()) continue;
 
-                    await _historyRepo.ReplaceCandlesAsync(PersistenceCandleQueue[interval]);
+                    dataWritingTasks.Add(_historyRepo.ReplaceCandlesAsync(_persistenceCandleQueue[interval]));
 
                     _healthService[_assetPairId].SummarySavedCandles +=
-                        PersistenceCandleQueue[interval].Count;
+                        _persistenceCandleQueue[interval].Count;
 
-                    PersistenceCandleQueue[interval].Clear(); // Protection against multiple calls
+                    _persistenceCandleQueue[interval].Clear(); // Protection against multiple calls
                 }
+
+                await Task.WhenAll(dataWritingTasks);
 
                 _healthService.Health.PersistenceQueueSize = 0;
             }
 
             private async Task ProcessTrade(TradeHistoryItem trade, decimal volumeMultiplier)
             {
+                var dataWritingTasks = new List<Task>();
+
                 foreach (var interval in Candles.Constants.StoredIntervals)
                 {
                     if (_activeCandles.TryGetValue(interval, out var activeCandle))
@@ -179,7 +192,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                         }
                         else
                         {
-                            PersistenceCandleQueue[interval].Add(activeCandle);
+                            _persistenceCandleQueue[interval].Add(activeCandle);
 
                             _activeCandles[interval] = trade.CreateCandle(_assetPairId,
                                 CandlePriceType.Trades, interval, volumeMultiplier);
@@ -192,30 +205,23 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                         continue;
                     }
 
-                    if (PersistenceCandleQueue[interval].Count < _persistenceQueueMaxSize) continue;
+                    if (_persistenceCandleQueue[interval].Count < _persistenceQueueMaxSize) continue;
 
-                    await _historyRepo.ReplaceCandlesAsync(PersistenceCandleQueue[interval]);
+                    dataWritingTasks.Add(_historyRepo.ReplaceCandlesAsync(_persistenceCandleQueue[interval]));
 
                     _healthService[_assetPairId].SummarySavedCandles +=
-                        PersistenceCandleQueue[interval].Count;
+                        _persistenceCandleQueue[interval].Count;
 
-                    PersistenceCandleQueue[interval] = new List<ICandle>();
+                    _persistenceCandleQueue[interval] = new List<ICandle>(_persistenceQueueMaxSize);
                 }
+
+                await Task.WhenAll(dataWritingTasks);
 
                 _healthService.Health.PersistenceQueueSize = PersistenceQueueSize;
             }
 
-            private int PersistenceQueueSize
-            {
-                get
-                {
-                    var count = 0;
-                    foreach (var list in PersistenceCandleQueue.Values)
-                        count += list.Count;
-
-                    return count;
-                }
-            }
+            private int PersistenceQueueSize => 
+                _persistenceCandleQueue.Values.Sum(c => c.Count);
         }
 
         #endregion
