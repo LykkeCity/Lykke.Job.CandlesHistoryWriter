@@ -9,6 +9,7 @@ using Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryProvide
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration;
 using System.Linq;
 using JetBrains.Annotations;
+using Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.HistoryProviders.TradesSQLHistory;
 
 namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 {
@@ -22,6 +23,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
         private readonly string _sqlConnString;
         private readonly int _sqlQueryBatchSize;
         private readonly TimeSpan _sqlTimeout;
+        private readonly int _candlesPersistenceQueueMaxSize;
 
         public TradesMigrationService(
             ICandlesHistoryRepository candlesHistoryRepository,
@@ -29,7 +31,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             ILog log,
             string sqlConnString,
             int sqlQueryBatchSize,
-            TimeSpan sqlTimeout
+            TimeSpan sqlTimeout,
+            int candlesPersistenceQueueMaxSize
             )
         {
             _candlesHistoryRepository = candlesHistoryRepository ?? throw new ArgumentNullException(nameof(candlesHistoryRepository));
@@ -39,12 +42,13 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             _sqlConnString = sqlConnString;
             _sqlQueryBatchSize = sqlQueryBatchSize;
             _sqlTimeout = sqlTimeout;
+            _candlesPersistenceQueueMaxSize = Convert.ToInt32(candlesPersistenceQueueMaxSize * 1.1);  // Safe reserve
         }
 
         #region Public
 
         /// <inheritdoc cref="ITradesMigrationService"/>
-        public async Task MigrateTradesCandlesAsync(bool preliminaryRemoval, DateTime? migrateByDate, List<(string AssetPairId, string SearchToken, string ReverseSearchToken)> assetSearchTokens)
+        public async Task MigrateTradesCandlesAsync(DateTime? migrateByDate, List<(string AssetPairId, string SearchToken, string ReverseSearchToken)> assetSearchTokens)
         {
             foreach (var searchToken in assetSearchTokens)
             {
@@ -56,19 +60,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 
                 try
                 {
-                    // Removing old candles first, is it is requested to do.
-                    if (preliminaryRemoval)
-                    {
-                        await _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(MigrateTradesCandlesAsync),
-                            $"Starting preliminary trade candles removal...");
+                    var historyMaker = new TradesProcessor(_tradesMigrationHealthService, _candlesHistoryRepository,
+                        searchToken.AssetPairId, _candlesPersistenceQueueMaxSize, migrateByDate);
 
-                        await RemoveTradesCandlesAsync(searchToken.AssetPairId, migrateByDate);
-
-                        await _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(MigrateTradesCandlesAsync),
-                            migrateByDate.HasValue ? $"Trade candles are removed till {migrateByDate}" : "All trade candles are removed. Going to migrate...");
-                    }
-
-                    // And now migrate trades.
                     while (true)
                     {
                         var tradesBatch = await sqlRepo.GetNextBatchAsync();
@@ -77,52 +71,13 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                         if (batchCount == 0)
                             break;
 
-                        TradesCandleBatch smallerCandles = null;
-
-                        var batchInsertTasks = new List<Task>();
-
-                        // Now we can build sequentally candle batches for all the stored time intervals.
-                        // To avoid looking through the whole trades batch several times, we derive the
-                        // bigger time intervals from the smaller ones. For example, let's assume that we
-                        // generate 1000 sec candles from our batch of 2381 trades. Then, for calculating
-                        // minute candles we need to iterate only 1000 second candles, and this will give
-                        // us 16 minute candles. Next, we iterate 16 minute candles to get 1 hour candle,
-                        // and so on, instead of looking through 2381 trades for each time interval.
-                        foreach (var interval in Candles.Constants.StoredIntervals)
-                        {
-                            // It's important for Constants.StoredIntervals to be ordered by time period increase,
-                            // because we will calculate candles for each period based on previous period candles.
-                            var currentCandles = interval == CandleTimeInterval.Sec
-                                ? new TradesCandleBatch(searchToken.AssetPairId, searchToken.SearchToken, interval, tradesBatch)
-                                : new TradesCandleBatch(searchToken.AssetPairId, interval, smallerCandles);
-
-                            await ExtendStoredCandles(currentCandles);
-
-                            _tradesMigrationHealthService[searchToken.AssetPairId].SummarySavedCandles +=
-                                currentCandles.Candles.Count;
-
-                            // We can not derive month candles from weeks for they may lay out of the borders
-                            // of the month. While generating a month candles, we should use day candles as a
-                            // data source instead.
-                            if (interval != CandleTimeInterval.Week)
-                                smallerCandles = currentCandles;
-
-                            // Preffered to perform inserting in parralel style.
-                            batchInsertTasks.Add(
-                                _candlesHistoryRepository.InsertOrMergeAsync(
-                                    currentCandles.Candles.Values,
-                                    currentCandles.AssetId,
-                                    TradesCandleBatch.PriceType,
-                                    currentCandles.TimeInterval));
-                        }
-
-                        _tradesMigrationHealthService[searchToken.AssetPairId].SummaryFetchedTrades += batchCount;
-
-                        await Task.WhenAll(batchInsertTasks.ToArray());
+                        await historyMaker.ProcessTradesBatch(tradesBatch);
 
                         await _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(MigrateTradesCandlesAsync),
                             $"Batch of {batchCount} records for {searchToken.AssetPairId} processed.");
                     }
+
+                    await historyMaker.FlushCandlesIfAny();
 
                     await _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(MigrateTradesCandlesAsync),
                         $"Migration for {searchToken.AssetPairId} finished. Total records migrated: {_tradesMigrationHealthService[searchToken.AssetPairId].SummaryFetchedTrades}, " +
@@ -140,51 +95,140 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 
             _tradesMigrationHealthService.State = TradesMigrationState.Finished;
         }
+        
+        public class TradesProcessor
+        {
+            private readonly TradesMigrationHealthService _healthService;
+            private readonly ICandlesHistoryRepository _historyRepo;
+            private readonly Dictionary<CandleTimeInterval, ICandle> _activeCandles;
+            private readonly string _assetPairId;
+            private readonly int _persistenceQueueMaxSize;
+            private readonly DateTime? _upperDateLimit;
+
+            // ReSharper disable once MemberCanBePrivate.Global
+            public readonly Dictionary<CandleTimeInterval, List<ICandle>> PersistenceCandleQueue; // It's better to make it private, but we need to unit test the class.
+
+            public TradesProcessor(TradesMigrationHealthService healthService, ICandlesHistoryRepository historyRepo, string assetPairId, int persistenceQueueMaxSize, DateTime? upperDateLimit)
+            {
+                _healthService = healthService ?? throw new ArgumentNullException(nameof(healthService));
+                _historyRepo = historyRepo ?? throw new ArgumentNullException(nameof(_historyRepo));
+                _assetPairId = !string.IsNullOrWhiteSpace(assetPairId)
+                    ? assetPairId
+                    : throw new ArgumentNullException(nameof(assetPairId));
+                _persistenceQueueMaxSize = persistenceQueueMaxSize;
+                _upperDateLimit = upperDateLimit;
+
+                PersistenceCandleQueue = new Dictionary<CandleTimeInterval, List<ICandle>>();
+                foreach (var si in Candles.Constants.StoredIntervals)
+                    PersistenceCandleQueue.Add(si, new List<ICandle>(_persistenceQueueMaxSize));
+
+                _activeCandles = new Dictionary<CandleTimeInterval, ICandle>();
+            }
+
+            public async Task ProcessTradesBatch(IReadOnlyCollection<TradeHistoryItem> tradesBatch)
+            {
+                _healthService[_assetPairId].SummaryFetchedTrades += tradesBatch.Count;
+                _healthService[_assetPairId].CurrentTradeBatchBegining = tradesBatch.First().DateTime;
+                _healthService[_assetPairId].CurrentTradeBatchEnding = tradesBatch.Last().DateTime;
+
+                foreach (var trade in tradesBatch)
+                {
+                    var volumeMultiplier = 1.0M / Math.Max(tradesBatch.Count(t => t.TradeId == trade.TradeId), 1.0M);
+
+                    await ProcessTrade(trade, volumeMultiplier);
+                }
+
+                _healthService.Health.PersistenceQueueSize = PersistenceQueueSize;
+            }
+
+            public async Task FlushCandlesIfAny()
+            {
+                var dataWritingTasks = new List<Task>();
+
+                foreach (var interval in Candles.Constants.StoredIntervals)
+                {
+                    // If there still remain any active candles which have not been added to persistent queue till this moment.
+                    if (_activeCandles.TryGetValue(interval, out var unsavedActiveCandle) &&
+                        PersistenceCandleQueue[interval].All(c => c.Timestamp != unsavedActiveCandle.Timestamp))
+                    {
+                        // But we save only candles which are fully completed by the _upperDateLimit moment.
+                        // I.e., if we have _upperDateLimit = 2018.03.05 16:00:15, we should store only the:
+                        // - second candles with timestamp not later than 16:00:14;
+                        // - minute candles not later than 15:59:00;
+                        // - hour candles not later than 15:00:00;
+                        // - day candle not later than 2018.03.04;
+                        // - week candles not later than 2018.02.26;
+                        // - and, finally, month candles not later than 2018.02.
+                        if (_upperDateLimit == null || 
+                            unsavedActiveCandle.Timestamp.AddIntervalTicks(1, unsavedActiveCandle.TimeInterval) <= _upperDateLimit)
+                            PersistenceCandleQueue[interval].Add(unsavedActiveCandle);
+                    }
+
+                    // And now, we save the resulting candles to storage (if any).
+                    if (!PersistenceCandleQueue[interval].Any()) continue;
+
+                    dataWritingTasks.Add(_historyRepo.ReplaceCandlesAsync(PersistenceCandleQueue[interval]));
+
+                    _healthService[_assetPairId].SummarySavedCandles +=
+                        PersistenceCandleQueue[interval].Count;
+
+                    PersistenceCandleQueue[interval].Clear(); // Protection against multiple calls
+                }
+
+                await Task.WhenAll(dataWritingTasks);
+
+                _healthService.Health.PersistenceQueueSize = 0;
+            }
+
+            private async Task ProcessTrade(TradeHistoryItem trade, decimal volumeMultiplier)
+            {
+                var dataWritingTasks = new List<Task>();
+
+                foreach (var interval in Candles.Constants.StoredIntervals)
+                {
+                    if (_activeCandles.TryGetValue(interval, out var activeCandle))
+                    {
+                        if (trade.BelongsTo(activeCandle))
+                        {
+                            _activeCandles[interval] = activeCandle.ExtendBy(trade, volumeMultiplier);
+                        }
+                        else
+                        {
+                            PersistenceCandleQueue[interval].Add(activeCandle);
+
+                            _activeCandles[interval] = trade.CreateCandle(_assetPairId,
+                                CandlePriceType.Trades, interval, volumeMultiplier);
+                        }
+                    }
+                    else
+                    {
+                        _activeCandles[interval] = trade.CreateCandle(_assetPairId,
+                            CandlePriceType.Trades, interval, volumeMultiplier);
+                        continue;
+                    }
+
+                    if (PersistenceCandleQueue[interval].Count < _persistenceQueueMaxSize) continue;
+
+                    dataWritingTasks.Add(_historyRepo.ReplaceCandlesAsync(PersistenceCandleQueue[interval]));
+
+                    _healthService[_assetPairId].SummarySavedCandles +=
+                        PersistenceCandleQueue[interval].Count;
+
+                    PersistenceCandleQueue[interval] = new List<ICandle>(_persistenceQueueMaxSize);
+                }
+
+                await Task.WhenAll(dataWritingTasks);
+
+                _healthService.Health.PersistenceQueueSize = PersistenceQueueSize;
+            }
+
+            private int PersistenceQueueSize => 
+                PersistenceCandleQueue.Values.Sum(c => c.Count);
+        }
 
         #endregion
 
         #region Private
-
-        /// <summary>
-        /// Parallel trades candles removal from all the time interval tables for the specified asset pair.
-        /// </summary>
-        private Task RemoveTradesCandlesAsync(string assetPairId, DateTime? removeByDate)
-        {
-            var removalTasks = new List<Task>();
-
-            foreach (var interval in Candles.Constants.StoredIntervals)
-                removalTasks.Add(_candlesHistoryRepository.DeleteCandlesAsync(assetPairId, interval, CandlePriceType.Trades, null, removeByDate)); // Remove since the oldest candles till removeByDate.
-
-            return Task.WhenAll(removalTasks);
-        }
-
-        /// <summary>
-        /// Tries to load candles from the storage and then extends em by the given newly-calculated candles batch for the same time stamps.
-        /// </summary>
-        private async Task ExtendStoredCandles(TradesCandleBatch current)
-        {
-            var storedCandles = await _candlesHistoryRepository.GetCandlesAsync(
-                current.AssetId,
-                current.TimeInterval,
-                TradesCandleBatch.PriceType,
-                current.MinTimeStamp,
-                current.MaxTimeStamp.AddSeconds((int) current.TimeInterval));
-
-            var storedCandlesDictionary = storedCandles.ToDictionary(c => c.Timestamp, c => c);
-
-            if (!storedCandlesDictionary.Any())
-                return;
-
-            foreach (var candle in current.Candles.Values.ToArray())
-            {
-                var timestamp = candle.Timestamp;
-                
-                if (storedCandlesDictionary.TryGetValue(timestamp, out var stored))
-                {
-                    current.Candles[timestamp] = stored.ExtendBy(candle);
-                }
-            }
-        }
 
         #endregion
     }

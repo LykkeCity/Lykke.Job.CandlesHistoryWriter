@@ -263,6 +263,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
                 .WithParameter(TypedParameter.From(_settings.Migration.Trades.SqlTradesDataSourceConnString))
                 .WithParameter(TypedParameter.From(_settings.Migration.Trades.SqlQueryBatchSize))
                 .WithParameter(TypedParameter.From(_settings.Migration.Trades.SqlCommandTimeout))
+                .WithParameter(TypedParameter.From(_settings.Migration.Trades.CandlesPersistenceQueueLimit))
                 .SingleInstance();
 
             builder.RegisterType<TradesMigrationManager>()
