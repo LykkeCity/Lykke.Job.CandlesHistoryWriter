@@ -78,7 +78,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
                         {
                             while (await reader.ReadAsync())
                             {
-                                result.Add(new TradeHistoryItem
+                                var trade = new TradeHistoryItem
                                 {
                                     Id = reader.GetInt64(0),
                                     AssetToken = reader.GetString(1),
@@ -91,8 +91,15 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
                                     OrderId = Guid.Parse(reader.GetString(7)),
                                     OppositeOrderId = Guid.Parse(reader.GetString(8)),
                                     TradeId = reader.GetString(9),
-                                    IsStraight = reader.GetString(1) == SearchToken // If the trade is straight or reverse.
-                                });
+                                    IsStraight =
+                                        reader.GetString(1) == SearchToken // If the trade is straight or reverse.
+                                };
+
+                                // We must ignore trades with negative prices and\or volumes (if any).
+                                if (trade.Price > 0 &&
+                                    trade.Volume > 0 &&
+                                    trade.OppositeVolume > 0)
+                                    result.Add(trade);
                             }
                         }
                     }
