@@ -32,6 +32,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration.HistoryProvid
         {
             var key = GetKey(feedHistory.AssetPair, feedHistory.PriceType);
             var candles = feedHistory.Candles
+                .Where(item => item.Low > 0 && item.High > 0 && item.Open > 0 && item.Close > 0)
                 .Select(item => item.ToCandle(feedHistory.AssetPair, feedHistory.PriceType, feedHistory.DateTime))
                 .ToList();
 
