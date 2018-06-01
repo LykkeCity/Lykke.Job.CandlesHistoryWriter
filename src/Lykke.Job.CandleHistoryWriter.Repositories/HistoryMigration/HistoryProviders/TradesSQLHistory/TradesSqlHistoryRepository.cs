@@ -5,6 +5,7 @@ using System.Data.SqlClient;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Common;
 using Common.Log;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.HistoryProviders.TradesSQLHistory;
 using Lykke.Job.CandlesProducer.Contract;
@@ -37,9 +38,9 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
             )
         {
             _sqlQueryBatchSize = sqlQueryBatchSize;
-            _sqlConnString = sqlConnString;
+            _sqlConnString = !string.IsNullOrWhiteSpace(sqlConnString) ? sqlConnString : throw new ArgumentNullException(nameof(sqlConnString));
             _sqlTimeout = sqlTimeout;
-            _log = log;
+            _log = log.CreateComponentScope(nameof(TradesSqlHistoryRepository)) ?? throw new ArgumentNullException(nameof(log));
 
             StartingRowOffset = 0; // Will read everything.
 
@@ -67,7 +68,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
                     if (sqlConnection.State != ConnectionState.Open)
                         throw new InvalidOperationException("Can't fetch from DB while connection is not opened.");
 
-                    await _log.WriteInfoAsync(nameof(TradesSqlHistoryRepository), nameof(GetNextBatchAsync),
+                    await _log.WriteInfoAsync(nameof(GetNextBatchAsync),
                         $"Starting offset = {StartingRowOffset}, asset pair ID = {AssetPairId}",
                         $"Trying to fetch next {_sqlQueryBatchSize} rows...");
 
@@ -99,7 +100,13 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
                                 if (trade.Price > 0 &&
                                     trade.Volume > 0 &&
                                     trade.OppositeVolume > 0)
+                                {
                                     result.Add(trade);
+                                }
+                                else
+                                {
+                                    await _log.WriteMonitorAsync(nameof(GetNextBatchAsync), trade.ToJson(), "Got a trade with non-posotive price or volume(s) values.");
+                                }
                             }
                         }
                     }
@@ -129,14 +136,14 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
                     }
                     else _gotTheLastBatch = true; // If we have got smaller amount of records than _sqlQueryBatchSize, this only means we have the last batch now.
 
-                    await _log.WriteInfoAsync(nameof(TradesSqlHistoryRepository), nameof(GetNextBatchAsync),
+                    await _log.WriteInfoAsync(nameof(GetNextBatchAsync),
                         $"Starting offset = {StartingRowOffset}, asset pair ID = {AssetPairId}",
                         $"Fetched {result.Count} rows successfully. First date is {result.First().DateTime:O}, last date is {result.Last().DateTime:O}");
 
                     StartingRowOffset += result.Count;
                 }
                 else
-                    await _log.WriteInfoAsync(nameof(TradesSqlHistoryRepository), nameof(GetNextBatchAsync),
+                    await _log.WriteInfoAsync(nameof(GetNextBatchAsync),
                         $"Starting offset = {StartingRowOffset}, asset pair ID = {AssetPairId}",
                         "No data to fetch.");
 
@@ -144,7 +151,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
             }
             catch (Exception ex)
             {
-                await _log.WriteErrorAsync(nameof(TradesSqlHistoryRepository), nameof(GetNextBatchAsync), ex);
+                await _log.WriteErrorAsync(nameof(GetNextBatchAsync), string.Empty, ex);
                 // We can just report about the error and return an empty list - this will be interpreted as "no data".
                 return Array.Empty<TradeHistoryItem>();
             }
