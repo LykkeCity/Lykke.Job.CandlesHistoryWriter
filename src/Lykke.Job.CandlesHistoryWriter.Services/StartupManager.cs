@@ -1,7 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Common.Log;
 using JetBrains.Annotations;
+using Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryProviders.TradesSQLHistory;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Candles;
@@ -30,13 +32,16 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
             ICandlesPersistenceManager persistenceManager,
             bool migrationEnabled)
         {
-            _log = log.CreateComponentScope(nameof(StartupManager));
-            _cacheInitalizationService = cacheInitalizationService;
-            _candlesSubscriber = candlesSubscriber;
-            _snapshotSerializer = snapshotSerializer;
-            _persistenceQueueSnapshotRepository = persistenceQueueSnapshotRepository;
-            _persistenceQueue = persistenceQueue;
-            _persistenceManager = persistenceManager;
+            if (log == null)
+                throw new ArgumentNullException(nameof(log));
+            _log = log.CreateComponentScope(nameof(StartupManager)) ?? throw new InvalidOperationException("Couldn't create a component scope for logging.");
+
+            _cacheInitalizationService = cacheInitalizationService ?? throw new ArgumentNullException(nameof(cacheInitalizationService));
+            _candlesSubscriber = candlesSubscriber ?? throw new ArgumentNullException(nameof(candlesSubscriber));
+            _snapshotSerializer = snapshotSerializer ?? throw new ArgumentNullException(nameof(snapshotSerializer));
+            _persistenceQueueSnapshotRepository = persistenceQueueSnapshotRepository ?? throw new ArgumentNullException(nameof(persistenceQueueSnapshotRepository));
+            _persistenceQueue = persistenceQueue ?? throw new ArgumentNullException(nameof(persistenceQueue));
+            _persistenceManager = persistenceManager ?? throw new ArgumentNullException(nameof(persistenceManager));
             _migrationEnabled = migrationEnabled;
         }
 

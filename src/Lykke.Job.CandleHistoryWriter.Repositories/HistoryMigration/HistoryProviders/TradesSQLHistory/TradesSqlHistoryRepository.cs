@@ -40,7 +40,10 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
             _sqlQueryBatchSize = sqlQueryBatchSize;
             _sqlConnString = !string.IsNullOrWhiteSpace(sqlConnString) ? sqlConnString : throw new ArgumentNullException(nameof(sqlConnString));
             _sqlTimeout = sqlTimeout;
-            _log = log.CreateComponentScope(nameof(TradesSqlHistoryRepository)) ?? throw new ArgumentNullException(nameof(log));
+
+            if (log == null)
+                throw new ArgumentNullException(nameof(log));
+            _log = log.CreateComponentScope(nameof(TradesSqlHistoryRepository)) ?? throw new InvalidOperationException("Couldn't create a component scope for logging.");
 
             StartingRowOffset = 0; // Will read everything.
 
