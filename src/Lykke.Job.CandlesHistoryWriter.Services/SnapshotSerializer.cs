@@ -12,7 +12,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
 
         public SnapshotSerializer(ILog log)
         {
-            _log = log;
+            _log = log ?? throw new ArgumentNullException(nameof(log));
         }
 
         public async Task SerializeAsync<TState>(IHaveState<TState> stateHolder, ISnapshotRepository<TState> repository)
