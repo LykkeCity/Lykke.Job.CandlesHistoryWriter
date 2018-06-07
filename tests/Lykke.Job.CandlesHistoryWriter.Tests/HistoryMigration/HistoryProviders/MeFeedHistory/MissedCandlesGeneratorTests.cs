@@ -18,7 +18,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.HistoryProviders
 
             // Act
             var candles = generator.GenerateCandles(
-                    new AssetPairResponseModel
+                    new AssetPair
                     {
                         Id = "EURUSD",
                         Accuracy = 5
@@ -50,7 +50,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.HistoryProviders
 
             // Act
             var candles = generator.GenerateCandles(
-                    new AssetPairResponseModel
+                    new AssetPair
                     {
                         Id = "EURUSD",
                         Accuracy = 5
@@ -82,7 +82,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.HistoryProviders
 
             // Act
             var candles = generator.GenerateCandles(
-                    new AssetPairResponseModel
+                    new AssetPair
                     {
                         Id = "EURUSD",
                         Accuracy = 5
@@ -111,7 +111,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.HistoryProviders
 
             // Act
             var candles = generator.GenerateCandles(
-                    new AssetPairResponseModel
+                    new AssetPair
                     {
                         Id = "EURUSD",
                         Accuracy = 5
@@ -143,7 +143,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.HistoryProviders
 
             // Act
             var candles = generator.GenerateCandles(
-                    new AssetPairResponseModel
+                    new AssetPair
                     {
                         Id = "BTCEUR",
                         Accuracy = 5
@@ -169,7 +169,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.HistoryProviders
 
             // Act
             var candles = generator.GenerateCandles(
-                    new AssetPairResponseModel
+                    new AssetPair
                     {
                         Id = "BTCEUR",
                         Accuracy = 5
@@ -194,7 +194,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.HistoryProviders
 
             // Act
             var candles = generator.GenerateCandles(
-                new AssetPairResponseModel
+                new AssetPair
                 {
                     Id = "BTCEUR",
                     Accuracy = 5
