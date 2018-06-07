@@ -109,6 +109,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
             if (!checkupResult.IsValid)
                 return BadRequest(checkupResult);
 
+            if (!_tradesMigrationManager.MigrationEnabled)
+                return Ok("Migration is currently disabled in application settings.");
+
             // ---
 
             // This method is sync but internally it starts a new task and returns
@@ -117,8 +120,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
             if (migrationStarted)
                 return Ok();
 
-            return BadRequest(
-                ErrorResponse.Create("The previous migration session still has not been finished. Parallel execution is not supported."));
+            return Ok("The previous migration session still has not been finished. Parallel execution is not supported.");
         }
 
         /// <summary>
@@ -168,8 +170,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
             switch (filtrationLaunchResult)
             {
                 case CandlesFiltrationManager.FiltrationLaunchResult.AlreadyInProgress:
-                    return BadRequest(
-                        ErrorResponse.Create("The previous filtration session still has not been finished. Parallel execution is not supported."));
+                    return Ok("The previous filtration session still has not been finished. Parallel execution is not supported.");
 
                 case CandlesFiltrationManager.FiltrationLaunchResult.AssetPairNotSupported:
                     return BadRequest(

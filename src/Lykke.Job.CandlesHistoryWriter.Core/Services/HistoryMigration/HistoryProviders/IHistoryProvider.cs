@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Lykke.Job.CandlesProducer.Contract;
-using Lykke.Service.Assets.Client.Custom;
+using Lykke.Service.Assets.Client.Models;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 
 namespace Lykke.Job.CandlesHistoryWriter.Core.Services.HistoryMigration.HistoryProviders
@@ -12,7 +12,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Services.HistoryMigration.HistoryP
     {
         Task<DateTime?> GetStartDateAsync(string assetPair, CandlePriceType priceType);
         Task GetHistoryByChunksAsync(
-            IAssetPair assetPair,
+            AssetPair assetPair,
             CandlePriceType priceType,
             DateTime endDate,
             ICandle endCandle,

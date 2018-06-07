@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using Lykke.Service.Assets.Client.Custom;
 using Lykke.Job.CandlesHistoryWriter.Services.Settings;
 using Lykke.SettingsReader.Attributes;
 using JetBrains.Annotations;
