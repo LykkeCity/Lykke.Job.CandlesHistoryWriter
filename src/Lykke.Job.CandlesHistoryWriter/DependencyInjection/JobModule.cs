@@ -9,7 +9,7 @@ using Lykke.Common;
 using Lykke.Job.CandleHistoryWriter.Repositories.Candles;
 using Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryProviders.MeFeedHistory;
 using Lykke.Job.CandleHistoryWriter.Repositories.Snapshots;
-using Lykke.Service.Assets.Client.Custom;
+using Lykke.Service.Assets.Client;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.HistoryProviders.MeFeedHistory;
 using Lykke.Job.CandlesHistoryWriter.Core.Services;
@@ -114,9 +114,10 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
 
         private void RegisterAssets(ContainerBuilder builder)
         {
-            _services.UseAssetsClient(AssetServiceSettings.Create(
-                new Uri(_assetSettings.ServiceUrl),
-                _settings.AssetsCache.ExpirationPeriod));
+            _services.RegisterAssetsClient(AssetServiceSettings.Create(
+                    new Uri(_assetSettings.ServiceUrl),
+                    _settings.AssetsCache.ExpirationPeriod),
+                _log);
 
             builder.RegisterType<AssetPairsManager>()
                 .As<IAssetPairsManager>()
