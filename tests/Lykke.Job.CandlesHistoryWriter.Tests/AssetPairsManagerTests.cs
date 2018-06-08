@@ -2,7 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Common.Log;
-using Lykke.Service.Assets.Client.Custom;
+using Lykke.Service.Assets.Client;
 using Lykke.Service.Assets.Client.Models;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Assets;
 using Lykke.Job.CandlesHistoryWriter.Services.Assets;
@@ -15,12 +15,12 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
     public class AssetPairsManagerTests
     {
         private IAssetPairsManager _manager;
-        private Mock<ICachedAssetsService> _assetsServiceMock;
+        private Mock<IAssetsServiceWithCache> _assetsServiceMock;
         
         [TestInitialize]
         public void InitializeTest()
         {
-            _assetsServiceMock = new Mock<ICachedAssetsService>();
+            _assetsServiceMock = new Mock<IAssetsServiceWithCache>();
 
             _manager = new AssetPairsManager(new LogToMemory(), _assetsServiceMock.Object);
         }
@@ -33,7 +33,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
             // Arrange
             _assetsServiceMock
                 .Setup(s => s.TryGetAssetPairAsync(It.Is<string>(a => a == "EURUSD"), It.IsAny<CancellationToken>()))
-                .ReturnsAsync((string a, CancellationToken t) => new AssetPairResponseModel { Id = a, IsDisabled = false });
+                .ReturnsAsync((string a, CancellationToken t) => new AssetPair { Id = a, IsDisabled = false });
 
             // Act
             var pair = await _manager.TryGetEnabledPairAsync("EURUSD");
@@ -49,7 +49,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
             // Arrange
             _assetsServiceMock
                 .Setup(s => s.TryGetAssetPairAsync(It.Is<string>(a => a == "EURUSD"), It.IsAny<CancellationToken>()))
-                .ReturnsAsync((string a, CancellationToken t) => new AssetPairResponseModel { Id = a, IsDisabled = true });
+                .ReturnsAsync((string a, CancellationToken t) => new AssetPair { Id = a, IsDisabled = true });
 
             // Act
             var pair = await _manager.TryGetEnabledPairAsync("EURUSD");
@@ -86,7 +86,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
                 .Setup(s => s.GetAllAssetPairsAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync((CancellationToken t) => new[]
                 {
-                    new AssetPairResponseModel {Id = "USDRUB", IsDisabled = true}
+                    new AssetPair {Id = "USDRUB", IsDisabled = true}
                 });
 
             // Act
@@ -105,9 +105,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
                 .Setup(s => s.GetAllAssetPairsAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync((CancellationToken t) => new[]
                 {
-                    new AssetPairResponseModel { Id = "EURUSD", IsDisabled = false },
-                    new AssetPairResponseModel { Id = "USDRUB", IsDisabled = true },
-                    new AssetPairResponseModel { Id = "USDCHF", IsDisabled = false }
+                    new AssetPair { Id = "EURUSD", IsDisabled = false },
+                    new AssetPair { Id = "USDRUB", IsDisabled = true },
+                    new AssetPair { Id = "USDCHF", IsDisabled = false }
                 });
 
             // Act

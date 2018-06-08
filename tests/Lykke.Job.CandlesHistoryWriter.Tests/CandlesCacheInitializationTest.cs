@@ -5,7 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Common.Log;
 using Lykke.Job.CandlesProducer.Contract;
-using Lykke.Service.Assets.Client.Custom;
+using Lykke.Service.Assets.Client.Models;
 using Lykke.Service.Assets.Client.Models;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services;
@@ -44,7 +44,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
         private Mock<ICandlesCacheService> _cacheServiceMock;
         private Mock<ICandlesHistoryRepository> _historyRepositoryMock;
         private Mock<IAssetPairsManager> _assetPairsManagerMock;
-        private List<IAssetPair> _assetPairs;
+        private List<AssetPair> _assetPairs;
 
         [TestInitialize]
         public void InitializeTest()
@@ -56,11 +56,11 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
             _historyRepositoryMock = new Mock<ICandlesHistoryRepository>();
             _assetPairsManagerMock = new Mock<IAssetPairsManager>();
 
-            _assetPairs = new List<IAssetPair>
+            _assetPairs = new List<AssetPair>
             {
-                new AssetPairResponseModel {Id = "EURUSD", Accuracy = 3},
-                new AssetPairResponseModel {Id = "USDCHF", Accuracy = 2},
-                new AssetPairResponseModel {Id = "EURRUB", Accuracy = 2}
+                new AssetPair {Id = "EURUSD", Accuracy = 3},
+                new AssetPair {Id = "USDCHF", Accuracy = 2},
+                new AssetPair {Id = "EURRUB", Accuracy = 2}
             };
 
             _assetPairsManagerMock

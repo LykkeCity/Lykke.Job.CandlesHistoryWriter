@@ -5,7 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Lykke.Job.CandlesProducer.Contract;
-using Lykke.Service.Assets.Client.Custom;
+using Lykke.Service.Assets.Client.Models;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.HistoryProviders.MeFeedHistory;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.HistoryMigration.HistoryProviders;
@@ -37,7 +37,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration.HistoryProvid
         }
 
         public async Task GetHistoryByChunksAsync(
-            IAssetPair assetPair, 
+            AssetPair assetPair, 
             CandlePriceType priceType, 
             DateTime endDate, 
             ICandle endCandle, 

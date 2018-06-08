@@ -4,7 +4,8 @@ using Lykke.Job.CandlesHistoryWriter.Core.Services.Assets;
 using System.Collections.Generic;
 using System.Linq;
 using Common.Log;
-using Lykke.Service.Assets.Client.Custom;
+using Lykke.Service.Assets.Client;
+using Lykke.Service.Assets.Client.Models;
 using Polly;
 
 namespace Lykke.Job.CandlesHistoryWriter.Services.Assets
@@ -12,15 +13,15 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Assets
     public class AssetPairsManager : IAssetPairsManager
     {
         private readonly ILog _log;
-        private readonly ICachedAssetsService _apiService;
+        private readonly IAssetsServiceWithCache _apiService;
 
-        public AssetPairsManager(ILog log, ICachedAssetsService apiService)
+        public AssetPairsManager(ILog log, IAssetsServiceWithCache apiService)
         {
             _log = log;
             _apiService = apiService;
         }
 
-        public Task<IAssetPair> TryGetAssetPairAsync(string assetPairId)
+        public Task<AssetPair> TryGetAssetPairAsync(string assetPairId)
         {
             return Policy
                 .Handle<Exception>()
@@ -30,14 +31,14 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Assets
                 .ExecuteAsync(() => _apiService.TryGetAssetPairAsync(assetPairId));
         }
 
-        public async Task<IAssetPair> TryGetEnabledPairAsync(string assetPairId)
+        public async Task<AssetPair> TryGetEnabledPairAsync(string assetPairId)
         {
             var pair = await TryGetAssetPairAsync(assetPairId);
 
             return pair == null || pair.IsDisabled ? null : pair;
         }
 
-        public Task<IEnumerable<IAssetPair>> GetAllEnabledAsync()
+        public Task<IEnumerable<AssetPair>> GetAllEnabledAsync()
         {
             return Policy
                 .Handle<Exception>()
