@@ -8,5 +8,12 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Services.Candles
     public interface ICandlesCacheInitalizationService
     {
         Task InitializeCacheAsync();
+        CacheInitializationState InitializationState { get; }
+    }
+
+    public enum CacheInitializationState
+    {
+        Idle,
+        InProgress
     }
 }

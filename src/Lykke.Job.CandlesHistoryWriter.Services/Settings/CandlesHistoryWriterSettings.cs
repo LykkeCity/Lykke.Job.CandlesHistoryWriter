@@ -12,7 +12,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Settings
         public MigrationSettings Migration { get; set; }
         public ErrorManagementSettings ErrorManagement { get; set; }
         public ResourceMonitorSettings ResourceMonitor { get; set; }
-        public int HistoryTicksCacheSize { get; set; }
-        public TimeSpan CacheCleanupPeriod { get; set; }
+        public HistoryCacheSettings HistoryCache { get; set; }
     }
 }
