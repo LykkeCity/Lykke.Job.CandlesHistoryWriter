@@ -28,11 +28,14 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         private readonly IDatabase _database;
         private readonly MarketType _market;
 
-        public RedisCandlesCacheService(IHealthService healthService, IDatabase database, MarketType market)
+        private readonly TimeSpan _cacheCheckupPeriod;
+
+        public RedisCandlesCacheService(IHealthService healthService, IDatabase database, MarketType market, TimeSpan cacheCheckupPeriod)
         {
-            _healthService = healthService;
-            _database = database;
+            _healthService = healthService ?? throw new ArgumentNullException(nameof(healthService));
+            _database = database ?? throw new ArgumentNullException(nameof(database));
             _market = market;
+            _cacheCheckupPeriod = cacheCheckupPeriod;
         }
 
         public IImmutableDictionary<string, IImmutableList<ICandle>> GetState()
@@ -76,9 +79,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
             var key = GetKey(_market, assetPairId, priceType, timeInterval);
 
-            // Cleans cache
-
-            await _database.KeyDeleteAsync(key);
+            // Note: currently we do not clean the cache manually
 
             foreach (var candlesBatch in candles.Batch(100))
             {
@@ -129,6 +130,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             await Task.WhenAll(tasks);
 
             _healthService.TraceStopCacheCandles(candles.Count);
+
+            // Each candle cached leads to the cache revalidation for avoiding excessive reloading.
+            await UpdateValidationToken();
         }
 
         private static byte[] SerializeCandle(ICandle candle)
@@ -164,9 +168,22 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             }
         }
 
+        public async Task UpdateValidationToken()
+        {
+            var vkey = GetValidationKey(_market);
+
+            await _database.SetAddAsync(vkey, "CandlesHistoryCacheIsStillValidIfYouCanSeeMe");
+            await _database.KeyExpireAsync(vkey, DateTime.UtcNow + _cacheCheckupPeriod);
+        }
+
         public static string GetKey(MarketType market, string assetPairId, CandlePriceType priceType, CandleTimeInterval timeInterval)
         {
             return $"CandlesHistory:{market}:{assetPairId}:{priceType}:{timeInterval}";
+        }
+
+        public static string GetValidationKey(MarketType market)
+        {
+            return $"CandlesHistory:{market}:ValidationToken";
         }
     }
 }

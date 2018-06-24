@@ -20,6 +20,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         private readonly ICandlesHistoryRepository _candlesHistoryRepository;
         private readonly int _amountOfCandlesToStore;
 
+        public CacheInitializationState InitializationState { get; private set; }
+
         public CandlesCacheInitalizationService(
             ILog log,
             IAssetPairsManager assetPairsManager,
@@ -28,27 +30,48 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             ICandlesHistoryRepository candlesHistoryRepository,
             int amountOfCandlesToStore)
         {
-            _log = log;
-            _assetPairsManager = assetPairsManager;
-            _clock = clock;
-            _candlesCacheService = candlesCacheService;
-            _candlesHistoryRepository = candlesHistoryRepository;
+            _log = log ?? throw new ArgumentNullException(nameof(log));
+            _assetPairsManager = assetPairsManager ?? throw new ArgumentNullException(nameof(assetPairsManager));
+            _clock = clock ?? throw new ArgumentNullException(nameof(clock));
+            _candlesCacheService = candlesCacheService ?? throw new ArgumentNullException(nameof(candlesCacheService));
+            _candlesHistoryRepository = candlesHistoryRepository ?? throw new ArgumentNullException(nameof(candlesHistoryRepository));
             _amountOfCandlesToStore = amountOfCandlesToStore;
+
+            InitializationState = CacheInitializationState.Idle;
         }
 
         public async Task InitializeCacheAsync()
         {
-            await _log.WriteInfoAsync(nameof(CandlesCacheInitalizationService), nameof(InitializeCacheAsync), null, "Caching candles history...");
+            // Depending on cache invalidation period and on asset pairs amount, there may be a case when
+            // the invalidation timer fires before the cache loading has stopped. This will be a signal 
+            // to skip timer-based invalidation.
+            if (InitializationState == CacheInitializationState.InProgress)
+                return;
 
-            var assetPairs = await _assetPairsManager.GetAllEnabledAsync();
-            var now = _clock.UtcNow;
-            var cacheAssetPairTasks = assetPairs
-                .Where(a => _candlesHistoryRepository.CanStoreAssetPair(a.Id))
-                .Select(assetPair => CacheAssetPairCandlesAsync(assetPair, now));
+            InitializationState = CacheInitializationState.InProgress;
 
-            await Task.WhenAll(cacheAssetPairTasks);
+            try
+            {
+                await _log.WriteInfoAsync(nameof(CandlesCacheInitalizationService), nameof(InitializeCacheAsync), null,
+                    "Caching candles history...");
 
-            await _log.WriteInfoAsync(nameof(CandlesCacheInitalizationService), nameof(InitializeCacheAsync), null, "All candles history is cached");
+                var assetPairs = await _assetPairsManager.GetAllEnabledAsync();
+                var now = _clock.UtcNow;
+                var cacheAssetPairTasks = assetPairs
+                    .Where(a => _candlesHistoryRepository.CanStoreAssetPair(a.Id))
+                    .Select(assetPair => CacheAssetPairCandlesAsync(assetPair, now));
+
+                await Task.WhenAll(cacheAssetPairTasks);
+
+                await _candlesCacheService.UpdateValidationToken(); // Initial validation token set.
+
+                await _log.WriteInfoAsync(nameof(CandlesCacheInitalizationService), nameof(InitializeCacheAsync), null,
+                    "All candles history is cached");
+            }
+            finally
+            {
+                InitializationState = CacheInitializationState.Idle;
+            }
         }
 
         private async Task CacheAssetPairCandlesAsync(AssetPair assetPair, DateTime now)
