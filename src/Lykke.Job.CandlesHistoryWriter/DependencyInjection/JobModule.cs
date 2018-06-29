@@ -179,7 +179,6 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
             builder.RegisterType<RedisCandlesCacheService>()
                 .As<ICandlesCacheService>()
                 .WithParameter(TypedParameter.From(_marketType))
-                .WithParameter(TypedParameter.From(_settings.HistoryCache.CacheCheckupPeriod))
                 .SingleInstance();
 
             builder.RegisterType<CandlesPersistenceManager>()

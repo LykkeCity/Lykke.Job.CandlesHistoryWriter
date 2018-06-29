@@ -28,14 +28,11 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         private readonly IDatabase _database;
         private readonly MarketType _market;
 
-        private readonly TimeSpan _cacheCheckupPeriod;
-
-        public RedisCandlesCacheService(IHealthService healthService, IDatabase database, MarketType market, TimeSpan cacheCheckupPeriod)
+        public RedisCandlesCacheService(IHealthService healthService, IDatabase database, MarketType market)
         {
             _healthService = healthService ?? throw new ArgumentNullException(nameof(healthService));
             _database = database ?? throw new ArgumentNullException(nameof(database));
             _market = market;
-            _cacheCheckupPeriod = cacheCheckupPeriod;
         }
 
         public IImmutableDictionary<string, IImmutableList<ICandle>> GetState()
@@ -130,9 +127,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             await Task.WhenAll(tasks);
 
             _healthService.TraceStopCacheCandles(candles.Count);
-
-            // Each candle cached leads to the cache revalidation for avoiding excessive reloading.
-            await UpdateValidationToken();
         }
 
         private static byte[] SerializeCandle(ICandle candle)
@@ -168,12 +162,11 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             }
         }
 
-        public async Task UpdateValidationToken()
+        public async Task InjectCacheValidityToken()
         {
             var vkey = GetValidationKey(_market);
 
             await _database.SetAddAsync(vkey, "CandlesHistoryCacheIsStillValidIfYouCanSeeMe");
-            await _database.KeyExpireAsync(vkey, DateTime.UtcNow + _cacheCheckupPeriod);
         }
 
         public static string GetKey(MarketType market, string assetPairId, CandlePriceType priceType, CandleTimeInterval timeInterval)
