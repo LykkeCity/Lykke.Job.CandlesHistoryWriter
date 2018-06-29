@@ -63,7 +63,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
                 await Task.WhenAll(cacheAssetPairTasks);
 
-                await _candlesCacheService.UpdateValidationToken(); // Initial validation token set.
+                await _candlesCacheService.InjectCacheValidityToken(); // Initial validation token set.
 
                 await _log.WriteInfoAsync(nameof(CandlesCacheInitalizationService), nameof(InitializeCacheAsync), null,
                     "All candles history is cached");
