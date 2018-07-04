@@ -6,6 +6,8 @@ using AzureStorage.Blob;
 using AzureStorage.Tables;
 using Common.Log;
 using Lykke.Common;
+using MarginTrading.SettingsService.Contracts;
+using Lykke.HttpClientGenerator;
 using Lykke.Job.CandleHistoryWriter.Repositories.Candles;
 using Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryProviders.MeFeedHistory;
 using Lykke.Job.CandleHistoryWriter.Repositories.Snapshots;
@@ -114,14 +116,22 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
 
         private void RegisterAssets(ContainerBuilder builder)
         {
-            _services.RegisterAssetsClient(AssetServiceSettings.Create(
-                    new Uri(_assetSettings.ServiceUrl),
-                    _settings.AssetsCache.ExpirationPeriod),
-                _log);
+            if(_marketType == MarketType.Spot)
+            {
+                _services.RegisterAssetsClient(AssetServiceSettings.Create(
+                   new Uri(_assetSettings.ServiceUrl),
+                   _settings.AssetsCache.ExpirationPeriod),
+               _log);
+            }
+            else
+            {
+                builder.RegisterClient<IAssetPairsApi>(_settings.MtAssetServiceUrl);
+            }
 
             builder.RegisterType<AssetPairsManager>()
-                .As<IAssetPairsManager>()
-                .SingleInstance();
+                    .As<IAssetPairsManager>()
+                    .SingleInstance();
+
         }
 
         private void RegisterCandles(ContainerBuilder builder)

@@ -14,5 +14,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Settings
         public ResourceMonitorSettings ResourceMonitor { get; set; }
         public int HistoryTicksCacheSize { get; set; }
         public TimeSpan CacheCleanupPeriod { get; set; }
+        public string MtAssetServiceUrl { get; set; }
     }
 }
