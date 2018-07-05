@@ -125,7 +125,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
             }
             else
             {
-                builder.RegisterClient<IAssetPairsApi>(_settings.MtAssetServiceUrl);
+                builder.RegisterClient<IAssetPairsApi>(_assetSettings.ServiceUrl);
             }
 
             builder.RegisterType<AssetPairsManager>()
