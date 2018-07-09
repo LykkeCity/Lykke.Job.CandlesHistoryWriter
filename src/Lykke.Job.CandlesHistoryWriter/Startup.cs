@@ -73,13 +73,12 @@ namespace Lykke.Job.CandlesHistoryWriter
                     ? settings.Nested(x => x.CandleHistoryAssetConnections)
                     : settings.Nested(x => x.MtCandleHistoryAssetConnections);
 
-                if(settings.CurrentValue.SlackNotifications != null)
-                {
-                   Log = CreateLogWithSlack(
+             
+                Log = CreateLogWithSlack(
                     services,
                     settings.CurrentValue.SlackNotifications,
                     candlesHistoryWriter.ConnectionString(x => x.Db.LogsConnectionString));
-                }
+                
 
 
                 builder.RegisterModule(new JobModule(
@@ -199,21 +198,24 @@ namespace Lykke.Job.CandlesHistoryWriter
             var aggregateLogger = new AggregateLogger();
 
             aggregateLogger.AddLog(consoleLogger);
-
-            // Creating slack notification service, which logs own azure queue processing messages to aggregate log
-            var slackService = services.UseSlackNotificationsSenderViaAzureQueue(new AzureQueueSettings
+            LykkeLogToAzureSlackNotificationsManager slackNotificationsManager = null;
+            if (slackSettings != null && slackSettings.AzureQueue != null && slackSettings.AzureQueue.ConnectionString != null 
+                && slackSettings.AzureQueue.QueueName != null && aggregateLogger != null)
             {
-                ConnectionString = slackSettings.AzureQueue.ConnectionString,
-                QueueName = slackSettings.AzureQueue.QueueName
-            }, aggregateLogger);
 
-            var slackNotificationsManager = new LykkeLogToAzureSlackNotificationsManager(slackService, consoleLogger);
+                // Creating slack notification service, which logs own azure queue processing messages to aggregate log
+                var slackService = services.UseSlackNotificationsSenderViaAzureQueue(new AzureQueueSettings
+                {
+                    ConnectionString = slackSettings.AzureQueue.ConnectionString,
+                    QueueName = slackSettings.AzureQueue.QueueName
+                }, aggregateLogger);
 
-            var logToSlack = LykkeLogToSlack.Create(slackService, "Prices");
+                slackNotificationsManager = new LykkeLogToAzureSlackNotificationsManager(slackService, consoleLogger);
 
-            aggregateLogger.AddLog(logToSlack);
-            
+                var logToSlack = LykkeLogToSlack.Create(slackService, "Prices");
 
+                aggregateLogger.AddLog(logToSlack);
+            }
 
             var dbLogConnectionString = dbLogConnectionStringManager.CurrentValue;
 
