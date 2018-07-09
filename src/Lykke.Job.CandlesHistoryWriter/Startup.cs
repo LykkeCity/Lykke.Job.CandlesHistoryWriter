@@ -32,6 +32,7 @@ namespace Lykke.Job.CandlesHistoryWriter
         private IContainer ApplicationContainer { get; set; }
         private IConfigurationRoot Configuration { get; }
         private ILog Log { get; set; }
+        public static string monitoringServiceUrl { get; set; }
 
         public Startup(IHostingEnvironment env)
         {
@@ -141,12 +142,17 @@ namespace Lykke.Job.CandlesHistoryWriter
             try
             {
                 await ApplicationContainer.Resolve<IStartupManager>().StartAsync();
+                monitoringServiceUrl = Configuration.LoadSettings<AppSettings>().CurrentValue.MonitoringServiceClient.MonitoringServiceUrl;
 
-                await AutoRegistrationInMonitoring.RegisterAsync(Configuration,
-                    Configuration.LoadSettings<AppSettings>().CurrentValue.MonitoringServiceClient.MonitoringServiceUrl, 
+                if (!string.IsNullOrEmpty(monitoringServiceUrl) && monitoringServiceUrl != "n/a")
+                {
+                    await AutoRegistrationInMonitoring.RegisterAsync(Configuration,
+                    monitoringServiceUrl,
                     Log);
 
-                await Log.WriteMonitorAsync("", "", "Started");
+                    await Log.WriteMonitorAsync("", "", "Started");
+                }
+                
             }
             catch (Exception ex)
             {

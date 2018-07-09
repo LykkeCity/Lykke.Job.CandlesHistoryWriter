@@ -83,24 +83,27 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
         private void RegisterResourceMonitor(ContainerBuilder builder)
         {
             var monitorSettings = _settings.ResourceMonitor;
-
-            switch (monitorSettings.MonitorMode)
+            if(!string.IsNullOrEmpty(Startup.monitoringServiceUrl) &&  Startup.monitoringServiceUrl != "n/a")
             {
-                case ResourceMonitorMode.Off:
-                    // Do not register any resource monitor.
-                    break;
+                switch (monitorSettings.MonitorMode)
+                {
+                    case ResourceMonitorMode.Off:
+                        // Do not register any resource monitor.
+                        break;
 
-                case ResourceMonitorMode.AppInsightsOnly:
-                    builder.RegisterResourcesMonitoring(_log);
-                    break;
+                    case ResourceMonitorMode.AppInsightsOnly:
+                        builder.RegisterResourcesMonitoring(_log);
+                        break;
 
-                case ResourceMonitorMode.AppInsightsWithLog:
-                    builder.RegisterResourcesMonitoringWithLogging(
-                        _log,
-                        monitorSettings.CpuThreshold,
-                        monitorSettings.RamThreshold);
-                    break;
+                    case ResourceMonitorMode.AppInsightsWithLog:
+                        builder.RegisterResourcesMonitoringWithLogging(
+                            _log,
+                            monitorSettings.CpuThreshold,
+                            monitorSettings.RamThreshold);
+                        break;
+                }
             }
+           
         }
 
         private void RegisterRedis(ContainerBuilder builder)
