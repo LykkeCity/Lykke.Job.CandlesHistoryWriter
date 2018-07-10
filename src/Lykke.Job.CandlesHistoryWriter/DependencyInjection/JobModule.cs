@@ -199,7 +199,8 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
 
             builder.RegisterType<CandlesCacheInitalizationService>()
                 .WithParameter(TypedParameter.From(_settings.HistoryCache.HistoryTicksCacheSize))
-                .As<ICandlesCacheInitalizationService>();
+                .As<ICandlesCacheInitalizationService>()
+                .SingleInstance();
 
             builder.RegisterType<CandlesPersistenceQueueSnapshotRepository>()
                 .As<ICandlesPersistenceQueueSnapshotRepository>()
@@ -210,8 +211,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
                 .SingleInstance()
                 .WithParameter(TypedParameter.From(_marketType))
                 .WithParameter(TypedParameter.From(_settings.HistoryCache.CacheCheckupPeriod))
-                .WithParameter(TypedParameter.From(_settings.HistoryCache.HistoryTicksCacheSize))
-                .AutoActivate();
+                .WithParameter(TypedParameter.From(_settings.HistoryCache.HistoryTicksCacheSize));
 
             RegisterCandlesMigration(builder);
 

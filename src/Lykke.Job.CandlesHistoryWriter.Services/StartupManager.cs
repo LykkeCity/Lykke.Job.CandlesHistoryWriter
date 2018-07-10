@@ -7,6 +7,7 @@ using Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryProvide
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Candles;
+using Lykke.Job.CandlesHistoryWriter.Services.Candles;
 
 namespace Lykke.Job.CandlesHistoryWriter.Services
 {
@@ -15,6 +16,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
     {
         private readonly ILog _log;
         private readonly ICandlesCacheInitalizationService _cacheInitalizationService;
+        private readonly RedisCacheCaretaker _cacheCaretaker;
         private readonly ICandlesSubscriber _candlesSubscriber;
         private readonly ISnapshotSerializer _snapshotSerializer;
         private readonly ICandlesPersistenceQueueSnapshotRepository _persistenceQueueSnapshotRepository;
@@ -25,6 +27,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
         public StartupManager(
             ILog log,
             ICandlesCacheInitalizationService cacheInitalizationService,
+            RedisCacheCaretaker cacheCaretaker,
             ICandlesSubscriber candlesSubscriber,
             ISnapshotSerializer snapshotSerializer,
             ICandlesPersistenceQueueSnapshotRepository persistenceQueueSnapshotRepository,
@@ -37,6 +40,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
             _log = log.CreateComponentScope(nameof(StartupManager)) ?? throw new InvalidOperationException("Couldn't create a component scope for logging.");
 
             _cacheInitalizationService = cacheInitalizationService ?? throw new ArgumentNullException(nameof(cacheInitalizationService));
+            _cacheCaretaker = cacheCaretaker ?? throw new ArgumentNullException(nameof(cacheCaretaker));
             _candlesSubscriber = candlesSubscriber ?? throw new ArgumentNullException(nameof(candlesSubscriber));
             _snapshotSerializer = snapshotSerializer ?? throw new ArgumentNullException(nameof(snapshotSerializer));
             _persistenceQueueSnapshotRepository = persistenceQueueSnapshotRepository ?? throw new ArgumentNullException(nameof(persistenceQueueSnapshotRepository));
@@ -79,6 +83,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
                 await _log.WriteInfoAsync(nameof(StartAsync), "", "Starting candles subscriber...");
 
                 _candlesSubscriber.Start();
+
+                _cacheCaretaker.Start();  // Should go after cache initialization has finished working && if no migration
             }
 
             await _log.WriteInfoAsync(nameof(StartAsync), "", "Started up");
