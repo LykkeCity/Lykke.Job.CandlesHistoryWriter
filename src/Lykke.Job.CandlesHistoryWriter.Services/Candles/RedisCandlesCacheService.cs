@@ -169,6 +169,19 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             await _database.SetAddAsync(vkey, "CandlesHistoryCacheIsStillValidIfYouCanSeeMe");
         }
 
+        public bool CheckCacheValidity()
+        {
+            var vkey = RedisCandlesCacheService.GetValidationKey(_market);
+            return _database.KeyExists(vkey);
+        }
+
+        public void TruncateCache(string assetId, CandlePriceType priceType, CandleTimeInterval timeInterval, int storedCandlesCountLimit)
+        {
+            var key = GetKey(_market, assetId, priceType, timeInterval);
+
+            _database.SortedSetRemoveRangeByRank(key, 0, -storedCandlesCountLimit - 1, CommandFlags.FireAndForget);
+        }
+
         public static string GetKey(MarketType market, string assetPairId, CandlePriceType priceType, CandleTimeInterval timeInterval)
         {
             return $"CandlesHistory:{market}:{assetPairId}:{priceType}:{timeInterval}";

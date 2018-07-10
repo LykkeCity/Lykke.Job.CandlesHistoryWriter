@@ -45,10 +45,14 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             // Depending on cache invalidation period and on asset pairs amount, there may be a case when
             // the invalidation timer fires before the cache loading has stopped. This will be a signal 
             // to skip timer-based invalidation.
-            if (InitializationState == CacheInitializationState.InProgress)
-                return;
+            var initLock = new object();
+            lock (initLock)
+            {
+                if (InitializationState == CacheInitializationState.InProgress)
+                    return;
 
-            InitializationState = CacheInitializationState.InProgress;
+                InitializationState = CacheInitializationState.InProgress;
+            }
 
             try
             {

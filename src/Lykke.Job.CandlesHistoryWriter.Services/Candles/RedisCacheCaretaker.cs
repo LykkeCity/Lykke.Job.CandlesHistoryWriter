@@ -6,46 +6,44 @@ using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Candles;
-using StackExchange.Redis;
 
 namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 {
     [UsedImplicitly]
-    public class RedisCacheCaretaker : TimerPeriod
+    public class RedisCacheCaretaker : IDisposable
     {
         private readonly ICandlesHistoryRepository _historyRepository;
-        private readonly IDatabase _database;
+        private readonly ICandlesCacheService _redisCacheService;
         private readonly ICandlesCacheInitalizationService _cacheInitiaInitalizationService;
-        private readonly MarketType _market;
         private readonly int _amountOfCandlesToStore;
+
+        private readonly TimerTrigger _maintainTicker;
 
         public RedisCacheCaretaker(
             ICandlesHistoryRepository historyRepository,
-            IDatabase database,
+            ICandlesCacheService redisCacheService,
             ICandlesCacheInitalizationService cacheInitiaInitalizationService,
-            MarketType market,
             TimeSpan cacheCheckupPeriod,
             int amountOfCandlesToStore,
             ILog log)
-            : base(nameof(RedisCacheCaretaker), (int)cacheCheckupPeriod.TotalMilliseconds, log)
         {
             _historyRepository = historyRepository ?? throw new ArgumentNullException(nameof(historyRepository));
-            _database = database ?? throw new ArgumentNullException(nameof(database));
+            _redisCacheService = redisCacheService ?? throw new ArgumentNullException(nameof(redisCacheService));
             _cacheInitiaInitalizationService = cacheInitiaInitalizationService ?? throw new ArgumentNullException(nameof(cacheInitiaInitalizationService));
-            _market = market;
             _amountOfCandlesToStore = amountOfCandlesToStore;
+
+            _maintainTicker = new TimerTrigger(nameof(RedisCacheCaretaker), cacheCheckupPeriod, log);
+            _maintainTicker.Triggered += MaintainTickerOnTriggered;
         }
 
-        public override Task Execute()
+        private async Task MaintainTickerOnTriggered(ITimerTrigger timer, TimerTriggeredHandlerArgs args, CancellationToken cancellationToken)
         {
             // TODO: such an approach is Ok for the case of the single running service instance. But once we get
             // TODO: a necessity to run more instances, the code below will provoke a problem.
 
             TruncateCache();
 
-            ReloadCacheIfNeeded();
-            
-            return Task.CompletedTask;
+            await ReloadCacheIfNeededAsync();
         }
 
         private void TruncateCache()
@@ -60,23 +58,26 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                 {
                     foreach (var timeInterval in Constants.StoredIntervals)
                     {
-                        var key = RedisCandlesCacheService.GetKey(_market, assetId, priceType, timeInterval);
-
-                        _database.SortedSetRemoveRangeByRank(key, 0, -_amountOfCandlesToStore - 1, CommandFlags.FireAndForget);
+                        _redisCacheService.TruncateCache(assetId, priceType, timeInterval, _amountOfCandlesToStore);
                     }
                 }
             }
         }
 
-        private void ReloadCacheIfNeeded()
+        private async Task ReloadCacheIfNeededAsync()
         {
-            var vkey = RedisCandlesCacheService.GetValidationKey(_market);
-            if (_database.KeyExists(vkey))
-                return;
+            if ( ! _redisCacheService.CheckCacheValidity())
+                await _cacheInitiaInitalizationService.InitializeCacheAsync();
+        }
 
-            _cacheInitiaInitalizationService.InitializeCacheAsync()
-                .GetAwaiter()
-                .GetResult();
+        public void Start()
+        {
+            _maintainTicker.Start();
+        }
+
+        public void Dispose()
+        {
+            _maintainTicker?.Stop();
         }
     }
 }
