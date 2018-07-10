@@ -207,7 +207,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
                 .WithParameter(TypedParameter.From(AzureBlobStorage.Create(_dbSettings.ConnectionString(x => x.SnapshotsConnectionString), TimeSpan.FromMinutes(10))));
 
             builder.RegisterType<RedisCacheCaretaker>()
-                .As<IStartable>()
+                .AsSelf()
                 .SingleInstance()
                 .WithParameter(TypedParameter.From(_marketType))
                 .WithParameter(TypedParameter.From(_settings.HistoryCache.CacheCheckupPeriod))
