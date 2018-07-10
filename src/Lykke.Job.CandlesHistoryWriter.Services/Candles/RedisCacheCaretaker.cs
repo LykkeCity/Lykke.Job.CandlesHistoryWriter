@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Autofac;
 using Common;
 using Common.Log;
 using JetBrains.Annotations;
@@ -10,7 +11,7 @@ using Lykke.Job.CandlesHistoryWriter.Core.Services.Candles;
 namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 {
     [UsedImplicitly]
-    public class RedisCacheCaretaker : IDisposable
+    public class RedisCacheCaretaker : IStartable, IDisposable
     {
         private readonly ICandlesHistoryRepository _historyRepository;
         private readonly ICandlesCacheService _redisCacheService;
