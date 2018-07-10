@@ -14,7 +14,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
     {
         private readonly ICandlesHistoryRepository _historyRepository;
         private readonly ICandlesCacheService _redisCacheService;
-        private readonly ICandlesCacheInitalizationService _cacheInitiaInitalizationService;
+        private readonly ICandlesCacheInitalizationService _cacheInitalizationService;
         private readonly int _amountOfCandlesToStore;
 
         private readonly TimerTrigger _maintainTicker;
@@ -22,14 +22,14 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         public RedisCacheCaretaker(
             ICandlesHistoryRepository historyRepository,
             ICandlesCacheService redisCacheService,
-            ICandlesCacheInitalizationService cacheInitiaInitalizationService,
+            ICandlesCacheInitalizationService cacheInitalizationService,
             TimeSpan cacheCheckupPeriod,
             int amountOfCandlesToStore,
             ILog log)
         {
             _historyRepository = historyRepository ?? throw new ArgumentNullException(nameof(historyRepository));
             _redisCacheService = redisCacheService ?? throw new ArgumentNullException(nameof(redisCacheService));
-            _cacheInitiaInitalizationService = cacheInitiaInitalizationService ?? throw new ArgumentNullException(nameof(cacheInitiaInitalizationService));
+            _cacheInitalizationService = cacheInitalizationService ?? throw new ArgumentNullException(nameof(cacheInitalizationService));
             _amountOfCandlesToStore = amountOfCandlesToStore;
 
             _maintainTicker = new TimerTrigger(nameof(RedisCacheCaretaker), cacheCheckupPeriod, log);
@@ -49,7 +49,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         private void TruncateCache()
         {
             // Shall not truncate cache while reloading data.
-            if (_cacheInitiaInitalizationService.InitializationState != CacheInitializationState.Idle)
+            if (_cacheInitalizationService.InitializationState != CacheInitializationState.Idle)
                 return;
 
             foreach (var assetId in _historyRepository.GetStoredAssetPairs())
@@ -67,7 +67,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         private async Task ReloadCacheIfNeededAsync()
         {
             if ( ! _redisCacheService.CheckCacheValidity())
-                await _cacheInitiaInitalizationService.InitializeCacheAsync();
+                await _cacheInitalizationService.InitializeCacheAsync();
         }
 
         public void Start()
@@ -78,6 +78,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         public void Dispose()
         {
             _maintainTicker?.Stop();
+            _maintainTicker?.Dispose();
         }
     }
 }

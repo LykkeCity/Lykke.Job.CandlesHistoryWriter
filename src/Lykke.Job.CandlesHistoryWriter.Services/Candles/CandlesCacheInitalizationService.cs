@@ -20,6 +20,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         private readonly ICandlesHistoryRepository _candlesHistoryRepository;
         private readonly int _amountOfCandlesToStore;
 
+        private readonly object _initializationStateLocker = new object();
+
         public CacheInitializationState InitializationState { get; private set; }
 
         public CandlesCacheInitalizationService(
@@ -45,8 +47,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             // Depending on cache invalidation period and on asset pairs amount, there may be a case when
             // the invalidation timer fires before the cache loading has stopped. This will be a signal 
             // to skip timer-based invalidation.
-            var initLock = new object();
-            lock (initLock)
+            lock (_initializationStateLocker)
             {
                 if (InitializationState == CacheInitializationState.InProgress)
                     return;

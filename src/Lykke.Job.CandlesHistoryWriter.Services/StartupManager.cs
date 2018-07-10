@@ -69,8 +69,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
 
             await Task.WhenAll(tasks);
 
-            _cacheCaretaker.Start();  // Should go after cache initialization has finished working
-
             await _log.WriteInfoAsync(nameof(StartAsync), "", "Starting persistence queue...");
 
             _persistenceQueue.Start();
@@ -85,6 +83,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
                 await _log.WriteInfoAsync(nameof(StartAsync), "", "Starting candles subscriber...");
 
                 _candlesSubscriber.Start();
+
+                _cacheCaretaker.Start();  // Should go after cache initialization has finished working && if no migration
             }
 
             await _log.WriteInfoAsync(nameof(StartAsync), "", "Started up");
