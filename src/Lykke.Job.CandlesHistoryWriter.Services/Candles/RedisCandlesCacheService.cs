@@ -30,8 +30,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
         public RedisCandlesCacheService(IHealthService healthService, IDatabase database, MarketType market)
         {
-            _healthService = healthService;
-            _database = database;
+            _healthService = healthService ?? throw new ArgumentNullException(nameof(healthService));
+            _database = database ?? throw new ArgumentNullException(nameof(database));
             _market = market;
         }
 
@@ -76,9 +76,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
             var key = GetKey(_market, assetPairId, priceType, timeInterval);
 
-            // Cleans cache
-
-            await _database.KeyDeleteAsync(key);
+            // Note: currently we do not clean the cache manually
 
             foreach (var candlesBatch in candles.Batch(100))
             {
@@ -164,9 +162,34 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             }
         }
 
+        public async Task InjectCacheValidityToken()
+        {
+            var vkey = GetValidationKey(_market);
+
+            await _database.SetAddAsync(vkey, "CandlesHistoryCacheIsStillValidIfYouCanSeeMe");
+        }
+
+        public bool CheckCacheValidity()
+        {
+            var vkey = RedisCandlesCacheService.GetValidationKey(_market);
+            return _database.KeyExists(vkey);
+        }
+
+        public void TruncateCache(string assetId, CandlePriceType priceType, CandleTimeInterval timeInterval, int storedCandlesCountLimit)
+        {
+            var key = GetKey(_market, assetId, priceType, timeInterval);
+
+            _database.SortedSetRemoveRangeByRank(key, 0, -storedCandlesCountLimit - 1, CommandFlags.FireAndForget);
+        }
+
         public static string GetKey(MarketType market, string assetPairId, CandlePriceType priceType, CandleTimeInterval timeInterval)
         {
             return $"CandlesHistory:{market}:{assetPairId}:{priceType}:{timeInterval}";
+        }
+
+        public static string GetValidationKey(MarketType market)
+        {
+            return $"CandlesHistory:{market}:ValidationToken";
         }
     }
 }
