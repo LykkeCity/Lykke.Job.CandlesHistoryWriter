@@ -1,4 +1,5 @@
 ﻿using Lykke.SettingsReader.Attributes;
+using Lykke.Job.CandlesHistoryWriter.Core.Domain;
 
 namespace Lykke.Job.CandlesHistoryWriter.Services.Settings
 {
@@ -13,5 +14,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Settings
         [Optional]
         [AzureTableCheck]
         public string FeedHistoryConnectionString { get; set; }
+
+        public StorageMode StorageMode { get; set; }
+
+        [SqlCheck]
+        public string SqlConnectionString { get; set; }
     }
 }

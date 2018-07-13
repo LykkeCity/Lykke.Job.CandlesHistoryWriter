@@ -29,6 +29,7 @@ using Lykke.Job.CandlesHistoryWriter.Services.Settings;
 using Lykke.SettingsReader;
 using Microsoft.Extensions.DependencyInjection;
 using StackExchange.Redis;
+using Lykke.Job.CandlesHistoryWriter.Core.Domain;
 
 namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
 {

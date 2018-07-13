@@ -23,6 +23,7 @@ using Lykke.Job.CandlesHistoryWriter.Services.Settings;
 using AzureQueueSettings = Lykke.AzureQueueIntegration.AzureQueueSettings;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.MonitoringServiceApiCaller;
+using Lykke.Job.CandlesHistoryWriter.Core.Domain;
 
 namespace Lykke.Job.CandlesHistoryWriter
 {
