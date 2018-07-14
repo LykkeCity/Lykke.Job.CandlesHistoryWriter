@@ -167,10 +167,12 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
                     .WithParameter(connstrParameter)
                     .SingleInstance();
 
-                builder.RegisterType<CandlesHistoryRepository>()
+                builder.RegisterType<SqlCandlesHistoryRepository>()
                     .As<ICandlesHistoryRepository>()
                     .WithParameter(TypedParameter.From(_candleHistoryAssetConnections))
+                    .WithParameter(TypedParameter.From(_settings.Db.SqlConnectionString))
                     .SingleInstance();
+
             }
             else if (_settings.Db.StorageMode == StorageMode.Azure)
             {
@@ -244,17 +246,9 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
 
             if (_settings.Db.StorageMode == StorageMode.SqlServer)
             {
-                builder.RegisterType<SqlCandlesPersistenceQueueSnapshotRepository>()
-                    .As<ICandlesPersistenceQueueSnapshotRepository>()
-                    .WithParameter(TypedParameter.From(AzureBlobStorage.Create(_dbSettings.ConnectionString(x => x.SnapshotsConnectionString), TimeSpan.FromMinutes(10))));
-
                 builder.Register<ICandlesPersistenceQueueSnapshotRepository>(ctx =>
                         new SqlCandlesPersistenceQueueSnapshotRepository(_dbSettings.CurrentValue.SqlConnectionString))
                     .SingleInstance();
-
-
-                //builder.RegisterType<ICandlesPersistenceQueueSnapshotRepository>()
-                //    .As<ISnapshotSerializer>();
 
             }
             else if (_settings.Db.StorageMode == StorageMode.Azure)
