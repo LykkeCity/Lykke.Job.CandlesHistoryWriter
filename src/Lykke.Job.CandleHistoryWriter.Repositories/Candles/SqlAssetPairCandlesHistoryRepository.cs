@@ -78,7 +78,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                                 
                                 await conn.ExecuteAsync(
                                     $"insert into {TableName} ({GetColumns}) values ({GetFields})",
-                                    candles, transaction);
+                                    candles, transaction, commandTimeout: 150);
                                 transaction.Commit();
                             }
                             catch (Exception ex)

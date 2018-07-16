@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Common;
 using Common.Log;
 using JetBrains.Annotations;
+using Lykke.Job.CandlesHistoryWriter.Core.Domain;
 using Lykke.Job.CandlesProducer.Contract;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services;
@@ -26,6 +27,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         private readonly ILog _log;
         private readonly IHealthService _healthService;
         private readonly PersistenceSettings _settings;
+        private readonly StorageMode _storageMode;
 
         // TODO: Make dictionary with timestamp, assetPair, priceType, timeInterval key 
         // store only the last state of the candle, and thus, reduce memory consumtion
@@ -36,7 +38,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             ICandlesHistoryRepository repository,
             ILog log,
             IHealthService healthService,
-            PersistenceSettings settings) :
+            PersistenceSettings settings,
+            StorageMode stmP) :
 
             base(nameof(CandlesPersistenceQueue), log)
         {
@@ -45,6 +48,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             _healthService = healthService;
             _settings = settings;
             _candlesToDispatch = new ConcurrentQueue<ICandle>();
+            _storageMode = stmP;
+
         }
 
         public void EnqueueCandle(ICandle candle)
@@ -142,17 +147,35 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
             try
             {
-                var grouppedCandles = candles
-                    .GroupBy(c => new
-                    {
-                        c.AssetPairId,
-                        c.PriceType,
-                        c.TimeInterval
-                    });
-                var tasks = grouppedCandles
-                    .Select(g => InsertSinglePartitionCandlesAsync(g, g.Key.AssetPairId, g.Key.PriceType, g.Key.TimeInterval));
+                if (_storageMode == StorageMode.SqlServer)
+                {
+                    var priceType = candles.FirstOrDefault().PriceType;
+                    var timeInterval = candles.FirstOrDefault().TimeInterval;
+                  var grouppedCandles = candles
+                        .GroupBy(c => new
+                        {
+                            c.AssetPairId
+                        });
+                    var tasks = grouppedCandles
+                        .Select(g => InsertSinglePartitionCandlesAsync(g, g.Key.AssetPairId, priceType, timeInterval));
 
-                await Task.WhenAll(tasks);
+                    await Task.WhenAll(tasks); }
+                else
+                {
+                    var grouppedCandles = candles
+                        .GroupBy(c => new
+                        {
+                            c.AssetPairId,
+                            c.PriceType,
+                            c.TimeInterval
+                        });
+                    var tasks = grouppedCandles
+                        .Select(g => InsertSinglePartitionCandlesAsync(g, g.Key.AssetPairId, g.Key.PriceType, g.Key.TimeInterval));
+
+                    await Task.WhenAll(tasks);
+                }
+
+               
             }
             finally
             {
@@ -179,5 +202,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                     priceType,
                     timeInterval));
         }
+
     }
+
 }
