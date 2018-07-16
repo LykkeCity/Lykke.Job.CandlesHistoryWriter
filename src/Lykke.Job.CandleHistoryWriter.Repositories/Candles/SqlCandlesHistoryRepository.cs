@@ -48,7 +48,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
         }
 
         public async Task<IEnumerable<ICandle>> GetCandlesAsync(string assetPairId, CandleTimeInterval interval,
-            CandlePriceType priceType, DateTime @from, DateTime to)
+            CandlePriceType priceType, DateTime from, DateTime to)
         {
             var repo = GetRepo(assetPairId);
             try
