@@ -83,10 +83,11 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                             }
                             catch (Exception ex)
                             {
-                                transaction.Rollback();
+                                
                                 _log?.WriteErrorAsync(nameof(SqlCandlesHistoryRepository), nameof(InsertOrMergeAsync),
                                     $"Failed to insert an candle list", ex);
-                             }
+                                transaction.Rollback();
+                }
                 }
         }
 
@@ -167,9 +168,10 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                 }
                 catch (Exception ex)
                 {
-                    transaction.Rollback();
+                    
                     _log?.WriteWarningAsync(nameof(SqlAssetPairCandlesHistoryRepository), nameof(DeleteCandlesAsync),
                         $"Failed to delete an asset pairs", ex);
+                    transaction.Rollback();
 
                 }
 
@@ -217,9 +219,10 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                 }
                 catch (Exception ex)
                 {
-                    transaction.Rollback();
+                   
                     _log?.WriteErrorAsync(nameof(SqlAssetPairCandlesHistoryRepository), nameof(ReplaceCandlesAsync),
                         $"Failed to repalce an asset pair", ex);
+                    transaction.Rollback();
 
                 }
 
