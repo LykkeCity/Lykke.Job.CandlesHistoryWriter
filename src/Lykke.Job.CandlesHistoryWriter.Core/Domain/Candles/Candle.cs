@@ -46,6 +46,27 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles
             LastUpdateTimestamp = lastUpdateTimestamp;
         }
 
+        private Candle(
+            System.Int64 Id, System.String assetPairId, System.Int32 priceType, 
+            System.Double open, System.Double close, System.Double high, 
+            System.Double low, System.Int32 timeInterval, System.Double tradingVolume, 
+            System.Double tradingOppositeVolume, System.Double lastTradePrice, 
+            System.DateTime timestamp, System.DateTime lastUpdateTimestamp)
+        {
+            AssetPairId = assetPairId;
+            PriceType = (CandlePriceType)priceType;
+            TimeInterval = (CandleTimeInterval)timeInterval;
+            Timestamp = timestamp;
+            Open = open;
+            Close = close;
+            High = high;
+            Low = low;
+            TradingVolume = tradingVolume;
+            TradingOppositeVolume = tradingOppositeVolume;
+            LastTradePrice = lastTradePrice;
+            LastUpdateTimestamp = lastUpdateTimestamp;
+        }
+
         public static Candle Create(
             string assetPair,
             CandlePriceType priceType, 
