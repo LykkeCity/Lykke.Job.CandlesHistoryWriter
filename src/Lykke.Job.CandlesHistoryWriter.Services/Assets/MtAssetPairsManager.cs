@@ -16,7 +16,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Assets
         private readonly IAssetPairsApi _apiService;
         private readonly ILog _log;
 
-        public MtAssetPairsManager(ILog log, IAssetPairsApi apiService)
+
+        public MtAssetPairsManager(ILog log,IAssetPairsApi apiService)
         {
             _apiService = apiService;
             _log = log;

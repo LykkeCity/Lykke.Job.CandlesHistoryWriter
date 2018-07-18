@@ -94,6 +94,7 @@ namespace Lykke.Job.CandlesHistoryWriter
                 }
 
 
+
                 builder.RegisterModule(new JobModule(
                     marketType,
                     candlesHistoryWriter.CurrentValue,
@@ -220,7 +221,6 @@ namespace Lykke.Job.CandlesHistoryWriter
             if (slackSettings != null && slackSettings.AzureQueue != null && slackSettings.AzureQueue.ConnectionString != null
                 && slackSettings.AzureQueue.QueueName != null && aggregateLogger != null)
             {
-
                 // Creating slack notification service, which logs own azure queue processing messages to aggregate log
                 var slackService = services.UseSlackNotificationsSenderViaAzureQueue(new AzureQueueSettings
                 {
