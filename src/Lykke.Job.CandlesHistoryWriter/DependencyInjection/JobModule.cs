@@ -6,6 +6,8 @@ using AzureStorage.Blob;
 using AzureStorage.Tables;
 using Common.Log;
 using Lykke.Common;
+using MarginTrading.SettingsService.Contracts;
+using Lykke.HttpClientGenerator;
 using Lykke.Job.CandleHistoryWriter.Repositories.Candles;
 using Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryProviders.MeFeedHistory;
 using Lykke.Job.CandleHistoryWriter.Repositories.Snapshots;
@@ -46,7 +48,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
             CandlesHistoryWriterSettings settings,
             AssetsSettings assetSettings,
             RedisSettings redisSettings,
-            IReloadingManager<Dictionary<string, string>> candleHistoryAssetConnections,  
+            IReloadingManager<Dictionary<string, string>> candleHistoryAssetConnections,
             IReloadingManager<DbSettings> dbSettings,
             ILog log)
         {
@@ -65,7 +67,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
             builder.RegisterInstance(_log)
                 .As<ILog>()
                 .SingleInstance();
-                        
+
             builder.RegisterType<Clock>().As<IClock>();
 
             RegisterResourceMonitor(builder);
@@ -81,24 +83,27 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
         private void RegisterResourceMonitor(ContainerBuilder builder)
         {
             var monitorSettings = _settings.ResourceMonitor;
-
-            switch (monitorSettings.MonitorMode)
+            if (!string.IsNullOrEmpty(Startup.monitoringServiceUrl) && Startup.monitoringServiceUrl != "n/a")
             {
-                case ResourceMonitorMode.Off:
-                    // Do not register any resource monitor.
-                    break;
+                switch (monitorSettings.MonitorMode)
+                {
+                    case ResourceMonitorMode.Off:
+                        // Do not register any resource monitor.
+                        break;
 
-                case ResourceMonitorMode.AppInsightsOnly:
-                    builder.RegisterResourcesMonitoring(_log);
-                    break;
+                    case ResourceMonitorMode.AppInsightsOnly:
+                        builder.RegisterResourcesMonitoring(_log);
+                        break;
 
-                case ResourceMonitorMode.AppInsightsWithLog:
-                    builder.RegisterResourcesMonitoringWithLogging(
-                        _log,
-                        monitorSettings.CpuThreshold,
-                        monitorSettings.RamThreshold);
-                    break;
+                    case ResourceMonitorMode.AppInsightsWithLog:
+                        builder.RegisterResourcesMonitoringWithLogging(
+                            _log,
+                            monitorSettings.CpuThreshold,
+                            monitorSettings.RamThreshold);
+                        break;
+                }
             }
+
         }
 
         private void RegisterRedis(ContainerBuilder builder)
@@ -114,14 +119,28 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
 
         private void RegisterAssets(ContainerBuilder builder)
         {
-            _services.RegisterAssetsClient(AssetServiceSettings.Create(
-                    new Uri(_assetSettings.ServiceUrl),
-                    _settings.AssetsCache.ExpirationPeriod),
-                _log);
+            if (_marketType == MarketType.Spot)
+            {
+                _services.RegisterAssetsClient(AssetServiceSettings.Create(
+                   new Uri(_assetSettings.ServiceUrl),
+                   _settings.AssetsCache.ExpirationPeriod),
+               _log);
 
-            builder.RegisterType<AssetPairsManager>()
-                .As<IAssetPairsManager>()
-                .SingleInstance();
+                builder.RegisterType<AssetPairsManager>()
+                   .As<IAssetPairsManager>()
+                   .SingleInstance();
+            }
+            else
+            {
+                builder.RegisterClient<IAssetPairsApi>(_assetSettings.ServiceUrl);
+
+                builder.RegisterType<MtAssetPairsManager>()
+                 .As<IAssetPairsManager>()
+                 .SingleInstance();
+            }
+
+
+
         }
 
         private void RegisterCandles(ContainerBuilder builder)
@@ -175,7 +194,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
             builder.RegisterType<CandlesManager>()
                 .As<ICandlesManager>()
                 .SingleInstance();
-            
+
             builder.RegisterType<RedisCandlesCacheService>()
                 .As<ICandlesCacheService>()
                 .WithParameter(TypedParameter.From(_marketType))
@@ -225,9 +244,9 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
                 builder.RegisterType<FeedHistoryRepository>()
                     .As<IFeedHistoryRepository>()
                     .WithParameter(TypedParameter.From(AzureTableStorage<FeedHistoryEntity>.Create(
-                        _dbSettings.ConnectionString(x => x.FeedHistoryConnectionString), 
-                        "FeedHistory", 
-                        _log, 
+                        _dbSettings.ConnectionString(x => x.FeedHistoryConnectionString),
+                        "FeedHistory",
+                        _log,
                         maxExecutionTimeout: TimeSpan.FromMinutes(5))))
                     .SingleInstance();
             }
@@ -252,7 +271,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
             builder.RegisterType<HistoryProvidersManager>()
                 .As<IHistoryProvidersManager>()
                 .SingleInstance();
-                
+
             RegisterHistoryProvider<MeFeedHistoryProvider>(builder);
 
             builder.RegisterType<TradesMigrationHealthService>()
@@ -285,7 +304,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
                 .SingleInstance();
         }
 
-        private static void RegisterHistoryProvider<TProvider>(ContainerBuilder builder) 
+        private static void RegisterHistoryProvider<TProvider>(ContainerBuilder builder)
             where TProvider : IHistoryProvider
         {
             builder.RegisterType<TProvider>()

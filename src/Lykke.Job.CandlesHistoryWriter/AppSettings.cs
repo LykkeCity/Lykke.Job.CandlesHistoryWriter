@@ -16,6 +16,7 @@ namespace Lykke.Job.CandlesHistoryWriter
         [UsedImplicitly(ImplicitUseKindFlags.Assign)]
         public CandlesHistoryWriterSettings MtCandlesHistoryWriter { get; set; }
 
+        [Optional, CanBeNull]
         [UsedImplicitly(ImplicitUseKindFlags.Assign)]
         public SlackNotificationsSettings SlackNotifications { get; set; }
 
@@ -33,6 +34,7 @@ namespace Lykke.Job.CandlesHistoryWriter
         [UsedImplicitly(ImplicitUseKindFlags.Assign)]
         public RedisSettings RedisSettings { get; set; }
 
+        [Optional, CanBeNull]
         [UsedImplicitly(ImplicitUseKindFlags.Assign)]
         public MonitoringServiceClientSettings MonitoringServiceClient { get; set; }
     }
