@@ -121,10 +121,19 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
             using (var conn = new SqlConnection(_connectionString))
             {
-                var objects = await conn.QueryAsync<Candle>($"SELECT * FROM {TableName} {whereClause}",
-                    new { priceTypeVar = priceType, intervalVar = interval, fromVar = from, toVar = to});
+                try
+                {
+                    var objects = await conn.QueryAsync<Candle>($"SELECT * FROM {TableName} {whereClause}",
+                        new { priceTypeVar = priceType, intervalVar = interval, fromVar = from, toVar = to }, null, commandTimeout: 600);
+                    return objects;
+                }
 
-                return objects;
+                    catch (Exception ex)
+                {
+                    _log?.WriteErrorAsync(nameof(SqlCandlesHistoryRepository), nameof(GetCandlesAsync),
+                        $"Failed to get an candle list", ex);
+                    return null;
+                }
             }
 
         }
