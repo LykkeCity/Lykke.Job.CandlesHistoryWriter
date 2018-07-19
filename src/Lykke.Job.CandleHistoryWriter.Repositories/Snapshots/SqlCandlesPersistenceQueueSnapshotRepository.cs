@@ -10,7 +10,7 @@ using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
 using Dapper;
-using Lykke.Job.CandleHistoryWriter.Repositories.Extensions;
+using Lykke.Logs.MsSql.Extensions;
 
 namespace Lykke.Job.CandleHistoryWriter.Repositories.Snapshots
 {
@@ -18,6 +18,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Snapshots
     public class SqlCandlesPersistenceQueueSnapshotRepository : ICandlesPersistenceQueueSnapshotRepository
     {
         private const string TableName = "CandlesPersistenceQueue";
+        private const string BlobKey = "CandlesPersistenceQueu";
         private const string CreateTableScript = "CREATE TABLE [{0}](" +
                                                  "[BlobKey] [nvarchar] (64) NOT NULL PRIMARY KEY, " +
                                                  "[Data] [nvarchar] (MAX) NULL, " +
@@ -42,7 +43,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Snapshots
             {
                 var data = (await conn.QueryAsync<string>(
                     $"SELECT Data FROM {TableName} WHERE BlobKey=@blobKey",
-                    new { blobKey = "CandlesPersistenceQueue" })).SingleOrDefault();
+                    new { blobKey = BlobKey })).SingleOrDefault();
 
                 if (string.IsNullOrEmpty(data))
                     return null;
@@ -61,7 +62,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Snapshots
             var request = new
             {
                 data = JsonConvert.SerializeObject(model),
-                blobKey = "CandlesPersistenceQueue",
+                blobKey = BlobKey,
                 timestamp = DateTime.Now
             };
 

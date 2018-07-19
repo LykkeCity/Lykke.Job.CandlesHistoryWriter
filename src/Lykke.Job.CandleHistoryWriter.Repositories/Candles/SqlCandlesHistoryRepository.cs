@@ -128,13 +128,8 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
         {
             var key = assetPairId;
 
-            if (!_sqlAssetPairRepositories.TryGetValue(key, out SqlAssetPairCandlesHistoryRepository repo) || repo == null)
-            {
-                repo = new SqlAssetPairCandlesHistoryRepository(assetPairId, _sqlConnectionString, _log);
-                _sqlAssetPairRepositories.TryAdd(key, repo);
-            }
-
-            return repo;
+           return _sqlAssetPairRepositories.GetOrAdd(key,
+                new SqlAssetPairCandlesHistoryRepository(assetPairId, _sqlConnectionString, _log));
         }
 
         private (string assetPairId, CandleTimeInterval interval, CandlePriceType priceType) PreEvaluateInputCandleSet(
