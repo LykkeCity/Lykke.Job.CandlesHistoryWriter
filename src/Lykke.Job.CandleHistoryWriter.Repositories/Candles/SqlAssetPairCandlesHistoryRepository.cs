@@ -35,8 +35,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                                                  "[LastTradePrice] [float] NOT NULL, " +
                                                  "[Timestamp] [datetime] NULL, " +
                                                  "[LastUpdateTimestamp] [datetime] NULL" +
-                                                 ", INDEX IX_{0} NONCLUSTERED (Timestamp, PriceType, TimeInterval)" +
-                                                 ", CONSTRAINT UC_Person UNIQUE (PriceType, TimeInterval, Timestamp));";
+                                                 ",INDEX IX_{0} UNIQUE NONCLUSTERED (Timestamp, PriceType, TimeInterval));"
 
         private static Type DataType => typeof(ICandle);
         private static readonly string GetColumns = "[" + string.Join("],[", DataType.GetProperties().Select(x => x.Name)) + "]";
