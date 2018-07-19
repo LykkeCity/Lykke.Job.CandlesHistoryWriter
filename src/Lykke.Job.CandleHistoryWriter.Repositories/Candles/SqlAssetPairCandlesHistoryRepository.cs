@@ -66,36 +66,38 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                 }
             }
         }
- 
+
 
         public async Task InsertOrMergeAsync(IEnumerable<ICandle> candles)
         {
-                using (var conn = new SqlConnection(_connectionString))
-                {
-                            if (conn.State == ConnectionState.Closed)
-                                await conn.OpenAsync();
+            using (var conn = new SqlConnection(_connectionString))
+            {
+                if (conn.State == ConnectionState.Closed)
+                    await conn.OpenAsync();
 
-                            var transaction = conn.BeginTransaction();
-                            try
-                            {
-                                var timestamp = _systemClock.UtcNow.UtcDateTime;
-                                string sql = $"IF EXISTS (SELECT * FROM {TableName}" +
-                                             $" WHERE PriceTpe=@PriceType AND TimeStamp=@TimeStamp AND TimeInterval=@TimeInterval)" +
-                                             $" UPDATE {TableName}  SET Open=@Open, Close=@Close, High=@High, Low=@Low, TradingVolume=@TradingVolume, TradingOppositeVolume=@TradingOppositeVolume, LastTradePrice=@LastTradePrice, LastUpdateTimestamp='{timestamp}'" +
-                                             $" WHERE  PriceTpe=@PriceType AND TimeStamp=@TimeStamp AND TimeInterval=@TimeInterval" +
-                                             " ELSE " +
-                                             $" INSERT INTO {TableName} ({GetColumns}) values ({GetFields})";
-                                
-                                await conn.ExecuteAsync(
-                                    sql,
-                                    candles, transaction, commandTimeout: 150);
-                                transaction.Commit();
-                            }
-                            catch (Exception ex)
-                            {
-                                transaction.Rollback();
-                            }
+                var transaction = conn.BeginTransaction();
+                try
+                {
+                    var timestamp = _systemClock.UtcNow.UtcDateTime;
+                    string sql = $"IF EXISTS (SELECT * FROM {TableName}" +
+                                 $" WHERE PriceType=@PriceType AND TimeStamp=@TimeStamp AND TimeInterval=@TimeInterval)" +
+                                 $" BEGIN UPDATE {TableName}  SET [Open]=@Open, [Close]=@Close, [High]=@High, [Low]=@Low, [TradingVolume]=@TradingVolume, [TradingOppositeVolume]=@TradingOppositeVolume, [LastTradePrice]=@LastTradePrice, [LastUpdateTimestamp]='{timestamp}'" +
+                                 $" WHERE  PriceType=@PriceType AND TimeStamp=@TimeStamp AND TimeInterval=@TimeInterval END" +
+                                 " ELSE " +
+                                 $" BEGIN INSERT INTO {TableName} ({GetColumns}) values ({GetFields}) END";
+
+                    await conn.ExecuteAsync(
+                        sql,
+                        candles, transaction, commandTimeout: 150);
+                    transaction.Commit();
                 }
+                catch (Exception ex)
+                {
+                    _log?.WriteErrorAsync(nameof(SqlCandlesHistoryRepository), nameof(InsertOrMergeAsync),
+                        $"Failed to insert or updatean candle list", ex);
+                    transaction.Rollback();
+                }
+            }
         }
 
         public async Task<IEnumerable<ICandle>> GetCandlesAsync(CandlePriceType priceType, CandleTimeInterval interval, DateTime from, DateTime to)
@@ -106,6 +108,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
             using (var conn = new SqlConnection(_connectionString))
             {
+
                 try
                 {
                     var objects = await conn.QueryAsync<Candle>($"SELECT * FROM {TableName} {whereClause}",
@@ -113,10 +116,13 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                     return objects;
                 }
 
-                catch 
+                catch (Exception ex)
                 {
+                    _log?.WriteErrorAsync(nameof(SqlCandlesHistoryRepository), nameof(GetCandlesAsync),
+                        $"Failed to get an candle list", ex);
                     return Enumerable.Empty<ICandle>();
                 }
+
             }
 
         }
@@ -126,7 +132,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             using (var conn = new SqlConnection(_connectionString))
             {
                 var candle = await conn.QueryAsync<ICandle>(
-                    $"SELECT TOP(1) * FROM {TableName} WHERE PriceType=@priceTypeVar AND TimeInterval=@intervalVar ", 
+                    $"SELECT TOP(1) * FROM {TableName} WHERE PriceType=@priceTypeVar AND TimeInterval=@intervalVar ",
                                                                     new { priceTypeVar = priceType, intervalVar = timeInterval });
                 return candle.FirstOrDefault();
             }
@@ -144,18 +150,20 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                 var transaction = conn.BeginTransaction();
                 try
                 {
-                        count += await conn.ExecuteAsync(
-                            $"DELETE {TableName} WHERE TimeInterval=@TimeInterval AND" +
-                            $" Timestamp=@Timestamp AND PriceType=@PriceType", candlesToDelete, transaction);
-                   
+                    count += await conn.ExecuteAsync(
+                        $"DELETE {TableName} WHERE TimeInterval=@TimeInterval AND" +
+                        $" Timestamp=@Timestamp AND PriceType=@PriceType", candlesToDelete, transaction);
+
                     transaction.Commit();
                 }
-                catch 
+                catch (Exception ex)
                 {
+                    _log?.WriteErrorAsync(nameof(SqlCandlesHistoryRepository), nameof(GetCandlesAsync),
+                        $"Failed to get an candle list", ex);
                     transaction.Rollback();
                 }
 
-               
+
             }
 
             return count;
@@ -174,14 +182,16 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                 {
                     var timestamp = _systemClock.UtcNow.UtcDateTime;
                     count += await conn.ExecuteAsync(
-                            $"UPDATE {TableName} SET  Close=@Close, High=@High, LastTradePrice=@LastTradePrice," +
-                            $" TradingVolume = @TradingVolume, Low = @Low, Open = @Open, LastUpdateTimestamp = '{timestamp}'" +
+                            $"UPDATE {TableName} SET  [Close]=@Close, [High]=@High, [LastTradePrice]=@LastTradePrice," +
+                            $" [TradingVolume] = @TradingVolume, [Low] = @Low, [Open] = @Open, [LastUpdateTimestamp] = '{timestamp}'" +
                             $" WHERE TimeInterval = @TimeInterval AND PriceType=@PriceType AND Timestamp = @Timestamp", candlesToReplace, transaction);
-                  
+
                     transaction.Commit();
                 }
-                catch
+                catch (Exception ex)
                 {
+                    _log?.WriteErrorAsync(nameof(SqlCandlesHistoryRepository), nameof(GetCandlesAsync),
+                        $"Failed to get an candle list", ex);
                     transaction.Rollback();
                 }
 

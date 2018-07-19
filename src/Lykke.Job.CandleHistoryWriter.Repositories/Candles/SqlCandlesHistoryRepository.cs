@@ -30,36 +30,24 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             _assetConnectionStrings = assetConnectionStrings;
             _sqlConnectionString = sqlServerConnectionString;
 
-           _sqlAssetPairRepositories = new ConcurrentDictionary<string, SqlAssetPairCandlesHistoryRepository>();
+            _sqlAssetPairRepositories = new ConcurrentDictionary<string, SqlAssetPairCandlesHistoryRepository>();
         }
 
         public async Task InsertOrMergeAsync(IEnumerable<ICandle> candles, string assetPairId, CandlePriceType priceType, CandleTimeInterval timeInterval)
         {
             var repo = GetRepo(assetPairId);
-            try
-            {
-                await repo.InsertOrMergeAsync(candles);
-            }
-            catch(Exception exception)
-            {
-                await _log.WriteErrorAsync("Persist candle rows with retries failed", assetPairId, exception);
-                throw;
-            }
+
+            await repo.InsertOrMergeAsync(candles);
+
         }
 
         public async Task<IEnumerable<ICandle>> GetCandlesAsync(string assetPairId, CandleTimeInterval interval,
             CandlePriceType priceType, DateTime from, DateTime to)
         {
             var repo = GetRepo(assetPairId);
-            try
-            {
-                return await repo.GetCandlesAsync(priceType, interval, from, to);
-            }
-            catch(Exception ex)
-            {
-                await _log.WriteErrorAsync("get candle rows with retries failed", assetPairId, ex);
-                throw;
-            }
+
+            return await repo.GetCandlesAsync(priceType, interval, from, to);
+
         }
 
         public bool CanStoreAssetPair(string assetPairId)
@@ -70,15 +58,9 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
         public async Task<ICandle> TryGetFirstCandleAsync(string assetPairId, CandleTimeInterval interval, CandlePriceType priceType)
         {
             var repo = GetRepo(assetPairId);
-            try
-            {
-                return await repo.TryGetFirstCandleAsync(priceType, interval);
-            }
-            catch (Exception ex)
-            {
-                await _log.WriteErrorAsync("get first candle row with retries failed", assetPairId, ex);
-                throw;
-            }
+
+            return await repo.TryGetFirstCandleAsync(priceType, interval);
+
         }
 
         public IReadOnlyList<string> GetStoredAssetPairs()
@@ -92,17 +74,9 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             (var assetPairId, var interval, var priceType) = PreEvaluateInputCandleSet(candlesToDelete);
 
             var repo = GetRepo(assetPairId);
-            try
-            {
-                return
-                    // ReSharper disable once PossibleMultipleEnumeration
-                    await repo.DeleteCandlesAsync(candlesToDelete, priceType);
-            }
-            catch(Exception ex)
-            {
-                await _log.WriteErrorAsync("delete candle rows with retries failed", assetPairId, ex);
-                throw;
-            }
+            return
+                // ReSharper disable once PossibleMultipleEnumeration
+                await repo.DeleteCandlesAsync(candlesToDelete, priceType);
         }
 
         public async Task<int> ReplaceCandlesAsync(IReadOnlyList<ICandle> candlesToReplace)
@@ -111,25 +85,18 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             (var assetPairId, var interval, var priceType) = PreEvaluateInputCandleSet(candlesToReplace);
 
             var repo = GetRepo(assetPairId);
-            try
-            {
-                return
-                    // ReSharper disable once PossibleMultipleEnumeration
-                    await repo.ReplaceCandlesAsync(candlesToReplace, priceType);
-            }
-            catch(Exception ex)
-            {
-                await _log.WriteErrorAsync("replace candle rows with retries failed", assetPairId, ex);
-                throw;
-            }
+            return
+                // ReSharper disable once PossibleMultipleEnumeration
+                await repo.ReplaceCandlesAsync(candlesToReplace, priceType);
+
         }
 
-        private SqlAssetPairCandlesHistoryRepository  GetRepo(string assetPairId)
+        private SqlAssetPairCandlesHistoryRepository GetRepo(string assetPairId)
         {
             var key = assetPairId;
 
-           return _sqlAssetPairRepositories.GetOrAdd(key,
-                new SqlAssetPairCandlesHistoryRepository(assetPairId, _sqlConnectionString, _log));
+            return _sqlAssetPairRepositories.GetOrAdd(key,
+                 new SqlAssetPairCandlesHistoryRepository(assetPairId, _sqlConnectionString, _log));
         }
 
         private (string assetPairId, CandleTimeInterval interval, CandlePriceType priceType) PreEvaluateInputCandleSet(
