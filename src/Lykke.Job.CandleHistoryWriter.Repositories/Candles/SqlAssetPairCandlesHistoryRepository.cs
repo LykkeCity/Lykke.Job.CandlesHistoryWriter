@@ -35,8 +35,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                                                  "[LastTradePrice] [float] NOT NULL, " +
                                                  "[Timestamp] [datetime] NULL, " +
                                                  "[LastUpdateTimestamp] [datetime] NULL" +
-                                                 ",INDEX IX_{0} UNIQUE NONCLUSTERED (Timestamp, PriceType, TimeInterval)" +
-                                                 ",CONSTRAINT UC_{0} UNIQUE (Timestamp, PriceType, TimeInterval));";
+                                                 ",INDEX IX_{0} UNIQUE NONCLUSTERED (Timestamp, PriceType, TimeInterval));";
 
         private static Type DataType => typeof(ICandle);
         private static readonly string GetColumns = "[" + string.Join("],[", DataType.GetProperties().Select(x => x.Name)) + "]";
@@ -82,7 +81,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                                 var timestamp = _systemClock.UtcNow.UtcDateTime;
                                 string sql = $"IF EXISTS (SELECT * FROM {TableName}" +
                                              $" WHERE PriceTpe=@PriceType AND TimeStamp=@TimeStamp AND TimeInterval=@TimeInterval)" +
-                                             $" UPDATE {TableName}  SET Open=@Open, Close=@Close, High=@High, Low=@Low, TradingVolume=@TradingVolume, TradingOppositeVolume=@TradingOppositeVolume, LastTradePrice=@LastTradePrice, LastUpdateTimestamp={timestamp}" +
+                                             $" UPDATE {TableName}  SET Open=@Open, Close=@Close, High=@High, Low=@Low, TradingVolume=@TradingVolume, TradingOppositeVolume=@TradingOppositeVolume, LastTradePrice=@LastTradePrice, LastUpdateTimestamp='{timestamp}'" +
                                              $" WHERE  PriceTpe=@PriceType AND TimeStamp=@TimeStamp AND TimeInterval=@TimeInterval" +
                                              " ELSE " +
                                              $" INSERT INTO {TableName} ({GetColumns}) values ({GetFields})";
@@ -176,7 +175,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                     var timestamp = _systemClock.UtcNow.UtcDateTime;
                     count += await conn.ExecuteAsync(
                             $"UPDATE {TableName} SET  Close=@Close, High=@High, LastTradePrice=@LastTradePrice," +
-                            $" TradingVolume = @TradingVolume, Low = @Low, Open = @Open, LastUpdateTimestamp = {timestamp}" +
+                            $" TradingVolume = @TradingVolume, Low = @Low, Open = @Open, LastUpdateTimestamp = '{timestamp}'" +
                             $" WHERE TimeInterval = @TimeInterval AND PriceType=@PriceType AND Timestamp = @Timestamp", candlesToReplace, transaction);
                   
                     transaction.Commit();
