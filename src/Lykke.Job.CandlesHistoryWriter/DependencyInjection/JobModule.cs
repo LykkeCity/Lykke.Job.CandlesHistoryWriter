@@ -45,12 +45,14 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
         private readonly IReloadingManager<Dictionary<string, string>> _candleHistoryAssetConnections;
         private readonly IReloadingManager<DbSettings> _dbSettings;
         private readonly ILog _log;
+        private readonly MonitoringServiceClientSettings _monitoringServiceClient;
 
         public JobModule(
             MarketType marketType,
             CandlesHistoryWriterSettings settings,
             AssetsSettings assetSettings,
             RedisSettings redisSettings,
+            MonitoringServiceClientSettings monitoringServiceClient,
             IReloadingManager<Dictionary<string, string>> candleHistoryAssetConnections,
             IReloadingManager<DbSettings> dbSettings,
             ILog log)
@@ -60,6 +62,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
             _settings = settings;
             _assetSettings = assetSettings;
             _redisSettings = redisSettings;
+            _monitoringServiceClient = monitoringServiceClient;
             _candleHistoryAssetConnections = candleHistoryAssetConnections;
             _dbSettings = dbSettings;
             _log = log;
@@ -86,7 +89,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
         private void RegisterResourceMonitor(ContainerBuilder builder)
         {
             var monitorSettings = _settings.ResourceMonitor;
-            if (!string.IsNullOrEmpty(Startup.monitoringServiceUrl) && Startup.monitoringServiceUrl != "n/a")
+            if (!string.IsNullOrEmpty(_monitoringServiceClient.MonitoringServiceUrl) && _monitoringServiceClient.MonitoringServiceUrl != "n/a")
             {
                 switch (monitorSettings.MonitorMode)
                 {

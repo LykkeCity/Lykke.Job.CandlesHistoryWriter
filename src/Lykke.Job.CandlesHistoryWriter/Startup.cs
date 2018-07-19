@@ -34,7 +34,7 @@ namespace Lykke.Job.CandlesHistoryWriter
         private IContainer ApplicationContainer { get; set; }
         private IConfigurationRoot Configuration { get; }
         private ILog Log { get; set; }
-        public static string monitoringServiceUrl { get; set; }
+        private IReloadingManager<AppSettings> settings { get; set; }
 
         public Startup(IHostingEnvironment env)
         {
@@ -43,6 +43,7 @@ namespace Lykke.Job.CandlesHistoryWriter
                 .AddJsonFile("env.json", optional: true)
                 .AddEnvironmentVariables();
             Configuration = builder.Build();
+            settings = Configuration.LoadSettings<AppSettings>();
         }
 
         [UsedImplicitly]
@@ -64,7 +65,6 @@ namespace Lykke.Job.CandlesHistoryWriter
                 });
 
                 var builder = new ContainerBuilder();
-                var settings = Configuration.LoadSettings<AppSettings>();
                 var marketType = settings.CurrentValue.CandlesHistoryWriter != null
                     ? MarketType.Spot
                     : MarketType.Mt;
@@ -100,6 +100,7 @@ namespace Lykke.Job.CandlesHistoryWriter
                     candlesHistoryWriter.CurrentValue,
                     settings.CurrentValue.Assets,
                     settings.CurrentValue.RedisSettings,
+                    settings.CurrentValue.MonitoringServiceClient,
                     candleHistoryAssetConnection,
                     candlesHistoryWriter.Nested(x => x.Db),
                     Log));
@@ -155,12 +156,12 @@ namespace Lykke.Job.CandlesHistoryWriter
             try
             {
                 await ApplicationContainer.Resolve<IStartupManager>().StartAsync();
-                monitoringServiceUrl = Configuration.LoadSettings<AppSettings>().CurrentValue.MonitoringServiceClient.MonitoringServiceUrl;
 
-                if (!string.IsNullOrEmpty(monitoringServiceUrl) && monitoringServiceUrl != "n/a")
+                if (!string.IsNullOrEmpty(settings.CurrentValue.MonitoringServiceClient.MonitoringServiceUrl)
+                    && (settings.CurrentValue.MonitoringServiceClient.MonitoringServiceUrl != "n/a")
                 {
                     await AutoRegistrationInMonitoring.RegisterAsync(Configuration,
-                    monitoringServiceUrl,
+                        settings.CurrentValue.MonitoringServiceClient.MonitoringServiceUrl,
                     Log);
 
                     await Log.WriteMonitorAsync("", "", "Started");
