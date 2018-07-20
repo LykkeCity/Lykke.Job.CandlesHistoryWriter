@@ -159,7 +159,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                             c.AssetPairId
                         });
 
-                    int offset = 5;
+                    int offset = _settings.NumberOfSqlConnections;
                     int numOfGroups = candles.Count() / offset + 1;
                     for (int i = 0; i < numOfGroups; i++)
                     {
