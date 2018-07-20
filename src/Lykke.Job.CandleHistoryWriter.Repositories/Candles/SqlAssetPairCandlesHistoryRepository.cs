@@ -20,7 +20,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 {
     public class SqlAssetPairCandlesHistoryRepository
     {
-
+        private const int commandTimeout = 600;
         private const string CreateTableScript = "CREATE TABLE [{0}](" +
                                                  "[Id] [bigint] NOT NULL IDENTITY(1,1) PRIMARY KEY," +
                                                  "[AssetPairId] [nvarchar] (64) NOT NULL, " +
@@ -88,7 +88,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
                     await conn.ExecuteAsync(
                         sql,
-                        candles, transaction, commandTimeout: 150);
+                        candles, transaction, commandTimeout: commandTimeout);
                     transaction.Commit();
                 }
                 catch (Exception ex)
@@ -111,7 +111,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
                 try
                 {
-                    var objects = await conn.QueryAsync<Candle>($"SELECT * FROM {TableName} {whereClause}",
+                    var objects = await conn.QueryAsync<SqlCandleHistoryItem>($"SELECT * FROM {TableName} {whereClause}",
                         new { priceTypeVar = priceType, intervalVar = interval, fromVar = from, toVar = to }, null, commandTimeout: 600);
                     return objects;
                 }
@@ -141,64 +141,67 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
         public async Task<int> DeleteCandlesAsync(IReadOnlyList<ICandle> candlesToDelete, CandlePriceType priceType)
         {
-            int count = 0;
+            throw new NotImplementedException();
+            //int count = 0;
 
-            using (var conn = new SqlConnection(_connectionString))
-            {
-                if (conn.State == ConnectionState.Closed)
-                    await conn.OpenAsync();
-                var transaction = conn.BeginTransaction();
-                try
-                {
-                    count += await conn.ExecuteAsync(
-                        $"DELETE {TableName} WHERE TimeInterval=@TimeInterval AND" +
-                        $" Timestamp=@Timestamp AND PriceType=@PriceType", candlesToDelete, transaction);
+            //using (var conn = new SqlConnection(_connectionString))
+            //{
+            //    if (conn.State == ConnectionState.Closed)
+            //        await conn.OpenAsync();
+            //    var transaction = conn.BeginTransaction();
+            //    try
+            //    {
+            //        count += await conn.ExecuteAsync(
+            //            $"DELETE {TableName} WHERE TimeInterval=@TimeInterval AND" +
+            //            $" Timestamp=@Timestamp AND PriceType=@PriceType", candlesToDelete, transaction);
 
-                    transaction.Commit();
-                }
-                catch (Exception ex)
-                {
-                    _log?.WriteErrorAsync(nameof(SqlCandlesHistoryRepository), nameof(GetCandlesAsync),
-                        $"Failed to get an candle list", ex);
-                    transaction.Rollback();
-                }
+            //        transaction.Commit();
+            //    }
+            //    catch (Exception ex)
+            //    {
+            //        _log?.WriteErrorAsync(nameof(SqlCandlesHistoryRepository), nameof(GetCandlesAsync),
+            //            $"Failed to get an candle list", ex);
+            //        transaction.Rollback();
+            //    }
 
 
-            }
+            //}
 
-            return count;
+            //return count;
         }
 
         public async Task<int> ReplaceCandlesAsync(IEnumerable<ICandle> candlesToReplace, CandlePriceType priceType)
         {
-            int count = 0;
+            throw new NotImplementedException();
+            //int count = 0;
 
-            using (var conn = new SqlConnection(_connectionString))
-            {
-                if (conn.State == ConnectionState.Closed)
-                    await conn.OpenAsync();
-                var transaction = conn.BeginTransaction();
-                try
-                {
-                    var timestamp = _systemClock.UtcNow.UtcDateTime;
-                    count += await conn.ExecuteAsync(
-                            $"UPDATE {TableName} SET  [Close]=@Close, [High]=@High, [LastTradePrice]=@LastTradePrice," +
-                            $" [TradingVolume] = @TradingVolume, [Low] = @Low, [Open] = @Open, [LastUpdateTimestamp] = '{timestamp}'" +
-                            $" WHERE TimeInterval = @TimeInterval AND PriceType=@PriceType AND Timestamp = @Timestamp", candlesToReplace, transaction);
+            //using (var conn = new SqlConnection(_connectionString))
+            //{
+            //    if (conn.State == ConnectionState.Closed)
+            //        await conn.OpenAsync();
+            //    var transaction = conn.BeginTransaction();
+            //    try
+            //    {
+            //        var timestamp = _systemClock.UtcNow.UtcDateTime;
+            //        count += await conn.ExecuteAsync(
+            //                $"UPDATE {TableName} SET  [Close]=@Close, [High]=@High, [LastTradePrice]=@LastTradePrice," +
+            //                $" [TradingVolume] = @TradingVolume, [Low] = @Low, [Open] = @Open, [LastUpdateTimestamp] = '{timestamp}'" +
+            //                $" WHERE TimeInterval = @TimeInterval AND PriceType=@PriceType AND Timestamp = @Timestamp", candlesToReplace, transaction);
 
-                    transaction.Commit();
-                }
-                catch (Exception ex)
-                {
-                    _log?.WriteErrorAsync(nameof(SqlCandlesHistoryRepository), nameof(GetCandlesAsync),
-                        $"Failed to get an candle list", ex);
-                    transaction.Rollback();
-                }
+            //        transaction.Commit();
+            //    }
+            //    catch (Exception ex)
+            //    {
+            //        _log?.WriteErrorAsync(nameof(SqlCandlesHistoryRepository), nameof(GetCandlesAsync),
+            //            $"Failed to get an candle list", ex);
+            //        transaction.Rollback();
+            //    }
 
-            }
+            //}
 
-            return count;
+            //return count;
         }
+
 
 
     }

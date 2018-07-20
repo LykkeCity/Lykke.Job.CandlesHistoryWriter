@@ -89,7 +89,8 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
         private void RegisterResourceMonitor(ContainerBuilder builder)
         {
             var monitorSettings = _settings.ResourceMonitor;
-            if (!string.IsNullOrEmpty(_monitoringServiceClient.MonitoringServiceUrl) && _monitoringServiceClient.MonitoringServiceUrl != "n/a")
+            if (_monitoringServiceClient != null 
+                && !string.IsNullOrEmpty(_monitoringServiceClient.MonitoringServiceUrl))
             {
                 switch (monitorSettings.MonitorMode)
                 {
@@ -162,20 +163,11 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
 
             if (_settings.Db.StorageMode == StorageMode.SqlServer)
             {
-                var connstrParameter = new NamedParameter("connectionString",
-                    _settings.Db.SqlConnectionString);
-
-                builder.RegisterType<LogMsSql>()
-                    .As<ILogMsSql>()
-                    .WithParameter(connstrParameter)
-                    .SingleInstance();
-
                 builder.RegisterType<SqlCandlesHistoryRepository>()
                     .As<ICandlesHistoryRepository>()
                     .WithParameter(TypedParameter.From(_candleHistoryAssetConnections))
                     .WithParameter(TypedParameter.From(_settings.Db.SqlConnectionString))
                     .SingleInstance();
-
             }
             else if (_settings.Db.StorageMode == StorageMode.Azure)
             {

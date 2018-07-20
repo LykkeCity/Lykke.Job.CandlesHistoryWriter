@@ -151,15 +151,26 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                 {
                     var priceType = candles.FirstOrDefault().PriceType;
                     var timeInterval = candles.FirstOrDefault().TimeInterval;
-                  var grouppedCandles = candles
+                    
+                        
+                    var grouppedCandles = candles
                         .GroupBy(c => new
                         {
                             c.AssetPairId
                         });
-                    var tasks = grouppedCandles
-                        .Select(g => InsertSinglePartitionCandlesAsync(g, g.Key.AssetPairId, priceType, timeInterval));
 
-                    await Task.WhenAll(tasks); }
+                    int offset = 5;
+                    int numOfGroups = candles.Count() / offset + 1;
+                    for (int i = 0; i < numOfGroups; i++)
+                    {
+                        var groupedCandelsList = grouppedCandles.ToList();
+                        var candlesBatch = groupedCandelsList.Skip(i * offset).Take(offset);
+                        var tasks = candlesBatch
+                            .Select(g => InsertSinglePartitionCandlesAsync(g, g.Key.AssetPairId, priceType, timeInterval));
+
+                        await Task.WhenAll(tasks);
+                    }
+                }
                 else
                 {
                     var grouppedCandles = candles

@@ -46,36 +46,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles
             LastUpdateTimestamp = lastUpdateTimestamp;
         }
 
-        //constractor for casting from dapper row to the Candle type
-        private Candle(
-            long Id,
-            string assetPairId,
-            int priceType,
-            double open,
-            double close,
-            double high,
-            double low,
-            int timeInterval,
-            double tradingVolume,
-            double tradingOppositeVolume,
-            double lastTradePrice,
-            DateTime timestamp,
-            DateTime lastUpdateTimestamp)
-        {
-            AssetPairId = assetPairId;
-            PriceType = (CandlePriceType)priceType;
-            TimeInterval = (CandleTimeInterval)timeInterval;
-            Timestamp = timestamp;
-            Open = open;
-            Close = close;
-            High = high;
-            Low = low;
-            TradingVolume = tradingVolume;
-            TradingOppositeVolume = tradingOppositeVolume;
-            LastTradePrice = lastTradePrice;
-            LastUpdateTimestamp = lastUpdateTimestamp;
-        }
-
         public static Candle Create(
             string assetPair,
             CandlePriceType priceType,

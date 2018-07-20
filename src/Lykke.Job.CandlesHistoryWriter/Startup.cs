@@ -157,8 +157,8 @@ namespace Lykke.Job.CandlesHistoryWriter
             {
                 await ApplicationContainer.Resolve<IStartupManager>().StartAsync();
 
-                if (!string.IsNullOrEmpty(settings.CurrentValue.MonitoringServiceClient.MonitoringServiceUrl)
-                    && (settings.CurrentValue.MonitoringServiceClient.MonitoringServiceUrl != "n/a"))
+                if (settings.CurrentValue.MonitoringServiceClient != null &&
+                    !string.IsNullOrEmpty(settings.CurrentValue.MonitoringServiceClient.MonitoringServiceUrl))
                 {
                     await AutoRegistrationInMonitoring.RegisterAsync(Configuration,
                         settings.CurrentValue.MonitoringServiceClient.MonitoringServiceUrl,
