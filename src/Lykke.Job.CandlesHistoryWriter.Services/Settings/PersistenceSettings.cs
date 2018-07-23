@@ -10,6 +10,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Settings
         public TimeSpan ThrottlingEnqueueDelay { get; set; }
         public int MaxBatchesToPersistQueueLength { get; set; }
         public int MaxBatchSize { get; set; }
-        public int NumberOfSqlConnections { get; set; }
+        public int NumberOfSaveThreads { get; set; }
     }
 }

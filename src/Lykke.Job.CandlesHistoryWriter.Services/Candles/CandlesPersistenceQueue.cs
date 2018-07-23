@@ -156,7 +156,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                         c.TimeInterval
                     });
 
-                foreach (var batch in grouppedCandles.Batch(_settings.NumberOfSqlConnections))
+                foreach (var batch in grouppedCandles.Batch(_settings.NumberOfSaveThreads))
                 {
                     var tasks = batch.Select(g =>
                         InsertSinglePartitionCandlesAsync(g, g.Key.AssetPairId, g.Key.PriceType,
