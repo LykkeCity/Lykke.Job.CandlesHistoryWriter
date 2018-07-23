@@ -58,7 +58,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
             using (var conn = new SqlConnection(_connectionString))
             {
-                try { conn.CreateTableIfDoesntExists(CreateTableScript, assetName + "_candleshistory"); }
+                try { conn.CreateTableIfDoesntExists(CreateTableScript, TableName); }
                 catch (Exception ex)
                 {
                     _log?.WriteErrorAsync(nameof(SqlAssetPairCandlesHistoryRepository), "CreateTableIfDoesntExists", null, ex);
