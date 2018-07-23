@@ -145,52 +145,25 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             }
 
             _healthService.TraceStartPersistCandles();
-
+                    
             try
             {
-                if (_storageMode == StorageMode.SqlServer)
-                {
-                    
-                    try
+                var grouppedCandles = candles
+                    .GroupBy(c => new
                     {
-                        var grouppedCandles = candles
-                            .GroupBy(c => new
-                            {
-                                c.AssetPairId,
-                                c.PriceType,
-                                c.TimeInterval
-                            });
+                        c.AssetPairId,
+                        c.PriceType,
+                        c.TimeInterval
+                    });
 
-                        foreach (var batch in grouppedCandles.Batch(_settings.NumberOfSqlConnections))
-                        {
-                            var tasks = batch.Select(g =>
-                                InsertSinglePartitionCandlesAsync(g, g.Key.AssetPairId, g.Key.PriceType,
-                                    g.Key.TimeInterval));
-
-                            await Task.WhenAll(tasks);
-                        }
-                    }
-                    finally
-                    {
-                        _healthService.TraceStopPersistCandles();
-                    }
-                }
-                else
+                foreach (var batch in grouppedCandles.Batch(_settings.NumberOfSqlConnections))
                 {
-                    var grouppedCandles = candles
-                        .GroupBy(c => new
-                        {
-                            c.AssetPairId,
-                            c.PriceType,
-                            c.TimeInterval
-                        });
-                    var tasks = grouppedCandles
-                        .Select(g => InsertSinglePartitionCandlesAsync(g, g.Key.AssetPairId, g.Key.PriceType, g.Key.TimeInterval));
+                    var tasks = batch.Select(g =>
+                        InsertSinglePartitionCandlesAsync(g, g.Key.AssetPairId, g.Key.PriceType,
+                            g.Key.TimeInterval));
 
                     await Task.WhenAll(tasks);
                 }
-
-               
             }
             finally
             {

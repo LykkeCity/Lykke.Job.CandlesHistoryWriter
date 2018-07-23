@@ -21,7 +21,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
     public class SqlAssetPairCandlesHistoryRepository
     {
         private const int commandTimeout = 600;
-        private const string CreateTableScript = "CREATE TABLE [{0}](" +
+        private const string CreateTableScript = "CREATE TABLE Candles.[{0}](" +
                                                  "[Id] [bigint] NOT NULL IDENTITY(1,1) PRIMARY KEY," +
                                                  "[AssetPairId] [nvarchar] (64) NOT NULL, " +
                                                  "[PriceType] [int] NOT NULL ," +
