@@ -54,7 +54,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             _systemClock = new SystemClock();
             _log = log;
             _connectionString = connectionString;
-            TableName = assetName + "_candleshistory";
+            TableName = "candleshistory_" + assetName;
 
             using (var conn = new SqlConnection(_connectionString))
             {
