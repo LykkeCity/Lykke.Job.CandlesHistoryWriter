@@ -14,6 +14,7 @@ using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Candles;
 using Lykke.Job.CandlesHistoryWriter.Services.Settings;
+using MoreLinq;
 using Polly;
 
 namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
@@ -149,26 +150,29 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             {
                 if (_storageMode == StorageMode.SqlServer)
                 {
-                    var priceType = candles.FirstOrDefault().PriceType;
-                    var timeInterval = candles.FirstOrDefault().TimeInterval;
                     
-                        
-                    var grouppedCandles = candles
-                        .GroupBy(c => new
-                        {
-                            c.AssetPairId
-                        });
-
-                    int offset = _settings.NumberOfSqlConnections;
-                    int numOfGroups = candles.Count() / offset + 1;
-                    for (int i = 0; i < numOfGroups; i++)
+                    try
                     {
-                        var groupedCandelsList = grouppedCandles.ToList();
-                        var candlesBatch = groupedCandelsList.Skip(i * offset).Take(offset);
-                        var tasks = candlesBatch
-                            .Select(g => InsertSinglePartitionCandlesAsync(g, g.Key.AssetPairId, priceType, timeInterval));
+                        var grouppedCandles = candles
+                            .GroupBy(c => new
+                            {
+                                c.AssetPairId,
+                                c.PriceType,
+                                c.TimeInterval
+                            });
 
-                        await Task.WhenAll(tasks);
+                        foreach (var batch in grouppedCandles.Batch(_settings.NumberOfSqlConnections))
+                        {
+                            var tasks = batch.Select(g =>
+                                InsertSinglePartitionCandlesAsync(g, g.Key.AssetPairId, g.Key.PriceType,
+                                    g.Key.TimeInterval));
+
+                            await Task.WhenAll(tasks);
+                        }
+                    }
+                    finally
+                    {
+                        _healthService.TraceStopPersistCandles();
                     }
                 }
                 else
