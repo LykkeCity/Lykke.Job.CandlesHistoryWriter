@@ -20,7 +20,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 {
     public class SqlAssetPairCandlesHistoryRepository
     {
-        private const int commandTimeout = 600;
+        private const int commandTimeout = 36000;
         private const string CreateTableScript = "CREATE TABLE [{0}](" +
                                                  "[Id] [bigint] NOT NULL IDENTITY(1,1) PRIMARY KEY," +
                                                  "[AssetPairId] [nvarchar] (64) NOT NULL, " +
@@ -112,7 +112,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                 try
                 {
                     var objects = await conn.QueryAsync<SqlCandleHistoryItem>($"SELECT * FROM {TableName} {whereClause}",
-                        new { priceTypeVar = priceType, intervalVar = interval, fromVar = from, toVar = to }, null, commandTimeout: 600);
+                        new { priceTypeVar = priceType, intervalVar = interval, fromVar = from, toVar = to }, null, commandTimeout: commandTimeout);
                     return objects;
                 }
 
