@@ -185,6 +185,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         {
             var vkey = GetValidationKey(_market);
 
+            await _database.KeyDeleteAsync(vkey); // The operation is ignored is the key does not exist
+
             await _database.SetAddAsync(vkey, $"CandlesHistoryCacheIsStillValidIfYouCanSeeMe.LastKeyUpdate-{DateTime.UtcNow}");
         }
 
