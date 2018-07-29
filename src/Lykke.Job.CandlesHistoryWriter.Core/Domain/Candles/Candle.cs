@@ -19,13 +19,13 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles
         public DateTime LastUpdateTimestamp { get; }
 
         private Candle(
-            string assetPair, 
-            CandlePriceType priceType, 
+            string assetPair,
+            CandlePriceType priceType,
             CandleTimeInterval timeInterval,
-            DateTime timestamp, 
-            double open, 
+            DateTime timestamp,
+            double open,
             double close,
-            double high, 
+            double high,
             double low,
             double tradingVolume,
             double tradingOppositeVolume,
@@ -48,13 +48,13 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles
 
         public static Candle Create(
             string assetPair,
-            CandlePriceType priceType, 
+            CandlePriceType priceType,
             CandleTimeInterval timeInterval,
-            DateTime timestamp, 
-            double open, 
-            double close, 
-            double high, 
-            double low, 
+            DateTime timestamp,
+            double open,
+            double close,
+            double high,
+            double low,
             double tradingVolume,
             double tradingOppositeVolume,
             double lastTradePrice,
@@ -76,10 +76,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles
         }
 
         public Candle Update(
-            double close, 
-            double low, 
-            double high, 
-            double tradingVolume, 
+            double close,
+            double low,
+            double high,
+            double tradingVolume,
             double tradingOppositeVolume,
             double lastTradePrice,
             DateTime updateTimestamp)
@@ -95,7 +95,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles
                     close: close,
                     high: high,
                     low: low,
-                    tradingVolume: tradingVolume, 
+                    tradingVolume: tradingVolume,
                     tradingOppositeVolume: tradingOppositeVolume,
                     lastTradePrice: lastTradePrice,
                     lastUpdateTimestamp: updateTimestamp);

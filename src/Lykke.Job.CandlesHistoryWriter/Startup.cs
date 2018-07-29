@@ -7,6 +7,7 @@ using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Common.ApiLibrary.Middleware;
 using Lykke.Common.ApiLibrary.Swagger;
+using Lykke.Job.CandlesHistoryWriter.Core.Domain;
 using Lykke.Logs;
 using Lykke.Logs.Slack;
 using Lykke.Job.CandlesHistoryWriter.Core.Services;
@@ -23,6 +24,7 @@ using Lykke.Job.CandlesHistoryWriter.Services.Settings;
 using AzureQueueSettings = Lykke.AzureQueueIntegration.AzureQueueSettings;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.MonitoringServiceApiCaller;
+using Lykke.Logs.MsSql;
 
 namespace Lykke.Job.CandlesHistoryWriter
 {
@@ -32,7 +34,7 @@ namespace Lykke.Job.CandlesHistoryWriter
         private IContainer ApplicationContainer { get; set; }
         private IConfigurationRoot Configuration { get; }
         private ILog Log { get; set; }
-        public static string monitoringServiceUrl { get; set; }
+        private IReloadingManager<AppSettings> settings { get; set; }
 
         public Startup(IHostingEnvironment env)
         {
@@ -41,6 +43,7 @@ namespace Lykke.Job.CandlesHistoryWriter
                 .AddJsonFile("env.json", optional: true)
                 .AddEnvironmentVariables();
             Configuration = builder.Build();
+            settings = Configuration.LoadSettings<AppSettings>();
         }
 
         [UsedImplicitly]
@@ -62,7 +65,6 @@ namespace Lykke.Job.CandlesHistoryWriter
                 });
 
                 var builder = new ContainerBuilder();
-                var settings = Configuration.LoadSettings<AppSettings>();
                 var marketType = settings.CurrentValue.CandlesHistoryWriter != null
                     ? MarketType.Spot
                     : MarketType.Mt;
@@ -74,11 +76,22 @@ namespace Lykke.Job.CandlesHistoryWriter
                     ? settings.Nested(x => x.CandleHistoryAssetConnections)
                     : settings.Nested(x => x.MtCandleHistoryAssetConnections);
 
-
-                Log = CreateLogWithSlack(
-                    services,
-                    settings.CurrentValue.SlackNotifications,
-                    candlesHistoryWriter.ConnectionString(x => x.Db.LogsConnectionString));
+                if (candlesHistoryWriter.CurrentValue.Db.StorageMode == StorageMode.Azure)
+                {
+                    Log = CreateLogWithSlack(
+                        services,
+                        settings.CurrentValue.SlackNotifications,
+                        candlesHistoryWriter.ConnectionString(x => x.Db.LogsConnectionString),
+                        candlesHistoryWriter.CurrentValue.Db.StorageMode);
+                }
+                else if (candlesHistoryWriter.CurrentValue.Db.StorageMode == StorageMode.SqlServer)
+                {
+                    Log = CreateLogWithSlack(
+                        services,
+                        settings.CurrentValue.SlackNotifications,
+                        candlesHistoryWriter.ConnectionString(x => x.Db.SqlConnectionString),
+                        candlesHistoryWriter.CurrentValue.Db.StorageMode);
+                }
 
 
 
@@ -87,6 +100,7 @@ namespace Lykke.Job.CandlesHistoryWriter
                     candlesHistoryWriter.CurrentValue,
                     settings.CurrentValue.Assets,
                     settings.CurrentValue.RedisSettings,
+                    settings.CurrentValue.MonitoringServiceClient,
                     candleHistoryAssetConnection,
                     candlesHistoryWriter.Nested(x => x.Db),
                     Log));
@@ -142,12 +156,12 @@ namespace Lykke.Job.CandlesHistoryWriter
             try
             {
                 await ApplicationContainer.Resolve<IStartupManager>().StartAsync();
-                monitoringServiceUrl = Configuration.LoadSettings<AppSettings>().CurrentValue.MonitoringServiceClient.MonitoringServiceUrl;
 
-                if (!string.IsNullOrEmpty(monitoringServiceUrl) && monitoringServiceUrl != "n/a")
+                if (settings.CurrentValue.MonitoringServiceClient != null &&
+                    !string.IsNullOrEmpty(settings.CurrentValue.MonitoringServiceClient.MonitoringServiceUrl))
                 {
                     await AutoRegistrationInMonitoring.RegisterAsync(Configuration,
-                    monitoringServiceUrl,
+                        settings.CurrentValue.MonitoringServiceClient.MonitoringServiceUrl,
                     Log);
 
                     await Log.WriteMonitorAsync("", "", "Started");
@@ -198,7 +212,7 @@ namespace Lykke.Job.CandlesHistoryWriter
             }
         }
 
-        private static ILog CreateLogWithSlack(IServiceCollection services, SlackNotificationsSettings slackSettings, IReloadingManager<string> dbLogConnectionStringManager)
+        private static ILog CreateLogWithSlack(IServiceCollection services, SlackNotificationsSettings slackSettings, IReloadingManager<string> dbLogConnectionStringManager, StorageMode smode)
         {
             var consoleLogger = new LogToConsole();
             var aggregateLogger = new AggregateLogger();
@@ -208,7 +222,6 @@ namespace Lykke.Job.CandlesHistoryWriter
             if (slackSettings != null && slackSettings.AzureQueue != null && slackSettings.AzureQueue.ConnectionString != null
                 && slackSettings.AzureQueue.QueueName != null && aggregateLogger != null)
             {
-
                 // Creating slack notification service, which logs own azure queue processing messages to aggregate log
                 var slackService = services.UseSlackNotificationsSenderViaAzureQueue(new AzureQueueSettings
                 {
@@ -223,23 +236,34 @@ namespace Lykke.Job.CandlesHistoryWriter
                 aggregateLogger.AddLog(logToSlack);
             }
 
-            var dbLogConnectionString = dbLogConnectionStringManager.CurrentValue;
 
-            // Creating azure storage logger, which logs own messages to concole log
-            if (!string.IsNullOrEmpty(dbLogConnectionString) && !(dbLogConnectionString.StartsWith("${") && dbLogConnectionString.EndsWith("}")))
+            if (smode == StorageMode.SqlServer)
             {
-                var persistenceManager = new LykkeLogToAzureStoragePersistenceManager(
-                    AzureTableStorage<LogEntity>.Create(dbLogConnectionStringManager, "CandlesHistoryWriterLogs", consoleLogger),
-                    consoleLogger);
+                var sqlLogger = new LogToSql(new LogMsSql("CandlesHistoryWriterServiceLog",
+                    dbLogConnectionStringManager.CurrentValue));
 
-                var azureStorageLogger = new LykkeLogToAzureStorage(
-                    persistenceManager,
-                    slackNotificationsManager,
-                    consoleLogger);
+                aggregateLogger.AddLog(sqlLogger);
+            }
+            else if (smode == StorageMode.Azure)
+            {
+                var dbLogConnectionString = dbLogConnectionStringManager.CurrentValue;
 
-                azureStorageLogger.Start();
+                // Creating azure storage logger, which logs own messages to concole log
+                if (!string.IsNullOrEmpty(dbLogConnectionString) && !(dbLogConnectionString.StartsWith("${") && dbLogConnectionString.EndsWith("}")))
+                {
+                    var persistenceManager = new LykkeLogToAzureStoragePersistenceManager(
+                        AzureTableStorage<LogEntity>.Create(dbLogConnectionStringManager, "CandlesHistoryWriterLogs", consoleLogger),
+                        consoleLogger);
 
-                aggregateLogger.AddLog(azureStorageLogger);
+                    var azureStorageLogger = new LykkeLogToAzureStorage(
+                        persistenceManager,
+                        slackNotificationsManager,
+                        consoleLogger);
+
+                    azureStorageLogger.Start();
+
+                    aggregateLogger.AddLog(azureStorageLogger);
+                }
             }
 
             return aggregateLogger;

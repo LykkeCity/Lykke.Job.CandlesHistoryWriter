@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
 using AzureStorage.Blob;
@@ -11,6 +12,7 @@ using Lykke.HttpClientGenerator;
 using Lykke.Job.CandleHistoryWriter.Repositories.Candles;
 using Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryProviders.MeFeedHistory;
 using Lykke.Job.CandleHistoryWriter.Repositories.Snapshots;
+using Lykke.Job.CandlesHistoryWriter.Core.Domain;
 using Lykke.Service.Assets.Client;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.HistoryProviders.MeFeedHistory;
@@ -29,6 +31,7 @@ using Lykke.Job.CandlesHistoryWriter.Services.Settings;
 using Lykke.SettingsReader;
 using Microsoft.Extensions.DependencyInjection;
 using StackExchange.Redis;
+using Lykke.Logs.MsSql;
 
 namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
 {
@@ -42,12 +45,14 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
         private readonly IReloadingManager<Dictionary<string, string>> _candleHistoryAssetConnections;
         private readonly IReloadingManager<DbSettings> _dbSettings;
         private readonly ILog _log;
+        private readonly MonitoringServiceClientSettings _monitoringServiceClient;
 
         public JobModule(
             MarketType marketType,
             CandlesHistoryWriterSettings settings,
             AssetsSettings assetSettings,
             RedisSettings redisSettings,
+            MonitoringServiceClientSettings monitoringServiceClient,
             IReloadingManager<Dictionary<string, string>> candleHistoryAssetConnections,
             IReloadingManager<DbSettings> dbSettings,
             ILog log)
@@ -57,6 +62,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
             _settings = settings;
             _assetSettings = assetSettings;
             _redisSettings = redisSettings;
+            _monitoringServiceClient = monitoringServiceClient;
             _candleHistoryAssetConnections = candleHistoryAssetConnections;
             _dbSettings = dbSettings;
             _log = log;
@@ -83,7 +89,8 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
         private void RegisterResourceMonitor(ContainerBuilder builder)
         {
             var monitorSettings = _settings.ResourceMonitor;
-            if (!string.IsNullOrEmpty(Startup.monitoringServiceUrl) && Startup.monitoringServiceUrl != "n/a")
+            if (_monitoringServiceClient != null 
+                && !string.IsNullOrEmpty(_monitoringServiceClient.MonitoringServiceUrl))
             {
                 switch (monitorSettings.MonitorMode)
                 {
@@ -154,10 +161,22 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
                 .SingleInstance()
                 .AutoActivate();
 
-            builder.RegisterType<CandlesHistoryRepository>()
-                .As<ICandlesHistoryRepository>()
-                .WithParameter(TypedParameter.From(_candleHistoryAssetConnections))
-                .SingleInstance();
+            if (_settings.Db.StorageMode == StorageMode.SqlServer)
+            {
+                builder.RegisterType<SqlCandlesHistoryRepository>()
+                    .As<ICandlesHistoryRepository>()
+                    .WithParameter(TypedParameter.From(_candleHistoryAssetConnections))
+                    .WithParameter(TypedParameter.From(_settings.Db.SqlConnectionString))
+                    .SingleInstance();
+            }
+            else if (_settings.Db.StorageMode == StorageMode.Azure)
+            {
+                builder.RegisterType<CandlesHistoryRepository>()
+                    .As<ICandlesHistoryRepository>()
+                    .WithParameter(TypedParameter.From(_candleHistoryAssetConnections))
+                    .SingleInstance();
+            }
+
 
             builder.RegisterType<StartupManager>()
                 .As<IStartupManager>()
@@ -208,7 +227,8 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
             builder.RegisterType<CandlesPersistenceQueue>()
                 .As<ICandlesPersistenceQueue>()
                 .SingleInstance()
-                .WithParameter(TypedParameter.From(_settings.Persistence));
+                .WithParameter(TypedParameter.From(_settings.Persistence))
+                .WithParameter(TypedParameter.From(_settings.Db.StorageMode));
 
             builder.RegisterType<QueueMonitor>()
                 .As<IStartable>()
@@ -220,9 +240,20 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
                 .WithParameter(TypedParameter.From(_settings.HistoryTicksCacheSize))
                 .As<ICandlesCacheInitalizationService>();
 
-            builder.RegisterType<CandlesPersistenceQueueSnapshotRepository>()
-                .As<ICandlesPersistenceQueueSnapshotRepository>()
-                .WithParameter(TypedParameter.From(AzureBlobStorage.Create(_dbSettings.ConnectionString(x => x.SnapshotsConnectionString), TimeSpan.FromMinutes(10))));
+            if (_settings.Db.StorageMode == StorageMode.SqlServer)
+            {
+                builder.Register<ICandlesPersistenceQueueSnapshotRepository>(ctx =>
+                        new SqlCandlesPersistenceQueueSnapshotRepository(_dbSettings.CurrentValue.SqlConnectionString))
+                    .SingleInstance();
+
+            }
+            else if (_settings.Db.StorageMode == StorageMode.Azure)
+            {
+                builder.RegisterType<CandlesPersistenceQueueSnapshotRepository>()
+                    .As<ICandlesPersistenceQueueSnapshotRepository>()
+                    .WithParameter(TypedParameter.From(AzureBlobStorage.Create(_dbSettings.ConnectionString(x => x.SnapshotsConnectionString), TimeSpan.FromMinutes(10))));
+
+            }
 
             builder.RegisterType<RedisCacheTruncator>()
                 .As<IStartable>()
