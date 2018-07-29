@@ -24,12 +24,15 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
     {
         private const string TimestampFormat = "yyyyMMddHHmmss";
 
+        private readonly ICandlesCacheSemaphore _cacheSem;
+
         private readonly IHealthService _healthService;
         private readonly IDatabase _database;
         private readonly MarketType _market;
 
-        public RedisCandlesCacheService(IHealthService healthService, IDatabase database, MarketType market)
+        public RedisCandlesCacheService(ICandlesCacheSemaphore cacheSem, IHealthService healthService, IDatabase database, MarketType market)
         {
+            _cacheSem = cacheSem ?? throw new ArgumentNullException(nameof(cacheSem));
             _healthService = healthService ?? throw new ArgumentNullException(nameof(healthService));
             _database = database ?? throw new ArgumentNullException(nameof(database));
             _market = market;
@@ -72,7 +75,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                 }
             }
 
-            // TODO: This is non concurrent-safe update
+            // Since we have introduced a semaphore waiting in cache initialization service, we do not
+            // need any additional concurrent-safe actions here. Yes, it's better to wait a semaphore
+            // somewhere else but here 'cause otherwise we'll get a fully synchronous cache operation.
 
             var key = GetKey(_market, assetPairId, priceType, timeInterval);
 
@@ -90,43 +95,57 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
         public async Task CacheAsync(IReadOnlyList<ICandle> candles)
         {
-            _healthService.TraceStartCacheCandles();
+            // To avoid possible race condition with cache initialization triggered by timer:
+            await _cacheSem.WaitAsync();
 
-            // Transaction is needed here, despite of this method is non concurrent-safe,
-            // without transaction at the moment candle can be missed or doubled
-            // depending on the order of the remove/add calls
-
-            var transaction = _database.CreateTransaction();
-            var tasks = new List<Task>();
-
-            foreach (var candle in candles)
-            {  
-                var key = GetKey(_market, candle.AssetPairId, candle.PriceType, candle.TimeInterval);
-                var serializedValue = SerializeCandle(candle);
-
-                // Removes old candle
-
-                var currentCandleKey = candle.Timestamp.ToString(TimestampFormat);
-                var nextCandleKey = candle.Timestamp.AddIntervalTicks(1, candle.TimeInterval).ToString(TimestampFormat);
-
-                tasks.Add(transaction.SortedSetRemoveRangeByValueAsync(key, currentCandleKey, nextCandleKey, Exclude.Stop));
-
-                // Adds new candle
-
-                tasks.Add(transaction.SortedSetAddAsync(key, serializedValue, 0));
-            }
-
-            if (!await transaction.ExecuteAsync())
+            try
             {
-                throw new InvalidOperationException("Redis transaction is rolled back");
+
+                _healthService.TraceStartCacheCandles();
+
+                // Transaction is needed here, despite of this method is non concurrent-safe,
+                // without transaction at the moment candle can be missed or doubled
+                // depending on the order of the remove/add calls
+
+                var transaction = _database.CreateTransaction();
+                var tasks = new List<Task>();
+
+                foreach (var candle in candles)
+                {
+                    var key = GetKey(_market, candle.AssetPairId, candle.PriceType, candle.TimeInterval);
+                    var serializedValue = SerializeCandle(candle);
+
+                    // Removes old candle
+
+                    var currentCandleKey = candle.Timestamp.ToString(TimestampFormat);
+                    var nextCandleKey = candle.Timestamp.AddIntervalTicks(1, candle.TimeInterval)
+                        .ToString(TimestampFormat);
+
+                    tasks.Add(transaction.SortedSetRemoveRangeByValueAsync(key, currentCandleKey, nextCandleKey,
+                        Exclude.Stop));
+
+                    // Adds new candle
+
+                    tasks.Add(transaction.SortedSetAddAsync(key, serializedValue, 0));
+                }
+
+                if (!await transaction.ExecuteAsync())
+                {
+                    throw new InvalidOperationException("Redis transaction is rolled back");
+                }
+
+                // Operations in the transaction can't be awaited before transaction is executed, so
+                // saves tasks and waits they here, just to calm down the Resharper
+
+                await Task.WhenAll(tasks);
+
+                _healthService.TraceStopCacheCandles(candles.Count);
+
             }
-
-            // Operations in the transaction can't be awaited before transaction is executed, so
-            // saves tasks and waits they here, just to calm down the Resharper
-
-            await Task.WhenAll(tasks);
-
-            _healthService.TraceStopCacheCandles(candles.Count);
+            finally
+            {
+                _cacheSem.Release();
+            }
         }
 
         private static byte[] SerializeCandle(ICandle candle)
@@ -166,12 +185,12 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         {
             var vkey = GetValidationKey(_market);
 
-            await _database.SetAddAsync(vkey, "CandlesHistoryCacheIsStillValidIfYouCanSeeMe");
+            await _database.SetAddAsync(vkey, $"CandlesHistoryCacheIsStillValidIfYouCanSeeMe.LastKeyUpdate-{DateTime.UtcNow}");
         }
 
         public bool CheckCacheValidity()
         {
-            var vkey = RedisCandlesCacheService.GetValidationKey(_market);
+            var vkey = GetValidationKey(_market);
             return _database.KeyExists(vkey);
         }
 

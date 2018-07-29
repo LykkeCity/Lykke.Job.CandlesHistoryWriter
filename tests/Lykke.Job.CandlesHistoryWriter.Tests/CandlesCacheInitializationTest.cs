@@ -70,6 +70,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
                 .ReturnsAsync((string assetPairId) => _assetPairs.SingleOrDefault(a => a.Id == assetPairId));
 
             _service = new CandlesCacheInitalizationService(
+                new CandlesCacheSemaphore(), 
                 logMock.Object,
                 _assetPairsManagerMock.Object,
                 _dateTimeProviderMock.Object,
