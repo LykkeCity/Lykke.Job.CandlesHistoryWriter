@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Runtime.InteropServices;
+using JetBrains.Annotations;
 
 namespace Lykke.Job.CandlesHistoryWriter.Services.Settings
 {
@@ -11,7 +13,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Settings
         public DbSettings Db { get; set; }
         public MigrationSettings Migration { get; set; }
         public ErrorManagementSettings ErrorManagement { get; set; }
+
+        [CanBeNull]
         public ResourceMonitorSettings ResourceMonitor { get; set; }
+
         public int HistoryTicksCacheSize { get; set; }
         public TimeSpan CacheCleanupPeriod { get; set; }
     }
