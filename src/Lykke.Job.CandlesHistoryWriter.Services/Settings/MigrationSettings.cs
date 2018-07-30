@@ -7,7 +7,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Settings
     {
         [Optional]
         public bool MigrationEnabled { get; set; }
+        [Optional]
         public QuotesSettings Quotes { get; set; }
+        [Optional]
         public TradesSettings Trades { get; set; }
     }
 

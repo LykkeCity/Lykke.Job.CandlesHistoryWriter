@@ -19,16 +19,14 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
         private readonly IHealthService _healthService;
         private readonly ILog _log;
         private readonly IReloadingManager<Dictionary<string, string>> _assetConnectionStrings;
-        private readonly string _sqlConnectionString;
 
         private readonly ConcurrentDictionary<string, SqlAssetPairCandlesHistoryRepository> _sqlAssetPairRepositories;
 
-        public SqlCandlesHistoryRepository(IHealthService healthService, ILog log, IReloadingManager<Dictionary<string, string>> assetConnectionStrings, string sqlServerConnectionString)
+        public SqlCandlesHistoryRepository(IHealthService healthService, ILog log, IReloadingManager<Dictionary<string, string>> assetConnectionStrings)
         {
             _healthService = healthService;
             _log = log;
             _assetConnectionStrings = assetConnectionStrings;
-            _sqlConnectionString = sqlServerConnectionString;
 
             _sqlAssetPairRepositories = new ConcurrentDictionary<string, SqlAssetPairCandlesHistoryRepository>();
         }
@@ -96,7 +94,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             var key = assetPairId;
 
             return _sqlAssetPairRepositories.GetOrAdd(key,
-                 new SqlAssetPairCandlesHistoryRepository(assetPairId, _sqlConnectionString, _log));
+                 new SqlAssetPairCandlesHistoryRepository(assetPairId, _assetConnectionStrings.ConnectionString(x => x[assetPairId]).CurrentValue, _log));
         }
 
         private (string assetPairId, CandleTimeInterval interval, CandlePriceType priceType) PreEvaluateInputCandleSet(
