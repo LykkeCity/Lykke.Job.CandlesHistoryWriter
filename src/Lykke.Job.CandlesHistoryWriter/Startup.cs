@@ -89,7 +89,7 @@ namespace Lykke.Job.CandlesHistoryWriter
                     Log = CreateLogWithSlack(
                         services,
                         settings.CurrentValue.SlackNotifications,
-                        candlesHistoryWriter.ConnectionString(x => x.Db.SnapshotsConnectionString),
+                        candlesHistoryWriter.ConnectionString(x => x.Db.LogsConnectionString),
                         candlesHistoryWriter.CurrentValue.Db.StorageMode);
                 }
 
