@@ -11,6 +11,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Settings
         public QueueMonitorSettings QueueMonitor { get; set; }
         public PersistenceSettings Persistence { get; set; }
         public DbSettings Db { get; set; }
+        [CanBeNull]
         public MigrationSettings Migration { get; set; }
         public ErrorManagementSettings ErrorManagement { get; set; }
 
