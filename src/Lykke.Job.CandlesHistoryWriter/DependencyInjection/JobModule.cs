@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
 using AzureStorage.Blob;
@@ -68,6 +69,8 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
                         
             builder.RegisterType<Clock>().As<IClock>();
 
+            RegisterCacheSemaphore(builder);
+
             RegisterResourceMonitor(builder);
 
             RegisterRedis(builder);
@@ -76,6 +79,13 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
             RegisterCandles(builder);
 
             builder.Populate(_services);
+        }
+
+        private void RegisterCacheSemaphore(ContainerBuilder builder)
+        {
+            builder.RegisterType<CandlesCacheSemaphore>()
+                .As<ICandlesCacheSemaphore>()
+                .SingleInstance(); // <-- Important
         }
 
         private void RegisterResourceMonitor(ContainerBuilder builder)

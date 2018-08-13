@@ -13,6 +13,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 {
     public class CandlesCacheInitalizationService : ICandlesCacheInitalizationService
     {
+        private readonly ICandlesCacheSemaphore _cacheSem;
         private readonly ILog _log;
         private readonly IAssetPairsManager _assetPairsManager;
         private readonly IClock _clock;
@@ -25,6 +26,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         public CacheInitializationState InitializationState { get; private set; }
 
         public CandlesCacheInitalizationService(
+            ICandlesCacheSemaphore cacheSem,
             ILog log,
             IAssetPairsManager assetPairsManager,
             IClock clock,
@@ -32,6 +34,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             ICandlesHistoryRepository candlesHistoryRepository,
             int amountOfCandlesToStore)
         {
+            _cacheSem = cacheSem ?? throw new ArgumentNullException(nameof(cacheSem));
             _log = log ?? throw new ArgumentNullException(nameof(log));
             _assetPairsManager = assetPairsManager ?? throw new ArgumentNullException(nameof(assetPairsManager));
             _clock = clock ?? throw new ArgumentNullException(nameof(clock));
@@ -47,6 +50,13 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             // Depending on cache invalidation period and on asset pairs amount, there may be a case when
             // the invalidation timer fires before the cache loading has stopped. This will be a signal 
             // to skip timer-based invalidation.
+            // Below we combine two approaches:
+            // - we're exporting a fast signal for any timer-based routine that we have already been initializing the cache;
+            // - and we additionally block all the cache-related operations for other parts of code.
+            // The first is needed to avoid queueing of timer events. If we simply use blocks, we will finally face a problem
+            // when cache initialization may become infinitly repeated. The second is important for avoidining a multi-threaded
+            // write operations to the cache: if we've got a candle update set, we need to await for cache fill completion and
+            // then proceed.
             lock (_initializationStateLocker)
             {
                 if (InitializationState == CacheInitializationState.InProgress)
@@ -54,6 +64,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
                 InitializationState = CacheInitializationState.InProgress;
             }
+
+            await _cacheSem.WaitAsync();
 
             try
             {
@@ -76,6 +88,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             finally
             {
                 InitializationState = CacheInitializationState.Idle;
+                _cacheSem.Release();
             }
         }
 
