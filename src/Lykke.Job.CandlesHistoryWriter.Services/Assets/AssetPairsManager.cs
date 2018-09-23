@@ -47,5 +47,15 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Assets
                     (exception, timespan) => _log.WriteErrorAsync("Get all asset pairs with retry", string.Empty, exception))
                 .ExecuteAsync(async () => (await _apiService.GetAllAssetPairsAsync()).Where(a => !a.IsDisabled));
         }
+
+        public Task<IEnumerable<AssetPair>> GetAllAsync()
+        {
+            return Policy
+                .Handle<Exception>()
+                .WaitAndRetryForeverAsync(
+                    retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
+                    (exception, timespan) => _log.WriteErrorAsync("Get all asset pairs with retry", string.Empty, exception))
+                .ExecuteAsync(async () => (await _apiService.GetAllAssetPairsAsync()).AsEnumerable());
+        }
     }
 }
