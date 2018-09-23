@@ -86,7 +86,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                     ? SlotType.Slot1 
                     : SlotType.Slot0;
 
-                var assetPairs = await _assetPairsManager.GetAllEnabledAsync();
+                var assetPairs = await _assetPairsManager.GetAllAsync();
                 var now = _clock.UtcNow;
                 var cacheAssetPairTasks = assetPairs
                     .Where(a => _candlesHistoryRepository.CanStoreAssetPair(a.Id))
