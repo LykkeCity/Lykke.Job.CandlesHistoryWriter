@@ -42,7 +42,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
         private readonly CandlesHistoryWriterSettings _settings;
         private readonly AssetsSettings _assetSettings;
         private readonly RedisSettings _redisSettings;
-        private readonly IReloadingManager<Dictionary<string, string>> _candleHistoryAssetConnections;
+        private readonly IReloadingManager<string> _candleHistoryAssetConnection;
         private readonly IReloadingManager<DbSettings> _dbSettings;
         private readonly ILog _log;
         private readonly MonitoringServiceClientSettings _monitoringServiceClient;
@@ -53,7 +53,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
             AssetsSettings assetSettings,
             RedisSettings redisSettings,
             MonitoringServiceClientSettings monitoringServiceClient,
-            IReloadingManager<Dictionary<string, string>> candleHistoryAssetConnections,
+            IReloadingManager<string> candleHistoryAssetConnection,
             IReloadingManager<DbSettings> dbSettings,
             ILog log)
         {
@@ -63,7 +63,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
             _assetSettings = assetSettings;
             _redisSettings = redisSettings;
             _monitoringServiceClient = monitoringServiceClient;
-            _candleHistoryAssetConnections = candleHistoryAssetConnections;
+            _candleHistoryAssetConnection = candleHistoryAssetConnection;
             _dbSettings = dbSettings;
             _log = log;
         }
@@ -165,14 +165,14 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
             {
                 builder.RegisterType<SqlCandlesHistoryRepository>()
                     .As<ICandlesHistoryRepository>()
-                    .WithParameter(TypedParameter.From(_candleHistoryAssetConnections))
+                    .WithParameter(TypedParameter.From(_candleHistoryAssetConnection))
                     .SingleInstance();
             }
             else if (_settings.Db.StorageMode == StorageMode.Azure)
             {
                 builder.RegisterType<CandlesHistoryRepository>()
                     .As<ICandlesHistoryRepository>()
-                    .WithParameter(TypedParameter.From(_candleHistoryAssetConnections))
+                    .WithParameter(TypedParameter.From(_candleHistoryAssetConnection))
                     .SingleInstance();
             }
 

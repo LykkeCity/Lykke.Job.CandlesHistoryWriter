@@ -99,9 +99,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
                         new TestCandle(),
                         new TestCandle()
                     });
-            _historyRepositoryMock
-                .Setup(r => r.CanStoreAssetPair(It.Is<string>(a => new[] {"EURUSD", "USDCHF"}.Contains(a))))
-                .Returns<string>(a => true);
 
             // Act
             await _service.InitializeCacheAsync();

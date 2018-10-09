@@ -20,14 +20,6 @@ namespace Lykke.Job.CandlesHistoryWriter
         [UsedImplicitly(ImplicitUseKindFlags.Assign)]
         public SlackNotificationsSettings SlackNotifications { get; set; }
 
-        [Optional]
-        [UsedImplicitly(ImplicitUseKindFlags.Assign)]
-        public Dictionary<string, string> CandleHistoryAssetConnections { get; set; }
-
-        [Optional]
-        [UsedImplicitly(ImplicitUseKindFlags.Assign)]
-        public Dictionary<string, string> MtCandleHistoryAssetConnections { get; set; }
-
         [UsedImplicitly(ImplicitUseKindFlags.Assign)]
         public AssetsSettings Assets { get; set; }
 

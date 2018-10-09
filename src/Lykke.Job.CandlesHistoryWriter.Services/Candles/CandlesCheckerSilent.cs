@@ -28,6 +28,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         /// </summary>
         /// <param name="assetPairId">Asset pair ID.</param>
         /// <returns>True if repository is able to store such a pair, and false otherwise.</returns>
-        public virtual bool CanHandleAssetPair(string assetPairId) => _candlesHistoryRepository.CanStoreAssetPair(assetPairId);
+        public virtual bool CanHandleAssetPair(string assetPairId) => true;
     }
 }

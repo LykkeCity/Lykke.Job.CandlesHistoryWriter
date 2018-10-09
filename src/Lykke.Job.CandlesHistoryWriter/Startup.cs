@@ -73,9 +73,8 @@ namespace Lykke.Job.CandlesHistoryWriter
                 var candlesHistoryWriter = settings.CurrentValue.CandlesHistoryWriter != null
                     ? settings.Nested(x => x.CandlesHistoryWriter)
                     : settings.Nested(x => x.MtCandlesHistoryWriter);
-                var candleHistoryAssetConnection = settings.CurrentValue.CandleHistoryAssetConnections != null
-                    ? settings.Nested(x => x.CandleHistoryAssetConnections)
-                    : settings.Nested(x => x.MtCandleHistoryAssetConnections);
+                var candleHistoryAssetConnection = settings
+                    .Nested(x => x.CandlesHistoryWriter.Db.SnapshotsConnectionString);
 
                 Log = CreateLogWithSlack(
                     services,

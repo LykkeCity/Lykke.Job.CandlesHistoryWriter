@@ -18,15 +18,16 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
     {
         private readonly IHealthService _healthService;
         private readonly ILog _log;
-        private readonly IReloadingManager<Dictionary<string, string>> _assetConnectionStrings;
+        private readonly IReloadingManager<string> _assetConnectionString;
 
         private readonly ConcurrentDictionary<string, SqlAssetPairCandlesHistoryRepository> _sqlAssetPairRepositories;
 
-        public SqlCandlesHistoryRepository(IHealthService healthService, ILog log, IReloadingManager<Dictionary<string, string>> assetConnectionStrings)
+        public SqlCandlesHistoryRepository(IHealthService healthService, ILog log, 
+            IReloadingManager<string> assetConnectionString)
         {
             _healthService = healthService;
             _log = log;
-            _assetConnectionStrings = assetConnectionStrings;
+            _assetConnectionString = assetConnectionString;
 
             _sqlAssetPairRepositories = new ConcurrentDictionary<string, SqlAssetPairCandlesHistoryRepository>();
         }
@@ -48,11 +49,6 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
         }
 
-        public bool CanStoreAssetPair(string assetPairId)
-        {
-            return _assetConnectionStrings.CurrentValue.ContainsKey(assetPairId);
-        }
-
         public async Task<ICandle> TryGetFirstCandleAsync(string assetPairId, CandleTimeInterval interval, CandlePriceType priceType)
         {
             var repo = GetRepo(assetPairId);
@@ -61,15 +57,10 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
         }
 
-        public IReadOnlyList<string> GetStoredAssetPairs()
-        {
-            return _assetConnectionStrings.CurrentValue.Keys.ToList();
-        }
-
         public async Task<int> DeleteCandlesAsync(IReadOnlyList<ICandle> candlesToDelete)
         {
             // ReSharper disable once PossibleMultipleEnumeration
-            (var assetPairId, var interval, var priceType) = PreEvaluateInputCandleSet(candlesToDelete);
+            var (assetPairId, interval, priceType) = PreEvaluateInputCandleSet(candlesToDelete);
 
             var repo = GetRepo(assetPairId);
             return
@@ -80,7 +71,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
         public async Task<int> ReplaceCandlesAsync(IReadOnlyList<ICandle> candlesToReplace)
         {
             // ReSharper disable once PossibleMultipleEnumeration
-            (var assetPairId, var interval, var priceType) = PreEvaluateInputCandleSet(candlesToReplace);
+            var (assetPairId, interval, priceType) = PreEvaluateInputCandleSet(candlesToReplace);
 
             var repo = GetRepo(assetPairId);
             return
@@ -89,13 +80,9 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
         }
 
-        private SqlAssetPairCandlesHistoryRepository GetRepo(string assetPairId)
-        {
-            var key = assetPairId;
-
-            return _sqlAssetPairRepositories.GetOrAdd(key,
-                 new SqlAssetPairCandlesHistoryRepository(assetPairId, _assetConnectionStrings.ConnectionString(x => x[assetPairId]).CurrentValue, _log));
-        }
+        private SqlAssetPairCandlesHistoryRepository GetRepo(string assetPairId) =>
+            _sqlAssetPairRepositories.GetOrAdd(assetPairId,
+                new SqlAssetPairCandlesHistoryRepository(assetPairId, _assetConnectionString.CurrentValue, _log));
 
         private (string assetPairId, CandleTimeInterval interval, CandlePriceType priceType) PreEvaluateInputCandleSet(
             IEnumerable<ICandle> candlesToCheck)

@@ -19,22 +19,18 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
     {
         private readonly IHealthService _healthService;
         private readonly ILog _log;
-        private readonly IReloadingManager<Dictionary<string, string>> _assetConnectionStrings;
+        private readonly IReloadingManager<string> _assetConnectionString;
 
         private readonly ConcurrentDictionary<string, AssetPairCandlesHistoryRepository> _assetPairRepositories;
 
-        public CandlesHistoryRepository(IHealthService healthService, ILog log, IReloadingManager<Dictionary<string, string>> assetConnectionStrings)
+        public CandlesHistoryRepository(IHealthService healthService, ILog log, 
+            IReloadingManager<string> assetConnectionString)
         {
             _healthService = healthService;
             _log = log;
-            _assetConnectionStrings = assetConnectionStrings;
+            _assetConnectionString = assetConnectionString;
 
             _assetPairRepositories = new ConcurrentDictionary<string, AssetPairCandlesHistoryRepository>();
-        }
-
-        public bool CanStoreAssetPair(string assetPairId)
-        {
-            return _assetConnectionStrings.CurrentValue.ContainsKey(assetPairId);
         }
 
         /// <summary>
@@ -173,14 +169,8 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
         private INoSQLTableStorage<CandleHistoryEntity> CreateStorage(string assetPairId, string tableName)
         {
-            if (!_assetConnectionStrings.CurrentValue.TryGetValue(assetPairId, out var assetConnectionString) ||
-                string.IsNullOrEmpty(assetConnectionString))
-            {
-                throw new ConfigurationException($"Connection string for asset pair '{assetPairId}' is not specified.");
-            }
-
             var storage = AzureTableStorage<CandleHistoryEntity>.Create(
-                _assetConnectionStrings.ConnectionString(x => x[assetPairId]), 
+                _assetConnectionString, 
                 tableName, 
                 _log,
                 maxExecutionTimeout: TimeSpan.FromMinutes(1),
@@ -192,11 +182,6 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             storage.GetDataAsync(assetPairId, "1900-01-01").Wait();
 
             return storage;
-        }
-
-        public IReadOnlyList<string> GetStoredAssetPairs()
-        {
-            return _assetConnectionStrings.CurrentValue.Keys.ToList();
         }
     }
 }

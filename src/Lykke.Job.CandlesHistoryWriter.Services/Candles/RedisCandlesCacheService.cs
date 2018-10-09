@@ -168,5 +168,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         {
             return $"CandlesHistory:{market}:{assetPairId}:{priceType}:{timeInterval}";
         }
+
+        public static string GetAssetPairsRootKey(MarketType market)
+        {
+            return $"CandlesHistory:{market}";
+        }
     }
 }

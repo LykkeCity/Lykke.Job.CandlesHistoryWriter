@@ -43,7 +43,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             var assetPairs = await _assetPairsManager.GetAllEnabledAsync();
             var now = _clock.UtcNow;
             var cacheAssetPairTasks = assetPairs
-                .Where(a => _candlesHistoryRepository.CanStoreAssetPair(a.Id))
                 .Select(assetPair => CacheAssetPairCandlesAsync(assetPair, now));
 
             await Task.WhenAll(cacheAssetPairTasks);
