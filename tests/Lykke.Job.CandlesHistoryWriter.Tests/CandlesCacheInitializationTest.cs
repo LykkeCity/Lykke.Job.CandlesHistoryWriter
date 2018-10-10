@@ -64,10 +64,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
             };
 
             _assetPairsManagerMock
-                .Setup(m => m.GetAllAsync())
+                .Setup(m => m.GetAllEnabledAsync())
                 .ReturnsAsync(() => _assetPairs);
             _assetPairsManagerMock
-                .Setup(m => m.TryGetAssetPairAsync(It.IsAny<string>()))
+                .Setup(m => m.TryGetEnabledPairAsync(It.IsAny<string>()))
                 .ReturnsAsync((string assetPairId) => _assetPairs.SingleOrDefault(a => a.Id == assetPairId));
 
             _service = new CandlesCacheInitalizationService(
