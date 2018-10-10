@@ -57,7 +57,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             string assetPairId, 
             CandlePriceType priceType,
             CandleTimeInterval timeInterval,
-            IReadOnlyCollection<ICandle> candles)
+            IReadOnlyCollection<ICandle> candles,
+            SlotType slotType)
         {
             foreach (var candle in candles)
             {
@@ -79,9 +80,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             // need any additional concurrent-safe actions here. Yes, it's better to wait a semaphore
             // somewhere else but here 'cause otherwise we'll get a fully synchronous cache operation.
 
-            var key = GetKey(_market, assetPairId, priceType, timeInterval);
+            var key = GetKey(_market, assetPairId, priceType, timeInterval, slotType);
 
-            // Note: currently we do not clean the cache manually
+            await _database.KeyDeleteAsync(key);
 
             foreach (var candlesBatch in candles.Batch(100))
             {
@@ -100,7 +101,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
             try
             {
-
                 _healthService.TraceStartCacheCandles();
 
                 // Transaction is needed here, despite of this method is non concurrent-safe,
@@ -109,10 +109,11 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
                 var transaction = _database.CreateTransaction();
                 var tasks = new List<Task>();
+                SlotType activeSlot = GetActiveSlot(_market);
 
                 foreach (var candle in candles)
                 {
-                    var key = GetKey(_market, candle.AssetPairId, candle.PriceType, candle.TimeInterval);
+                    var key = GetKey(_market, candle.AssetPairId, candle.PriceType, candle.TimeInterval, activeSlot);
                     var serializedValue = SerializeCandle(candle);
 
                     // Removes old candle
@@ -196,21 +197,44 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             return _database.KeyExists(vkey);
         }
 
-        public void TruncateCache(string assetId, CandlePriceType priceType, CandleTimeInterval timeInterval, int storedCandlesCountLimit)
+        public void TruncateCache(string assetId, CandlePriceType priceType, CandleTimeInterval timeInterval, int storedCandlesCountLimit, SlotType slotType)
         {
-            var key = GetKey(_market, assetId, priceType, timeInterval);
+            var key = GetKey(_market, assetId, priceType, timeInterval, slotType);
 
             _database.SortedSetRemoveRangeByRank(key, 0, -storedCandlesCountLimit - 1, CommandFlags.FireAndForget);
         }
 
-        public static string GetKey(MarketType market, string assetPairId, CandlePriceType priceType, CandleTimeInterval timeInterval)
+        public SlotType GetActiveSlot(MarketType marketType)
         {
-            return $"CandlesHistory:{market}:{assetPairId}:{priceType}:{timeInterval}";
+            var key = GetActiveSlotKey(marketType);
+
+            if (_database.KeyExists(key)) 
+                return Enum.Parse<SlotType>(_database.StringGet(key));
+
+            _database.StringSet(key, SlotType.Slot0.ToString());
+            
+            return SlotType.Slot0;
         }
 
-        public static string GetValidationKey(MarketType market)
+        public void SetActiveSlot(MarketType marketType, SlotType slotType)
+        {
+            var key = GetActiveSlotKey(marketType);
+            _database.StringSet(key, slotType.ToString());
+        }
+
+        private static string GetKey(MarketType market, string assetPairId, CandlePriceType priceType, CandleTimeInterval timeInterval, SlotType slotType)
+        {
+            return $"CandlesHistory:{market}:{slotType.ToString()}:{assetPairId}:{priceType}:{timeInterval}";
+        }
+
+        private static string GetValidationKey(MarketType market)
         {
             return $"CandlesHistory:{market}:ValidationToken";
+        }
+        
+        private static string GetActiveSlotKey(MarketType market)
+        {
+            return $"CandlesHistory:{market}:ActiveSlot";
         }
     }
 }
