@@ -17,6 +17,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         private readonly ICandlesCacheService _redisCacheService;
         private readonly ICandlesCacheInitalizationService _cacheInitalizationService;
         private readonly int _amountOfCandlesToStore;
+        private readonly MarketType _marketType;
 
         private readonly TimerTrigger _maintainTicker;
 
@@ -26,12 +27,14 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             ICandlesCacheInitalizationService cacheInitalizationService,
             TimeSpan cacheCheckupPeriod,
             int amountOfCandlesToStore,
+            MarketType marketType,
             ILog log)
         {
             _historyRepository = historyRepository ?? throw new ArgumentNullException(nameof(historyRepository));
             _redisCacheService = redisCacheService ?? throw new ArgumentNullException(nameof(redisCacheService));
             _cacheInitalizationService = cacheInitalizationService ?? throw new ArgumentNullException(nameof(cacheInitalizationService));
             _amountOfCandlesToStore = amountOfCandlesToStore;
+            _marketType = marketType;
 
             _maintainTicker = new TimerTrigger(nameof(RedisCacheCaretaker), cacheCheckupPeriod, log);
             _maintainTicker.Triggered += MaintainTickerOnTriggered;
@@ -52,6 +55,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             // Shall not truncate cache while reloading data.
             if (_cacheInitalizationService.InitializationState != CacheInitializationState.Idle)
                 return;
+            
+            SlotType activeSlot = _redisCacheService.GetActiveSlot(_marketType);
 
             foreach (var assetId in _historyRepository.GetStoredAssetPairs())
             {
@@ -59,7 +64,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                 {
                     foreach (var timeInterval in Constants.StoredIntervals)
                     {
-                        _redisCacheService.TruncateCache(assetId, priceType, timeInterval, _amountOfCandlesToStore);
+                        _redisCacheService.TruncateCache(assetId, priceType, timeInterval, _amountOfCandlesToStore, activeSlot);
                     }
                 }
             }

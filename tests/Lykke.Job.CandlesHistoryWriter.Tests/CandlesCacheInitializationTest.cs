@@ -37,6 +37,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
         );
 
         private const int AmountOfCandlesToStore = 5;
+        private const MarketType MarketType = Core.Domain.Candles.MarketType.Spot;
 
         private ICandlesCacheInitalizationService _service;
         private Mock<IClock> _dateTimeProviderMock;
@@ -76,7 +77,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
                 _dateTimeProviderMock.Object,
                 _cacheServiceMock.Object,
                 _historyRepositoryMock.Object,
-                AmountOfCandlesToStore);
+                AmountOfCandlesToStore,
+                MarketType);
         }
 
         [TestMethod]
@@ -127,7 +129,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
                                     It.Is<string>(a => a == assetPairId),
                                     It.Is<CandlePriceType>(p => p == priceType),
                                     It.Is<CandleTimeInterval>(i => i == interval),
-                                    It.Is<IReadOnlyCollection<ICandle>>(c => c.Count == 2)),
+                                    It.Is<IReadOnlyCollection<ICandle>>(c => c.Count == 2),
+                                    It.IsAny<SlotType>()),
                             Times.Once);
                     }
                 }
@@ -147,7 +150,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
                         It.Is<string>(a => !new[] { "EURUSD", "USDCHF" }.Contains(a)),
                         It.IsAny<CandlePriceType>(),
                         It.IsAny<CandleTimeInterval>(),
-                        It.IsAny<IReadOnlyCollection<ICandle>>()),
+                        It.IsAny<IReadOnlyCollection<ICandle>>(),
+                        It.IsAny<SlotType>()),
                 Times.Never);
         }
     }

@@ -8,10 +8,12 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Services.Candles
 {
     public interface ICandlesCacheService : IHaveState<IImmutableDictionary<string, IImmutableList<ICandle>>>
     {
-        Task InitializeAsync(string assetPairId, CandlePriceType priceType, CandleTimeInterval timeInterval, IReadOnlyCollection<ICandle> candles);
+        Task InitializeAsync(string assetPairId, CandlePriceType priceType, CandleTimeInterval timeInterval, IReadOnlyCollection<ICandle> candles, SlotType slotType);
         Task CacheAsync(IReadOnlyList<ICandle> candle);
         Task InjectCacheValidityToken();
         bool CheckCacheValidity();
-        void TruncateCache(string assetId, CandlePriceType priceType, CandleTimeInterval timeInterval, int storedCandlesCountLimit);
+        void TruncateCache(string assetId, CandlePriceType priceType, CandleTimeInterval timeInterval, int storedCandlesCountLimit, SlotType slotType);
+        SlotType GetActiveSlot(MarketType marketType);
+        void SetActiveSlot(MarketType marketType, SlotType slotType);
     }
 }

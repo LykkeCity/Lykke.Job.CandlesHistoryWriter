@@ -209,6 +209,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
 
             builder.RegisterType<CandlesCacheInitalizationService>()
                 .WithParameter(TypedParameter.From(_settings.HistoryCache.HistoryTicksCacheSize))
+                .WithParameter(TypedParameter.From(_marketType))
                 .As<ICandlesCacheInitalizationService>()
                 .SingleInstance();
 
