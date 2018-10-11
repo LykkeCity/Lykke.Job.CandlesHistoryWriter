@@ -8,6 +8,7 @@ using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Assets;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Candles;
+using MoreLinq;
 
 namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 {
@@ -42,10 +43,11 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
             var assetPairs = await _assetPairsManager.GetAllEnabledAsync();
             var now = _clock.UtcNow;
-            var cacheAssetPairTasks = assetPairs
-                .Select(assetPair => CacheAssetPairCandlesAsync(assetPair, now));
 
-            await Task.WhenAll(cacheAssetPairTasks);
+            foreach (var cacheAssetPairBatch in assetPairs.Batch(10))
+            {
+                await Task.WhenAll(cacheAssetPairBatch.Select(assetPair => CacheAssetPairCandlesAsync(assetPair, now)));
+            }
 
             await _log.WriteInfoAsync(nameof(CandlesCacheInitalizationService), nameof(InitializeCacheAsync), null, "All candles history is cached");
         }
