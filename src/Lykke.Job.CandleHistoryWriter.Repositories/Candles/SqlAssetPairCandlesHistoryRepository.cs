@@ -17,7 +17,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
     {
         private const int ReadCommandTimeout = 36000;
         private const int WriteCommandTimeout = 600;
-        private const string CreateTableScript = "CREATE TABLE [{0}](" +
+        private const string CreateTableScript = "CREATE TABLE {0}(" +
                                                  "[Id] [bigint] NOT NULL IDENTITY(1,1) PRIMARY KEY," +
                                                  "[AssetPairId] [nvarchar] (64) NOT NULL, " +
                                                  "[PriceType] [int] NOT NULL ," +
@@ -47,7 +47,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             _systemClock = new SystemClock();
             _log = log;
             _connectionString = connectionString;
-            _tableName = $"Candles.candleshistory_{assetName}";
+            _tableName = $"[Candles].[candleshistory_{assetName}]";
             var createTableScript = CreateTableScript.Replace("UNIQUEINDEX", assetName);
 
             using (var conn = new SqlConnection(_connectionString))
