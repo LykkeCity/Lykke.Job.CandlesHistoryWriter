@@ -3,18 +3,13 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using Common.Log;
 using Dapper;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesProducer.Contract;
-using Lykke.Service.Assets.Client.Models;
-using Microsoft.Data.OData.Query.SemanticAst;
-using Microsoft.Extensions.Internal;
-using MoreLinq;
-using Newtonsoft.Json;
 using Lykke.Logs.MsSql.Extensions;
+using Microsoft.Extensions.Internal;
 
 namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 {
