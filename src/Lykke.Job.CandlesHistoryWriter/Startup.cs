@@ -73,10 +73,7 @@ namespace Lykke.Job.CandlesHistoryWriter
                 var candlesHistoryWriter = settings.CurrentValue.CandlesHistoryWriter != null
                     ? settings.Nested(x => x.CandlesHistoryWriter)
                     : settings.Nested(x => x.MtCandlesHistoryWriter);
-                var candleHistoryAssetConnection = settings.CurrentValue.CandleHistoryAssetConnections != null
-                    ? settings.Nested(x => x.CandleHistoryAssetConnections)
-                    : settings.Nested(x => x.MtCandleHistoryAssetConnections);
-
+                
                 Log = CreateLogWithSlack(
                     services,
                     settings.CurrentValue.SlackNotifications,
@@ -89,7 +86,6 @@ namespace Lykke.Job.CandlesHistoryWriter
                     settings.CurrentValue.Assets,
                     settings.CurrentValue.RedisSettings,
                     settings.CurrentValue.MonitoringServiceClient,
-                    candleHistoryAssetConnection,
                     candlesHistoryWriter.Nested(x => x.Db),
                     Log));
                 builder.Populate(services);

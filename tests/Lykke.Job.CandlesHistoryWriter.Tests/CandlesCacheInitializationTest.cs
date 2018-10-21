@@ -99,9 +99,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
                         new TestCandle(),
                         new TestCandle()
                     });
-            _historyRepositoryMock
-                .Setup(r => r.CanStoreAssetPair(It.Is<string>(a => new[] {"EURUSD", "USDCHF"}.Contains(a))))
-                .Returns<string>(a => true);
 
             // Act
             await _service.InitializeCacheAsync();
@@ -132,23 +129,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
                     }
                 }
             }
-
-            _historyRepositoryMock.Verify(r =>
-                    r.GetCandlesAsync(
-                        It.Is<string>(a => !new[] { "EURUSD", "USDCHF" }.Contains(a)),
-                        It.IsAny<CandleTimeInterval>(),
-                        It.IsAny<CandlePriceType>(),
-                        It.IsAny<DateTime>(),
-                        It.IsAny<DateTime>()),
-                Times.Never);
-
-            _cacheServiceMock.Verify(s =>
-                    s.InitializeAsync(
-                        It.Is<string>(a => !new[] { "EURUSD", "USDCHF" }.Contains(a)),
-                        It.IsAny<CandlePriceType>(),
-                        It.IsAny<CandleTimeInterval>(),
-                        It.IsAny<IReadOnlyCollection<ICandle>>()),
-                Times.Never);
         }
     }
 }

@@ -64,11 +64,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             if (!MigrationEnabled)
                 return string.Empty;
 
-            if (!_candlesHistoryRepository.CanStoreAssetPair(assetPairId))
-            {
-                return $"Connection string for the asset pair '{assetPairId}' not configuer";
-            }
-
             var assetPair = await _assetPairsManager.TryGetAssetPairAsync(assetPairId);
 
             if (assetPair == null)

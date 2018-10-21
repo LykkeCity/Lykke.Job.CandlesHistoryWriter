@@ -53,7 +53,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 
             // And also we should check if the specified asset pair is enabled.
             var storedAssetPair = _assetPairsManager.TryGetEnabledPairAsync(request.AssetPairId).GetAwaiter().GetResult();
-            if (storedAssetPair == null || !_candlesHistoryRepository.CanStoreAssetPair(request.AssetPairId))
+            if (storedAssetPair == null)
                 return FiltrationLaunchResult.AssetPairNotSupported;
 
             var epsilon = Math.Pow(10, -storedAssetPair.Accuracy);
