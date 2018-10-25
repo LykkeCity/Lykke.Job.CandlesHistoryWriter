@@ -78,7 +78,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                 if (_cacheInitalizationService.InitializationState != CacheInitializationState.Idle)
                 {
                     await Task.Delay(5000);
-                    throw new InvalidOperationException();
+                    throw new InvalidOperationException("Initialization in progress");
                 }
                 
                 var validationErrors = ValidateQuote(candlesUpdate);
