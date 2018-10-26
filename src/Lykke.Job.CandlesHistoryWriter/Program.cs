@@ -1,10 +1,12 @@
 ﻿using System;
 using System.IO;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 using Microsoft.AspNetCore.Hosting;
 
 namespace Lykke.Job.CandlesHistoryWriter
 {
+    [UsedImplicitly]
     internal class Program
     {
         public static string EnvInfo => Environment.GetEnvironmentVariable("ENV_INFO");

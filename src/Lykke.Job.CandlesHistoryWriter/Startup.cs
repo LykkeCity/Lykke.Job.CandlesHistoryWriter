@@ -26,6 +26,7 @@ using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.MonitoringServiceApiCaller;
 using Lykke.Logs.MsSql;
 using Lykke.Logs.MsSql.Repositories;
+using Lykke.Logs.Serilog;
 
 namespace Lykke.Job.CandlesHistoryWriter
 {
@@ -42,6 +43,7 @@ namespace Lykke.Job.CandlesHistoryWriter
             var builder = new ConfigurationBuilder()
                 .SetBasePath(env.ContentRootPath)
                 .AddJsonFile("env.json", optional: true)
+                .AddSerilogJson(env)
                 .AddEnvironmentVariables();
             Configuration = builder.Build();
             settings = Configuration.LoadSettings<AppSettings>();
@@ -75,6 +77,7 @@ namespace Lykke.Job.CandlesHistoryWriter
                     : settings.Nested(x => x.MtCandlesHistoryWriter);
                 
                 Log = CreateLogWithSlack(
+                    Configuration,
                     services,
                     settings.CurrentValue.SlackNotifications,
                     candlesHistoryWriter.ConnectionString(x => x.Db.LogsConnectionString),
@@ -196,7 +199,9 @@ namespace Lykke.Job.CandlesHistoryWriter
             }
         }
 
-        private static ILog CreateLogWithSlack(IServiceCollection services, SlackNotificationsSettings slackSettings, IReloadingManager<string> dbLogConnectionStringManager, StorageMode smode)
+        private ILog CreateLogWithSlack(IConfiguration configuration, IServiceCollection services, 
+            SlackNotificationsSettings slackSettings, IReloadingManager<string> dbLogConnectionStringManager, 
+            StorageMode smode)
         {
             var tableName = "CandlesHistoryWriterServiceLog";
             var consoleLogger = new LogToConsole();
@@ -221,7 +226,11 @@ namespace Lykke.Job.CandlesHistoryWriter
                 aggregateLogger.AddLog(logToSlack);
             }
 
-            if (smode == StorageMode.SqlServer)
+            if (settings.CurrentValue.CandlesHistoryWriter.UseSerilog)
+            {
+                aggregateLogger.AddLog(new SerilogLogger(typeof(Startup).Assembly, configuration));
+            }
+            else if (smode == StorageMode.SqlServer)
             {
                 aggregateLogger.AddLog(new LogToSql(new SqlLogRepository(tableName,
                     dbLogConnectionStringManager.CurrentValue)));
