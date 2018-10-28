@@ -73,6 +73,11 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
 
             builder.RegisterType<Clock>().As<IClock>();
 
+            if (_monitoringServiceClient != null)
+            {
+                builder.RegisterInstance(_monitoringServiceClient).AsSelf().SingleInstance();
+            }
+
             RegisterResourceMonitor(builder);
 
             RegisterRedis(builder);
