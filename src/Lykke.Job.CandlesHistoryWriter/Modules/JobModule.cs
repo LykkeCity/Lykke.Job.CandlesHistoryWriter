@@ -22,8 +22,10 @@ using Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration;
 using Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration.HistoryProviders;
 using Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration.HistoryProviders.MeFeedHistory;
 using Lykke.Job.CandlesHistoryWriter.Services.Settings;
+using Lykke.Sdk.Settings;
 using Lykke.Service.Assets.Client;
 using Lykke.SettingsReader;
+using Lykke.SettingsReader.ReloadingManager;
 using StackExchange.Redis;
 
 namespace Lykke.Job.CandlesHistoryWriter.Modules
@@ -33,6 +35,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Modules
     {
         private readonly IReloadingManager<AppSettings> _settings;
         private readonly MarketType _marketType;
+        private readonly CandlesHistoryWriterSettings _serviceSettings;
 
         public JobModule(IReloadingManager<AppSettings> settings)
         {
@@ -40,6 +43,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Modules
             _marketType = settings.CurrentValue.CandlesHistoryWriter != null 
                 ? MarketType.Spot 
                 : MarketType.Mt;
+            _serviceSettings = _marketType == MarketType.Spot
+                ? settings.CurrentValue.CandlesHistoryWriter
+                : settings.CurrentValue.MtCandlesHistoryWriter;
         }
 
         protected override void Load(ContainerBuilder builder)
@@ -65,7 +71,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Modules
 
         private void RegisterResourceMonitor(ContainerBuilder builder)
         {
-            var monitorSettings = _settings.CurrentValue.CandlesHistoryWriter.ResourceMonitor;
+            var monitorSettings = _serviceSettings.ResourceMonitor;
 
             switch (monitorSettings.MonitorMode)
             {
@@ -124,12 +130,12 @@ namespace Lykke.Job.CandlesHistoryWriter.Modules
 
             builder.RegisterType<StartupManager>()
                 .As<IStartupManager>()
-                .WithParameter(TypedParameter.From(_settings.CurrentValue.CandlesHistoryWriter.Migration.MigrationEnabled))
+                .WithParameter(TypedParameter.From(_serviceSettings.Migration.MigrationEnabled))
                 .SingleInstance();
 
             builder.RegisterType<ShutdownManager>()
                 .As<IShutdownManager>()
-                .WithParameter(TypedParameter.From(_settings.CurrentValue.CandlesHistoryWriter.Migration.MigrationEnabled))
+                .WithParameter(TypedParameter.From(_serviceSettings.Migration.MigrationEnabled))
                 .SingleInstance();
 
             builder.RegisterType<SnapshotSerializer>()
@@ -139,10 +145,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Modules
             // Now creating a silent -or- logging candles checker object.
             // CandlesChecker -- logs notifications on candles without properly configured connection strings for asset pair using the specified timeout between similar notifications.
             // CandlesHistorySilent -- does not log notifications.
-            if (_settings.CurrentValue.CandlesHistoryWriter.ErrorManagement.NotifyOnCantStoreAssetPair)
+            if (_serviceSettings.ErrorManagement.NotifyOnCantStoreAssetPair)
                 builder.RegisterType<CandlesChecker>()
                     .As<ICandlesChecker>()
-                    .WithParameter(TypedParameter.From(_settings.CurrentValue.CandlesHistoryWriter.ErrorManagement.NotifyOnCantStoreAssetPairTimeout))
+                    .WithParameter(TypedParameter.From(_serviceSettings.ErrorManagement.NotifyOnCantStoreAssetPairTimeout))
                     .SingleInstance();
             else
                 builder.RegisterType<CandlesCheckerSilent>()
@@ -151,7 +157,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Modules
 
             builder.RegisterType<CandlesSubscriber>()
                 .As<ICandlesSubscriber>()
-                .WithParameter(TypedParameter.From(_settings.CurrentValue.CandlesHistoryWriter.Rabbit.CandlesSubscription))
+                .WithParameter(TypedParameter.From(_serviceSettings.Rabbit.CandlesSubscription))
                 .SingleInstance();
 
             builder.RegisterType<CandlesManager>()
@@ -166,35 +172,35 @@ namespace Lykke.Job.CandlesHistoryWriter.Modules
             builder.RegisterType<CandlesPersistenceManager>()
                 .As<ICandlesPersistenceManager>()
                 .SingleInstance()
-                .WithParameter(TypedParameter.From(_settings.CurrentValue.CandlesHistoryWriter.Persistence));
+                .WithParameter(TypedParameter.From(_serviceSettings.Persistence));
 
             builder.RegisterType<CandlesPersistenceQueue>()
                 .As<ICandlesPersistenceQueue>()
                 .SingleInstance()
-                .WithParameter(TypedParameter.From(_settings.CurrentValue.CandlesHistoryWriter.Persistence));
+                .WithParameter(TypedParameter.From(_serviceSettings.Persistence));
 
             builder.RegisterType<QueueMonitor>()
                 .As<IStartable>()
                 .SingleInstance()
-                .WithParameter(TypedParameter.From(_settings.CurrentValue.CandlesHistoryWriter.QueueMonitor))
+                .WithParameter(TypedParameter.From(_serviceSettings.QueueMonitor))
                 .AutoActivate();
 
             builder.RegisterType<CandlesCacheInitalizationService>()
-                .WithParameter(TypedParameter.From(_settings.CurrentValue.CandlesHistoryWriter.HistoryCache.HistoryTicksCacheSize))
+                .WithParameter(TypedParameter.From(_serviceSettings.HistoryCache.HistoryTicksCacheSize))
                 .WithParameter(TypedParameter.From(_marketType))
                 .As<ICandlesCacheInitalizationService>()
                 .SingleInstance();
 
             builder.RegisterType<CandlesPersistenceQueueSnapshotRepository>()
                 .As<ICandlesPersistenceQueueSnapshotRepository>()
-                .WithParameter(TypedParameter.From(AzureBlobStorage.Create(_settings.ConnectionString(x => x.CandlesHistoryWriter.Db.SnapshotsConnectionString), TimeSpan.FromMinutes(10))));
+                .WithParameter(TypedParameter.From(AzureBlobStorage.Create(ConstantReloadingManager.From(_serviceSettings.Db.SnapshotsConnectionString), TimeSpan.FromMinutes(10))));
 
             builder.RegisterType<RedisCacheCaretaker>()
                 .AsSelf()
                 .SingleInstance()
                 .WithParameter(TypedParameter.From(_marketType))
-                .WithParameter(TypedParameter.From(_settings.CurrentValue.CandlesHistoryWriter.HistoryCache.CacheCheckupPeriod))
-                .WithParameter(TypedParameter.From(_settings.CurrentValue.CandlesHistoryWriter.HistoryCache.HistoryTicksCacheSize));
+                .WithParameter(TypedParameter.From(_serviceSettings.HistoryCache.CacheCheckupPeriod))
+                .WithParameter(TypedParameter.From(_serviceSettings.HistoryCache.HistoryTicksCacheSize));
 
             RegisterCandlesMigration(builder);
 
@@ -203,11 +209,11 @@ namespace Lykke.Job.CandlesHistoryWriter.Modules
 
         private void RegisterCandlesMigration(ContainerBuilder builder)
         {
-            if (!string.IsNullOrWhiteSpace(_settings.CurrentValue.CandlesHistoryWriter.Db.FeedHistoryConnectionString))
+            if (!string.IsNullOrWhiteSpace(_serviceSettings.Db.FeedHistoryConnectionString))
             {
                 builder.Register(ctx =>
                     new FeedHistoryRepository(AzureTableStorage<FeedHistoryEntity>.Create(
-                        _settings.ConnectionString(x => x.CandlesHistoryWriter.Db.FeedHistoryConnectionString), 
+                        ConstantReloadingManager.From(_serviceSettings.Db.FeedHistoryConnectionString), 
                         "FeedHistory", 
                         ctx.Resolve<ILogFactory>(), 
                         maxExecutionTimeout: TimeSpan.FromMinutes(5))))
@@ -217,7 +223,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Modules
 
             builder.RegisterType<CandlesMigrationManager>()
                 .AsSelf()
-                .WithParameter(TypedParameter.From(_settings.CurrentValue.CandlesHistoryWriter.Migration))
+                .WithParameter(TypedParameter.From(_serviceSettings.Migration))
                 .SingleInstance();
 
             builder.RegisterType<CandlesesHistoryMigrationService>()
@@ -244,16 +250,16 @@ namespace Lykke.Job.CandlesHistoryWriter.Modules
 
             builder.RegisterType<TradesMigrationService>()
                 .As<ITradesMigrationService>()
-                .WithParameter(TypedParameter.From(_settings.CurrentValue.CandlesHistoryWriter.Migration.Trades.SqlTradesDataSourceConnString))
-                .WithParameter(TypedParameter.From(_settings.CurrentValue.CandlesHistoryWriter.Migration.Trades.SqlQueryBatchSize))
-                .WithParameter(TypedParameter.From(_settings.CurrentValue.CandlesHistoryWriter.Migration.Trades.SqlCommandTimeout))
-                .WithParameter(TypedParameter.From(_settings.CurrentValue.CandlesHistoryWriter.Migration.Trades.CandlesPersistenceQueueLimit))
+                .WithParameter(TypedParameter.From(_serviceSettings.Migration.Trades.SqlTradesDataSourceConnString))
+                .WithParameter(TypedParameter.From(_serviceSettings.Migration.Trades.SqlQueryBatchSize))
+                .WithParameter(TypedParameter.From(_serviceSettings.Migration.Trades.SqlCommandTimeout))
+                .WithParameter(TypedParameter.From(_serviceSettings.Migration.Trades.CandlesPersistenceQueueLimit))
                 .SingleInstance();
 
             builder.RegisterType<TradesMigrationManager>()
                 .AsSelf()
-                .WithParameter(TypedParameter.From(_settings.CurrentValue.CandlesHistoryWriter.Migration.Trades.SqlQueryBatchSize))
-                .WithParameter(TypedParameter.From(_settings.CurrentValue.CandlesHistoryWriter.Migration.MigrationEnabled))
+                .WithParameter(TypedParameter.From(_serviceSettings.Migration.Trades.SqlQueryBatchSize))
+                .WithParameter(TypedParameter.From(_serviceSettings.Migration.MigrationEnabled))
                 .SingleInstance();
         }
 
