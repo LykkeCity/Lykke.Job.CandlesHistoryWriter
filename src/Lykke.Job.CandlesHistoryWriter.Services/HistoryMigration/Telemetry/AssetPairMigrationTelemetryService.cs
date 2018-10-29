@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Common.Log;
 using JetBrains.Annotations;
+using Lykke.Common.Log;
 using Lykke.Job.CandlesProducer.Contract;
 
 namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration.Telemetry
@@ -43,23 +44,23 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration.Telemetry
         private readonly ILog _log;
         private readonly string _assetPair;
 
-        public AssetPairMigrationTelemetryService(ILog log, string assetPair)
+        public AssetPairMigrationTelemetryService(ILogFactory logFactory, string assetPair)
         {
-            _log = log;
+            _log = logFactory.CreateLog(this);
             _assetPair = assetPair;
             _overallProgressHistory = new List<ProgressHistoryItem>();
         }
 
         public void UpdateOverallProgress(string progress)
         {
-            _log.WriteInfoAsync(nameof(AssetPairMigrationTelemetryService), nameof(UpdateOverallProgress), _assetPair, progress);
+            _log.Info(nameof(UpdateOverallProgress), progress, _assetPair);
 
             _overallProgressHistory.Add(new ProgressHistoryItem(progress));
         }
 
         public void UpdateStartDates(DateTime? askStartDate, DateTime? bidStartDate)
         {
-            _log.WriteInfoAsync(nameof(AssetPairMigrationTelemetryService), nameof(UpdateStartDates), _assetPair, $"Start dates - ask: {askStartDate:O}, bid: {bidStartDate:O}");
+            _log.Info(nameof(UpdateStartDates), $"Start dates - ask: {askStartDate:O}, bid: {bidStartDate:O}", _assetPair);
 
             AskStartDate = askStartDate;
             BidStartDate = bidStartDate;
@@ -67,7 +68,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration.Telemetry
         
         public void UpdateEndDates(DateTime askEndDate, DateTime bidEndDate)
         {
-            _log.WriteInfoAsync(nameof(AssetPairMigrationTelemetryService), nameof(UpdateEndDates), _assetPair, $"End dates - ask: {askEndDate:O}, bid: {bidEndDate:O}");
+            _log.Info(nameof(UpdateEndDates), $"End dates - ask: {askEndDate:O}, bid: {bidEndDate:O}", _assetPair);
             
             AskEndDate = askEndDate;
             BidEndDate = bidEndDate;

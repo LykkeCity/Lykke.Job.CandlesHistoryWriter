@@ -1,11 +1,11 @@
 ﻿using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Common.Log;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.Assets.Client.Models;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Assets;
 using Lykke.Job.CandlesHistoryWriter.Services.Assets;
+using Lykke.Logs;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 
@@ -22,7 +22,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
         {
             _assetsServiceMock = new Mock<IAssetsServiceWithCache>();
 
-            _manager = new AssetPairsManager(new LogToMemory(), _assetsServiceMock.Object);
+            _manager = new AssetPairsManager(EmptyLogFactory.Instance, _assetsServiceMock.Object);
         }
 
         #region Getting enabled pair

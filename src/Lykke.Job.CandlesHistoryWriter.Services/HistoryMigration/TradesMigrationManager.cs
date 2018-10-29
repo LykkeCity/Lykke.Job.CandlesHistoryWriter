@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Common.Log;
 using JetBrains.Annotations;
+using Lykke.Common.Log;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Assets;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.HistoryMigration;
@@ -25,7 +26,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             IAssetPairsManager assetPairsManager,
             ITradesMigrationService tradesMigrationServicey,
             TradesMigrationHealthService tradesMigrationHealthService,
-            ILog log,
+            ILogFactory logFactory,
             int sqlQueryBatchSize,
             bool migrationEnabled
             )
@@ -33,7 +34,11 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             _assetPairsManager = assetPairsManager ?? throw new ArgumentNullException(nameof(assetPairsManager));
             _tradesMigrationService = tradesMigrationServicey ?? throw new ArgumentNullException(nameof(tradesMigrationServicey));
             _tradesMigrationHealthService = tradesMigrationHealthService ?? throw new ArgumentNullException(nameof(tradesMigrationHealthService));
-            _log = log ?? throw new ArgumentNullException(nameof(log));
+
+            if (logFactory == null)
+                throw new ArgumentNullException(nameof(logFactory));
+            
+            _log = logFactory.CreateLog(this); 
 
             _sqlQueryBatchSize = sqlQueryBatchSize;
 
@@ -58,8 +63,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                 var storedAssetPair = _assetPairsManager.TryGetEnabledPairAsync(assetPairId).GetAwaiter().GetResult();
                 if (storedAssetPair == null)
                 {
-                     _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(Migrate),
-                        $"Trades migration: Asset pair {assetPairId} is not currently enabled. Skipping.").GetAwaiter().GetResult();
+                     _log.Info(nameof(Migrate),
+                        $"Trades migration: Asset pair {assetPairId} is not currently enabled. Skipping.");
                     continue;
                 }
 
@@ -76,8 +81,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             if (!assetSearchTokens.Any())
             {
                 _tradesMigrationHealthService.State = TradesMigrationState.Finished;
-                _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(Migrate),
-                        $"Trades migration: None of the requested asset pairs can be stored. Migration canceled.").GetAwaiter().GetResult();
+                _log.Info(nameof(Migrate),
+                        $"Trades migration: None of the requested asset pairs can be stored. Migration canceled.");
                 return true;
             }
 

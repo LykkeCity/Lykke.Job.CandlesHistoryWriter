@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Threading.Tasks;
 using Common.Log;
+using Lykke.Common.Log;
 using Lykke.Job.CandlesProducer.Contract;
 using Lykke.Service.Assets.Client.Models;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
@@ -28,7 +29,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
         public CandlesCacheInitalizationService(
             ICandlesCacheSemaphore cacheSem,
-            ILog log,
+            ILogFactory logFactory,
             IAssetPairsManager assetPairsManager,
             IClock clock,
             ICandlesCacheService candlesCacheService,
@@ -37,7 +38,11 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             MarketType marketType)
         {
             _cacheSem = cacheSem ?? throw new ArgumentNullException(nameof(cacheSem));
-            _log = log ?? throw new ArgumentNullException(nameof(log));
+
+            if (logFactory == null)
+                throw new ArgumentNullException(nameof(logFactory));
+            
+            _log = logFactory.CreateLog(this);
             _assetPairsManager = assetPairsManager ?? throw new ArgumentNullException(nameof(assetPairsManager));
             _clock = clock ?? throw new ArgumentNullException(nameof(clock));
             _candlesCacheService = candlesCacheService ?? throw new ArgumentNullException(nameof(candlesCacheService));
@@ -72,8 +77,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
             try
             {
-                await _log.WriteInfoAsync(nameof(CandlesCacheInitalizationService), nameof(InitializeCacheAsync), null,
-                    "Caching candles history...");
+                _log.Info(nameof(InitializeCacheAsync), "Caching candles history...");
 
                 SlotType activeSlot = _candlesCacheService.GetActiveSlot(_marketType);
 
@@ -94,8 +98,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
                 _candlesCacheService.SetActiveSlot(_marketType, initSlot); //switch slots
 
-                await _log.WriteInfoAsync(nameof(CandlesCacheInitalizationService), nameof(InitializeCacheAsync), null,
-                    "All candles history is cached");
+                _log.Info(nameof(InitializeCacheAsync), "All candles history is cached");
             }
             finally
             {
@@ -106,7 +109,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
         private async Task CacheAssetPairCandlesAsync(AssetPair assetPair, DateTime now, SlotType slotType)
         {
-            await _log.WriteInfoAsync(nameof(CandlesCacheInitalizationService), nameof(InitializeCacheAsync), null, $"Caching {assetPair.Id} candles history...");
+            _log.Info(nameof(InitializeCacheAsync), $"Caching {assetPair.Id} candles history...");
 
             foreach (var priceType in Constants.StoredPriceTypes)
             {
@@ -120,7 +123,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                 }
             }
 
-            await _log.WriteInfoAsync(nameof(CandlesCacheInitalizationService), nameof(InitializeCacheAsync), null, $"{assetPair.Id} candles history is cached");
+            _log.Info(nameof(InitializeCacheAsync), $"{assetPair.Id} candles history is cached");
         }
     }
 }
