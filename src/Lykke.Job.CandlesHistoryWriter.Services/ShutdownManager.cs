@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Common.Log;
-using Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryProviders.TradesSQLHistory;
+using Lykke.Common.Log;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Candles;
@@ -24,7 +24,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
         private readonly bool _migrationEnabled;
 
         public ShutdownManager(
-            ILog log,
+            ILogFactory logFactory,
             ICandlesSubscriber candlesSubscriber, 
             ISnapshotSerializer snapshotSerializer,
             ICandlesPersistenceQueueSnapshotRepository persistenceQueueSnapshotRepository,
@@ -33,9 +33,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
             CandlesMigrationManager migrationManager,
             bool migrationEnabled)
         {
-            if (log == null)
-                throw new ArgumentNullException(nameof(log));
-            _log = log.CreateComponentScope(nameof(ShutdownManager)) ?? throw new InvalidOperationException("Couldn't create a component scope for logging.");
+            if (logFactory == null)
+                throw new ArgumentNullException(nameof(logFactory));
+            
+            _log = logFactory.CreateLog(this);
 
             _candlesSubcriber = candlesSubscriber ?? throw new ArgumentNullException(nameof(candlesSubscriber));
             _snapshotSerializer = snapshotSerializer ?? throw new ArgumentNullException(nameof(snapshotSerializer));
@@ -52,32 +53,32 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
 
             if (!_migrationEnabled)
             {
-                await _log.WriteInfoAsync(nameof(ShutdownAsync), "", "Stopping candles subscriber...");
+                _log.Info(nameof(ShutdownAsync), "Stopping candles subscriber...");
 
                 _candlesSubcriber.Stop();
             }
 
-            await _log.WriteInfoAsync(nameof(ShutdownAsync), "", "Stopping persistence manager...");
+            _log.Info(nameof(ShutdownAsync), "Stopping persistence manager...");
                 
             _persistenceManager.Stop();
 
-            await _log.WriteInfoAsync(nameof(ShutdownAsync), "", "Stopping persistence queue...");
+            _log.Info(nameof(ShutdownAsync), "Stopping persistence queue...");
                 
             _persistenceQueue.Stop();
             
-            await _log.WriteInfoAsync(nameof(ShutdownAsync), "", "Serializing state...");
+            _log.Info(nameof(ShutdownAsync), "Serializing state...");
 
             await _snapshotSerializer.SerializeAsync(_persistenceQueue, _persistenceQueueSnapshotRepository);
 
             // We can not combine it with the previous if(!_migration...) due to launch order importance.
             if (_migrationEnabled)
             {
-                await _log.WriteInfoAsync(nameof(ShutdownAsync), "", "Stopping candles migration manager...");
+                _log.Info(nameof(ShutdownAsync), "Stopping candles migration manager...");
 
                 _migrationManager.Stop();
             }
 
-            await _log.WriteInfoAsync(nameof(ShutdownAsync), "", "Shutted down");
+            _log.Info(nameof(ShutdownAsync), "Shutted down");
 
             IsShuttedDown = true;
             IsShuttingDown = false;

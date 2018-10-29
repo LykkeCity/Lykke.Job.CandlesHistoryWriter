@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
+using Lykke.Common.Log;
 using Lykke.Job.CandlesProducer.Contract;
 using Lykke.Service.Assets.Client.Models;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
@@ -48,7 +49,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             MigrationCandlesGenerator candlesGenerator,
             AssetPairMigrationTelemetryService telemetryService,
             AssetPair assetPair,
-            ILog log,
+            ILogFactory logFactory,
             BidAskHCacheService bidAskHCacheService,
             IHistoryProvider historyProvider,
             ICandlesHistoryMigrationService candlesHistoryMigrationService,
@@ -60,7 +61,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             _candlesGenerator = candlesGenerator;
             _telemetryService = telemetryService;
             _assetPair = assetPair;
-            _log = log;
+            _log = logFactory.CreateLog(this);
             _bidAskHCacheService = bidAskHCacheService;
             _historyProvider = historyProvider;
             _candlesHistoryMigrationService = candlesHistoryMigrationService;
@@ -111,7 +112,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             {
                 _telemetryService.UpdateOverallProgress($"Failed: {ex}");
                 
-                await _log.WriteErrorAsync(nameof(AssetPairMigrationManager), nameof(MigrateAsync), _assetPair.Id, ex);
+                _log.Error(nameof(MigrateAsync), ex, context: _assetPair.Id);
             }
             finally
             {
@@ -121,7 +122,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                 }
                 catch (Exception ex)
                 {
-                    await _log.WriteErrorAsync(nameof(AssetPairMigrationManager), nameof(MigrateAsync), _assetPair.Id, ex);
+                    _log.Error(nameof(MigrateAsync), ex, context: _assetPair.Id);
                 }
             }
         }
@@ -211,8 +212,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 
                         if (item.ask == null || item.bid == null)
                         {
-                            await _log.WriteWarningAsync(nameof(AssetPairMigrationManager), nameof(GenerateMidHistoryAsync),
-                                $"{_assetPair}-{item.timestamp}", "bid or ask candle is empty");
+                            _log.Warning(nameof(GenerateMidHistoryAsync), "bid or ask candle is empty", context: $"{_assetPair}-{item.timestamp}");
                             continue;
                         }
 

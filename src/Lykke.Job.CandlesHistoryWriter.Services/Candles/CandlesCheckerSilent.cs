@@ -1,4 +1,5 @@
 ﻿using Common.Log;
+using Lykke.Common.Log;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Candles;
 
@@ -12,14 +13,15 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         /// <summary>
         /// Constructor.
         /// </summary>
-        /// <param name="log">The <see cref="ILog"/> instance.</param>
+        /// <param name="logFactory">The <see cref="ILogFactory"/> instance.</param>
         /// <param name="historyRep">The <see cref="ICandlesHistoryRepository"/> instance.</param>
+        /// <param name="component">Component name for log.</param>
         // ReSharper disable once MemberCanBeProtected.Global
         public CandlesCheckerSilent(
-            ILog log,
-            ICandlesHistoryRepository historyRep)
+            ILogFactory logFactory,
+            ICandlesHistoryRepository historyRep, string component)
         {
-            Log = log;
+            Log = logFactory.CreateLog(component);
             _candlesHistoryRepository = historyRep;
         }
 

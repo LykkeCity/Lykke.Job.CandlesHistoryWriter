@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using AzureStorage;
 using Common.Log;
+using Lykke.Common.Log;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services;
 using Lykke.Job.CandlesProducer.Contract;
@@ -23,13 +24,13 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
         public AssetPairCandlesHistoryRepository(
             IHealthService healthService,
-            ILog log,
+            ILogFactory logFactory,
             string assetPairId,
             CandleTimeInterval timeInterval,
             INoSQLTableStorage<CandleHistoryEntity> tableStorage)
         {
             _healthService = healthService;
-            _log = log;
+            _log = logFactory.CreateLog(this);
             _assetPairId = assetPairId;
             _timeInterval = timeInterval;
             _tableStorage = tableStorage;
@@ -62,7 +63,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                         {
                             var context = $"{_assetPairId}-{priceType}-{_timeInterval}";
 
-                            return _log.WriteErrorAsync("Persist candle rows chunk with retries", context, exception);
+                            _log.Error(nameof(SaveCandlesBatchAsync), exception, "Persist candle rows chunk with retries", context);
                         })
                     .ExecuteAsync(() => SaveCandlesBatchAsync(candleByRowsChunk, partitionKey));
             }

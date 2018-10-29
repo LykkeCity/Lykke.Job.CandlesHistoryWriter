@@ -1,6 +1,7 @@
 ﻿using System.Threading.Tasks;
 using Common;
 using Common.Log;
+using Lykke.Common.Log;
 using Lykke.Job.CandlesHistoryWriter.Core.Services;
 using Lykke.Job.CandlesHistoryWriter.Services.Settings;
 
@@ -16,17 +17,17 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         private readonly IHealthService _healthService;
 
         public QueueMonitor(
-            ILog log, 
+            ILogFactory logFactory, 
             IHealthService healthService,
             QueueMonitorSettings setting)
-            : base(nameof(QueueMonitor), (int)setting.ScanPeriod.TotalMilliseconds, log)
+            : base(setting.ScanPeriod, logFactory, nameof(QueueMonitor))
         {
-            _log = log;
+            _log = logFactory.CreateLog(this);
             _healthService = healthService;
             _setting = setting;
         }
 
-        public override async Task Execute()
+        public override Task Execute()
         {
             var currentBatchesQueueLength = _healthService.BatchesToPersistQueueLength;
             var currentCandlesQueueLength = _healthService.CandlesToDispatchQueueLength;
@@ -34,14 +35,13 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             if (currentBatchesQueueLength > _setting.BatchesToPersistQueueLengthWarning ||
                 currentCandlesQueueLength > _setting.CandlesToDispatchQueueLengthWarning)
             {
-                await _log.WriteWarningAsync(
-                    nameof(QueueMonitor),
-                    nameof(Execute),
-                    "",
+                _log.Warning(nameof(Execute),
                     $@"One of processing queue's size exceeded warning level. 
 Candles batches to persist queue length={currentBatchesQueueLength} (warning={_setting.BatchesToPersistQueueLengthWarning}).
 Candles to dispatch queue length={currentCandlesQueueLength} (warning={_setting.CandlesToDispatchQueueLengthWarning})");
             }
+            
+            return Task.CompletedTask;
         }
     }
 }

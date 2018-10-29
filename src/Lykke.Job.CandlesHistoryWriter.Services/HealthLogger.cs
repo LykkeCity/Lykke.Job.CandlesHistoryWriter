@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Common;
 using Common.Log;
 using JetBrains.Annotations;
+using Lykke.Common.Log;
 using Lykke.Job.CandlesHistoryWriter.Core.Services;
 
 namespace Lykke.Job.CandlesHistoryWriter.Services
@@ -13,11 +14,11 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
         private readonly IHealthService _healthService;
         private readonly ILog _log;
 
-        public HealthLogger(IHealthService healthService, ILog log) : 
-            base((int)TimeSpan.FromMinutes(10).TotalMilliseconds, log)
+        public HealthLogger(IHealthService healthService, ILogFactory logFactory) : 
+            base(TimeSpan.FromMinutes(10), logFactory, nameof(HealthLogger))
         {
             _healthService = healthService;
-            _log = log;
+            _log = logFactory.CreateLog(this);
         }
 
         public override Task Execute()
@@ -61,7 +62,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
                 }
             };
 
-            _log.WriteInfo("Health", health, string.Empty);
+            _log.Info("Health", context: health);
 
             return Task.CompletedTask;
         }

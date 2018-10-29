@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Common;
 using Common.Log;
 using JetBrains.Annotations;
+using Lykke.Common.Log;
 using Lykke.Job.CandlesProducer.Contract;
 using Lykke.RabbitMqBroker;
 using Lykke.RabbitMqBroker.Subscriber;
@@ -18,6 +19,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
     public class CandlesSubscriber : ICandlesSubscriber
     {
         private readonly ILog _log;
+        private readonly ILogFactory _logFactory;
         private readonly ICandlesManager _candlesManager;
         private readonly ICandlesChecker _candlesChecker;
         private readonly RabbitEndpointSettings _settings;
@@ -26,13 +28,14 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         private RabbitMqSubscriber<CandlesUpdatedEvent> _subscriber;
 
         public CandlesSubscriber(
-            ILog log, 
+            ILogFactory logFactory, 
             ICandlesManager candlesManager,
             ICandlesChecker checker, 
             RabbitEndpointSettings settings,
             ICandlesCacheInitalizationService candlesCacheInitalizationService)
         {
-            _log = log;
+            _log = logFactory.CreateLog(this);
+            _logFactory = logFactory;
             _candlesManager = candlesManager;
             _candlesChecker = checker;
             _settings = settings;
@@ -42,26 +45,25 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         public void Start()
         {
             var settings = RabbitMqSubscriptionSettings
-                .CreateForSubscriber(_settings.ConnectionString, _settings.Namespace, "candles-v2", _settings.Namespace, "candleshistory")
+                .ForSubscriber(_settings.ConnectionString, _settings.Namespace, "candles-v2", _settings.Namespace, "candleshistory")
                 .MakeDurable();
 
             try
             {
-                _subscriber = new RabbitMqSubscriber<CandlesUpdatedEvent>(settings,
-                        new ResilientErrorHandlingStrategy(_log, settings,
+                _subscriber = new RabbitMqSubscriber<CandlesUpdatedEvent>(_logFactory, settings,
+                        new ResilientErrorHandlingStrategy(_logFactory, settings,
                             retryTimeout: TimeSpan.FromSeconds(10),
                             retryNum: 10,
-                            next: new DeadQueueErrorHandlingStrategy(_log, settings)))
+                            next: new DeadQueueErrorHandlingStrategy(_logFactory, settings)))
                     .SetMessageDeserializer(new MessagePackMessageDeserializer<CandlesUpdatedEvent>())
                     .SetMessageReadStrategy(new MessageReadQueueStrategy())
                     .Subscribe(ProcessCandlesUpdatedEventAsync)
                     .CreateDefaultBinding()
-                    .SetLogger(_log)
                     .Start();
             }
             catch (Exception ex)
             {
-                _log.WriteErrorAsync(nameof(CandlesSubscriber), nameof(Start), null, ex).Wait();
+                _log.Error(nameof(Start), ex);
                 throw;
             }
         }
@@ -82,10 +84,11 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                 };
                 
                 var validationErrors = ValidateQuote(candlesUpdate);
+
                 if (validationErrors.Any())
                 {
                     var message = string.Join("\r\n", validationErrors);
-                    await _log.WriteWarningAsync(nameof(CandlesSubscriber), nameof(CandlesUpdatedEvent), candlesUpdate.ToJson(), message);
+                    _log.Warning(nameof(CandlesUpdatedEvent), message, context: candlesUpdate.ToJson());
 
                     return;
                 }
@@ -113,7 +116,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             }
             catch (Exception)
             {
-                await _log.WriteWarningAsync(nameof(CandlesSubscriber), nameof(ProcessCandlesUpdatedEventAsync), candlesUpdate.ToJson(), "Failed to process candle");
+                _log.Warning(nameof(ProcessCandlesUpdatedEventAsync), "Failed to process candle", context: candlesUpdate.ToJson());
                 throw;
             }
         }
