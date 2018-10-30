@@ -2,11 +2,12 @@
 using Lykke.Job.CandlesHistoryWriter.Services.Settings;
 using Lykke.SettingsReader.Attributes;
 using JetBrains.Annotations;
+using Lykke.Sdk.Settings;
 
 namespace Lykke.Job.CandlesHistoryWriter
 {
     [UsedImplicitly]
-    public class AppSettings
+    public class AppSettings : BaseAppSettings
     {
         [Optional]
         [UsedImplicitly(ImplicitUseKindFlags.Assign)]
@@ -15,9 +16,6 @@ namespace Lykke.Job.CandlesHistoryWriter
         [Optional]
         [UsedImplicitly(ImplicitUseKindFlags.Assign)]
         public CandlesHistoryWriterSettings MtCandlesHistoryWriter { get; set; }
-
-        [UsedImplicitly(ImplicitUseKindFlags.Assign)]
-        public SlackNotificationsSettings SlackNotifications { get; set; }
 
         [Optional]
         [UsedImplicitly(ImplicitUseKindFlags.Assign)]
@@ -32,8 +30,5 @@ namespace Lykke.Job.CandlesHistoryWriter
 
         [UsedImplicitly(ImplicitUseKindFlags.Assign)]
         public RedisSettings RedisSettings { get; set; }
-
-        [UsedImplicitly(ImplicitUseKindFlags.Assign)]
-        public MonitoringServiceClientSettings MonitoringServiceClient { get; set; }
     }
 }

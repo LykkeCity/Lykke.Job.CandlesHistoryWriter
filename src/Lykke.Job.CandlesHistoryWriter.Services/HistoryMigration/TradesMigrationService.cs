@@ -9,6 +9,7 @@ using Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryProvide
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration;
 using System.Linq;
 using JetBrains.Annotations;
+using Lykke.Common.Log;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.HistoryProviders.TradesSQLHistory;
 
 namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
@@ -18,6 +19,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
     {
         private readonly ICandlesHistoryRepository _candlesHistoryRepository;
         private readonly TradesMigrationHealthService _tradesMigrationHealthService;
+        private readonly ILogFactory _logFactory;
+        private readonly IHealthNotifier _healthNotifier;
         private readonly ILog _log;
 
         private readonly string _sqlConnString;
@@ -28,7 +31,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
         public TradesMigrationService(
             ICandlesHistoryRepository candlesHistoryRepository,
             TradesMigrationHealthService tradesMigrationHealthService,
-            ILog log,
+            ILogFactory logFactory,
+            IHealthNotifier healthNotifier,
             string sqlConnString,
             int sqlQueryBatchSize,
             TimeSpan sqlTimeout,
@@ -37,7 +41,13 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
         {
             _candlesHistoryRepository = candlesHistoryRepository ?? throw new ArgumentNullException(nameof(candlesHistoryRepository));
             _tradesMigrationHealthService = tradesMigrationHealthService ?? throw new ArgumentNullException(nameof(tradesMigrationHealthService));
-            _log = log ?? throw new ArgumentNullException(nameof(log));
+            _logFactory = logFactory;
+            _healthNotifier = healthNotifier;
+
+            if (logFactory == null)
+                throw new ArgumentNullException(nameof(logFactory));
+
+            _log = logFactory.CreateLog(this); 
 
             _sqlConnString = sqlConnString;
             _sqlQueryBatchSize = sqlQueryBatchSize;
@@ -52,10 +62,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
         {
             foreach (var searchToken in assetSearchTokens)
             {
-                var sqlRepo = new TradesSqlHistoryRepository(_sqlConnString, _sqlQueryBatchSize, _sqlTimeout, _log,
+                var sqlRepo = new TradesSqlHistoryRepository(_sqlConnString, _sqlQueryBatchSize, _sqlTimeout, _logFactory, _healthNotifier,
                     migrateByDate, searchToken.AssetPairId, searchToken.SearchToken);
                 
-                await _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(MigrateTradesCandlesAsync),
+                _log.Info(nameof(MigrateTradesCandlesAsync),
                     $"Starting trades migration for {searchToken.AssetPairId}.");
 
                 try
@@ -73,21 +83,21 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 
                         await historyMaker.ProcessTradesBatch(tradesBatch);
 
-                        await _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(MigrateTradesCandlesAsync),
+                        _log.Info(nameof(MigrateTradesCandlesAsync),
                             $"Batch of {batchCount} records for {searchToken.AssetPairId} processed.");
                     }
 
                     await historyMaker.FlushCandlesIfAny();
 
-                    await _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(MigrateTradesCandlesAsync),
+                    _log.Info(nameof(MigrateTradesCandlesAsync),
                         $"Migration for {searchToken.AssetPairId} finished. Total records migrated: {_tradesMigrationHealthService[searchToken.AssetPairId].SummaryFetchedTrades}, " +
                         $"total candles stored: {_tradesMigrationHealthService[searchToken.AssetPairId].SummarySavedCandles}.");
                 }
                 catch (Exception ex)
                 {
                     _tradesMigrationHealthService.State = TradesMigrationState.Error;
-                    await _log.WriteErrorAsync(nameof(TradesMigrationManager), nameof(MigrateTradesCandlesAsync), ex);
-                    await _log.WriteInfoAsync(nameof(TradesMigrationManager), nameof(MigrateTradesCandlesAsync),
+                    _log.Error(nameof(MigrateTradesCandlesAsync), ex);
+                    _log.Info(nameof(MigrateTradesCandlesAsync),
                         $"Migration for {searchToken.AssetPairId} interrupted due to error. Please, check error log for details.");
                     return;
                 }

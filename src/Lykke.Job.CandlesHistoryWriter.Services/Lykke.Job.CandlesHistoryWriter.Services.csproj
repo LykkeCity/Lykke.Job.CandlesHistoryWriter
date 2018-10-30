@@ -7,9 +7,9 @@
 
   <ItemGroup>
     <PackageReference Include="Lykke.RabbitMqBroker" Version="7.5.0" />
-    <PackageReference Include="Lykke.SettingsReader" Version="2.4.1" />
+    <PackageReference Include="Lykke.SettingsReader" Version="4.1.1" />
     <PackageReference Include="morelinq" Version="2.10.0" />
-    <PackageReference Include="Polly" Version="5.8.0" />
+    <PackageReference Include="Polly" Version="6.1.0" />
     <PackageReference Include="StackExchange.Redis" Version="1.2.6" />
     <PackageReference Include="System.Runtime.Extensions" Version="4.3.0" />
   </ItemGroup>

@@ -5,8 +5,8 @@ using System.Data.SqlClient;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Common;
 using Common.Log;
+using Lykke.Common.Log;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.HistoryProviders.TradesSQLHistory;
 using Lykke.Job.CandlesProducer.Contract;
 
@@ -17,6 +17,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
         private readonly int _sqlQueryBatchSize;
         private readonly string _sqlConnString;
         private readonly TimeSpan _sqlTimeout;
+        private readonly IHealthNotifier _healthNotifier;
 
         private readonly ILog _log;
 
@@ -31,7 +32,8 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
             string sqlConnString,
             int sqlQueryBatchSize,
             TimeSpan sqlTimeout,
-            ILog log,
+            ILogFactory logFactory,
+            IHealthNotifier healthNotifier,
             DateTime? migrateByDate,
             string assetPairId,
             string searchToken
@@ -40,10 +42,12 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
             _sqlQueryBatchSize = sqlQueryBatchSize;
             _sqlConnString = !string.IsNullOrWhiteSpace(sqlConnString) ? sqlConnString : throw new ArgumentNullException(nameof(sqlConnString));
             _sqlTimeout = sqlTimeout;
+            _healthNotifier = healthNotifier;
 
-            if (log == null)
-                throw new ArgumentNullException(nameof(log));
-            _log = log.CreateComponentScope(nameof(TradesSqlHistoryRepository)) ?? throw new InvalidOperationException("Couldn't create a component scope for logging.");
+            if (logFactory == null)
+                throw new ArgumentNullException(nameof(logFactory));
+
+            _log = logFactory.CreateLog(this);
 
             StartingRowOffset = 0; // Will read everything.
 
@@ -71,9 +75,9 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
                     if (sqlConnection.State != ConnectionState.Open)
                         throw new InvalidOperationException("Can't fetch from DB while connection is not opened.");
 
-                    await _log.WriteInfoAsync(nameof(GetNextBatchAsync),
-                        $"Starting offset = {StartingRowOffset}, asset pair ID = {AssetPairId}",
-                        $"Trying to fetch next {_sqlQueryBatchSize} rows...");
+                    _log.Info(nameof(GetNextBatchAsync),
+                        $"Trying to fetch next {_sqlQueryBatchSize} rows...",
+                        $"Starting offset = {StartingRowOffset}, asset pair ID = {AssetPairId}");
 
                     using (var sqlCommand = BuildCurrentQueryCommand(sqlConnection))
                     {
@@ -108,7 +112,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
                                 }
                                 else
                                 {
-                                    await _log.WriteMonitorAsync(nameof(GetNextBatchAsync), trade.ToJson(), "Got a trade with non-posotive price or volume(s) values.");
+                                    _healthNotifier.Notify("Got a trade with non-posotive price or volume(s) values.", trade);
                                 }
                             }
                         }
@@ -139,22 +143,22 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryPro
                     }
                     else _gotTheLastBatch = true; // If we have got smaller amount of records than _sqlQueryBatchSize, this only means we have the last batch now.
 
-                    await _log.WriteInfoAsync(nameof(GetNextBatchAsync),
-                        $"Starting offset = {StartingRowOffset}, asset pair ID = {AssetPairId}",
-                        $"Fetched {result.Count} rows successfully. First date is {result.First().DateTime:O}, last date is {result.Last().DateTime:O}");
+                    _log.Info(nameof(GetNextBatchAsync),
+                        $"Fetched {result.Count} rows successfully. First date is {result.First().DateTime:O}, last date is {result.Last().DateTime:O}",
+                        $"Starting offset = {StartingRowOffset}, asset pair ID = {AssetPairId}");
 
                     StartingRowOffset += result.Count;
                 }
                 else
-                    await _log.WriteInfoAsync(nameof(GetNextBatchAsync),
-                        $"Starting offset = {StartingRowOffset}, asset pair ID = {AssetPairId}",
-                        "No data to fetch.");
+                    _log.Info(nameof(GetNextBatchAsync),
+                        "No data to fetch.",
+                        $"Starting offset = {StartingRowOffset}, asset pair ID = {AssetPairId}");
 
                 return result;
             }
             catch (Exception ex)
             {
-                await _log.WriteErrorAsync(nameof(GetNextBatchAsync), string.Empty, ex);
+                _log.Error(nameof(GetNextBatchAsync), ex);
                 // We can just report about the error and return an empty list - this will be interpreted as "no data".
                 return Array.Empty<TradeHistoryItem>();
             }

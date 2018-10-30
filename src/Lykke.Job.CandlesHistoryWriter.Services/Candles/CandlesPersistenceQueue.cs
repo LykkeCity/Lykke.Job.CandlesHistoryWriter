@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Common;
 using Common.Log;
 using JetBrains.Annotations;
+using Lykke.Common.Log;
 using Lykke.Job.CandlesProducer.Contract;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services;
@@ -34,14 +35,14 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         
         public CandlesPersistenceQueue(
             ICandlesHistoryRepository repository,
-            ILog log,
+            ILogFactory logFactory,
             IHealthService healthService,
             PersistenceSettings settings) :
 
-            base(nameof(CandlesPersistenceQueue), log)
+            base(logFactory, nameof(CandlesPersistenceQueue))
         {
             _repository = repository;
-            _log = log;
+            _log = logFactory.CreateLog(this);
             _healthService = healthService;
             _settings = settings;
             _candlesToDispatch = new ConcurrentQueue<ICandle>();
@@ -127,8 +128,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
             sw.Stop();
 
-            await _log.WriteInfoAsync("Persist candles batch", string.Empty, 
-                $"Candles batch with {candles.Count} candles is persisted in {sw.Elapsed}. Amount of batches in queue = {_healthService.BatchesToPersistQueueLength}. Amount of candles to dispath = {_healthService.CandlesToDispatchQueueLength}");
+            _log.Info("Persist candles batch", $"Candles batch with {candles.Count} candles is persisted in {sw.Elapsed}. Amount of batches in queue = {_healthService.BatchesToPersistQueueLength}. Amount of candles to dispath = {_healthService.CandlesToDispatchQueueLength}");
         }
 
         private async Task PersistCandles(IReadOnlyCollection<ICandle> candles)
@@ -171,7 +171,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                     {
                         var context = $"{assetPairId}-{priceType}-{timeInterval}";
 
-                        return _log.WriteErrorAsync("Persist single partition candles with retries", context, exception);
+                        _log.Error(nameof(InsertSinglePartitionCandlesAsync), exception, "Persist single partition candles with retries", context);
+                        return Task.CompletedTask;
                     })
                 .ExecuteAsync(() => _repository.InsertOrMergeAsync(
                     candles,

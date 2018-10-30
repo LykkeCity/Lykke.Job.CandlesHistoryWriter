@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Common.Log;
 using JetBrains.Annotations;
+using Lykke.Common.Log;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Assets;
@@ -29,7 +29,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
         private readonly ICandlesPersistenceQueue _candlesPersistenceQueue;
         private readonly IAssetPairsManager _assetPairsManager;
         private readonly ICandlesHistoryRepository _candlesHistoryRepository;
-        private readonly ILog _log;
+        private readonly ILogFactory _logFactory;
         private readonly Dictionary<string, AssetPairMigrationManager> _assetManagers;
         private readonly Dictionary<string, AssetPairMigrationTelemetryService> _assetHealthServices;
         private readonly MigrationSettings _settings;
@@ -42,7 +42,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             ICandlesPersistenceQueue candlesPersistenceQueue,
             IAssetPairsManager assetPairsManager,
             ICandlesHistoryRepository candlesHistoryRepository,
-            ILog log, 
+            ILogFactory logFactory, 
             MigrationSettings settings)
         {
             _candlesGenerator = candlesGenerator;
@@ -51,7 +51,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             _candlesPersistenceQueue = candlesPersistenceQueue;
             _assetPairsManager = assetPairsManager;
             _candlesHistoryRepository = candlesHistoryRepository;
-            _log = log;
+            _logFactory = logFactory;
             _settings = settings;
             _healthService = healthService;
 
@@ -83,14 +83,14 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                     return $"{assetPairId} already being processed";
                 }
 
-                var telemetryService = new AssetPairMigrationTelemetryService(_log, assetPairId);
+                var telemetryService = new AssetPairMigrationTelemetryService(_logFactory, assetPairId);
                 var assetManager = new AssetPairMigrationManager(
                     _healthService,
                     _candlesPersistenceQueue,
                     _candlesGenerator,
                     telemetryService,
                     assetPair, 
-                    _log,
+                    _logFactory,
                     new BidAskHCacheService(),
                     historyProvider,
                     _candlesHistoryMigrationService,

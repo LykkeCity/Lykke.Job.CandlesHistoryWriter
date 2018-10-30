@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Common.Log;
 using JetBrains.Annotations;
-using Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryProviders.TradesSQLHistory;
+using Lykke.Common.Log;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Candles;
@@ -25,7 +25,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
         private readonly bool _migrationEnabled;
 
         public StartupManager(
-            ILog log,
+            ILogFactory logFactory,
             ICandlesCacheInitalizationService cacheInitalizationService,
             RedisCacheCaretaker cacheCaretaker,
             ICandlesSubscriber candlesSubscriber,
@@ -35,9 +35,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
             ICandlesPersistenceManager persistenceManager,
             bool migrationEnabled)
         {
-            if (log == null)
-                throw new ArgumentNullException(nameof(log));
-            _log = log.CreateComponentScope(nameof(StartupManager)) ?? throw new InvalidOperationException("Couldn't create a component scope for logging.");
+            if (logFactory == null)
+                throw new ArgumentNullException(nameof(logFactory));
+
+            _log = logFactory.CreateLog(this);
 
             _cacheInitalizationService = cacheInitalizationService ?? throw new ArgumentNullException(nameof(cacheInitalizationService));
             _cacheCaretaker = cacheCaretaker ?? throw new ArgumentNullException(nameof(cacheCaretaker));
@@ -51,7 +52,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
 
         public async Task StartAsync()
         {
-            await _log.WriteInfoAsync(nameof(StartAsync), "", "Deserializing persistence queue async...");
+            _log.Info(nameof(StartAsync), "Deserializing persistence queue async...");
 
             var tasks = new List<Task>
             {
@@ -60,34 +61,34 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
 
             if (!_migrationEnabled)
             {
-                await _log.WriteInfoAsync(nameof(StartAsync), "", "Initializing cache from the history async...");
+                _log.Info(nameof(StartAsync), "Initializing cache from the history async...");
 
                 tasks.Add(_cacheInitalizationService.InitializeCacheAsync());
             }
 
-            await _log.WriteInfoAsync(nameof(StartAsync), "", "Waiting for async tasks...");
+            _log.Info(nameof(StartAsync), "Waiting for async tasks...");
 
             await Task.WhenAll(tasks);
 
-            await _log.WriteInfoAsync(nameof(StartAsync), "", "Starting persistence queue...");
+            _log.Info(nameof(StartAsync), "Starting persistence queue...");
 
             _persistenceQueue.Start();
 
-            await _log.WriteInfoAsync(nameof(StartAsync), "", "Starting persistence manager...");
+            _log.Info(nameof(StartAsync), "Starting persistence manager...");
 
             _persistenceManager.Start();
 
             // We can not combine it with the previous if(!_migration...) due to launch order importance.
             if (!_migrationEnabled)
             {
-                await _log.WriteInfoAsync(nameof(StartAsync), "", "Starting candles subscriber...");
+                _log.Info(nameof(StartAsync), "Starting candles subscriber...");
 
                 _candlesSubscriber.Start();
 
                 _cacheCaretaker.Start();  // Should go after cache initialization has finished working && if no migration
             }
 
-            await _log.WriteInfoAsync(nameof(StartAsync), "", "Started up");
+            _log.Info(nameof(StartAsync), "Started up");
         }
     }
 }

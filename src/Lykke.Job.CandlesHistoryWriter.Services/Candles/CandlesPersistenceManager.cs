@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Common;
-using Common.Log;
+using Lykke.Common.Log;
 using Lykke.Job.CandlesHistoryWriter.Core.Services;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Candles;
 using Lykke.Job.CandlesHistoryWriter.Services.Settings;
@@ -20,10 +20,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         public CandlesPersistenceManager(
             ICandlesPersistenceQueue persistenceQueue,
             IHealthService healthService,
-            ILog log,
+            ILogFactory logFactory,
             PersistenceSettings settings) : 
 
-            base(nameof(CandlesPersistenceManager), (int)TimeSpan.FromSeconds(5).TotalMilliseconds, log)
+            base(TimeSpan.FromSeconds(5), logFactory, nameof(CandlesPersistenceManager))
         {
             _persistenceQueue = persistenceQueue;
             _healthService = healthService;

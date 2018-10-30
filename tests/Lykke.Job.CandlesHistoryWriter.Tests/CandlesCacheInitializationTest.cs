@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
-using Common.Log;
 using Lykke.Job.CandlesProducer.Contract;
 using Lykke.Service.Assets.Client.Models;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
@@ -11,6 +10,7 @@ using Lykke.Job.CandlesHistoryWriter.Core.Services;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Assets;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Candles;
 using Lykke.Job.CandlesHistoryWriter.Services.Candles;
+using Lykke.Logs;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 
@@ -49,8 +49,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
         [TestInitialize]
         public void InitializeTest()
         {
-            var logMock = new Mock<ILog>();
-
             _dateTimeProviderMock = new Mock<IClock>();
             _cacheServiceMock = new Mock<ICandlesCacheService>();
             _historyRepositoryMock = new Mock<ICandlesHistoryRepository>();
@@ -72,7 +70,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
 
             _service = new CandlesCacheInitalizationService(
                 new CandlesCacheSemaphore(), 
-                logMock.Object,
+                EmptyLogFactory.Instance,
                 _assetPairsManagerMock.Object,
                 _dateTimeProviderMock.Object,
                 _cacheServiceMock.Object,

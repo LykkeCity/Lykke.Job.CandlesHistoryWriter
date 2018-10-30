@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using Common.Log;
 using JetBrains.Annotations;
+using Lykke.Common.Log;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services;
 
@@ -19,17 +19,17 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         /// <summary>
         /// Constructor.
         /// </summary>
-        /// <param name="log">The <see cref="T:Common.Log.ILog" /> instance.</param>
+        /// <param name="logFactory">The <see cref="T:Common.Log.ILogFactory" /> instance.</param>
         /// <param name="clock">The <see cref="T:Lykke.Job.CandlesHistoryWriter.Core.Services.IClock" /> instance.</param>
         /// <param name="historyRep">The <see cref="T:Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles.ICandlesHistoryRepository" /> instance.</param>
         /// <param name="notificationTimeout">The timeout in seconds between log notifications for the same asset pair.</param>
         public CandlesChecker(
-            ILog log,
+            ILogFactory logFactory,
             IClock clock,
             ICandlesHistoryRepository historyRep,
             TimeSpan notificationTimeout) : base(
-                log,
-                historyRep)
+                logFactory,
+                historyRep, nameof(CandlesChecker))
         {
 
             _clock = clock;
@@ -67,9 +67,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             }
 
             if (needToLog)
-                Log?.WriteErrorAsync(nameof(CandlesChecker),
-                    assetPairId,
-                    new ArgumentOutOfRangeException($"Incomptible candle batch recieved: connection string for asset pair not configured. Skipping..."));
+                Log?.Error(nameof(CanHandleAssetPair),
+                    new ArgumentOutOfRangeException("Incomptible candle batch recieved: connection string for asset pair not configured. Skipping..."),
+                    context: assetPairId);
 
             return false; // Finally
         }

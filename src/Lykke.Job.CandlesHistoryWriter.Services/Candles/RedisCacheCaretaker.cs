@@ -3,8 +3,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Autofac;
 using Common;
-using Common.Log;
 using JetBrains.Annotations;
+using Lykke.Common.Log;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Candles;
 
@@ -28,7 +28,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             TimeSpan cacheCheckupPeriod,
             int amountOfCandlesToStore,
             MarketType marketType,
-            ILog log)
+            ILogFactory logFactory)
         {
             _historyRepository = historyRepository ?? throw new ArgumentNullException(nameof(historyRepository));
             _redisCacheService = redisCacheService ?? throw new ArgumentNullException(nameof(redisCacheService));
@@ -36,7 +36,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             _amountOfCandlesToStore = amountOfCandlesToStore;
             _marketType = marketType;
 
-            _maintainTicker = new TimerTrigger(nameof(RedisCacheCaretaker), cacheCheckupPeriod, log);
+            _maintainTicker = new TimerTrigger(nameof(RedisCacheCaretaker), cacheCheckupPeriod, logFactory);
             _maintainTicker.Triggered += MaintainTickerOnTriggered;
         }
 
