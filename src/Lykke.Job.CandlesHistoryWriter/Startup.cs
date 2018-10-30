@@ -26,7 +26,9 @@ namespace Lykke.Job.CandlesHistoryWriter
                 options.Logs = logs =>
                 {
                     logs.AzureTableName = "CandlesHistoryWriterLogs";
-                    logs.AzureTableConnectionStringResolver = settings => settings.CandlesHistoryWriter.Db.LogsConnectionString;
+                    logs.AzureTableConnectionStringResolver = settings => settings.CandlesHistoryWriter != null
+                        ? settings.CandlesHistoryWriter.Db.LogsConnectionString
+                        : settings.MtCandlesHistoryWriter.Db.LogsConnectionString;
 
                     logs.Extended = extendedLogs =>
                     {
