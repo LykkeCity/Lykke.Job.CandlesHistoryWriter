@@ -88,7 +88,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                 if (validationErrors.Any())
                 {
                     var message = string.Join("\r\n", validationErrors);
-                    _log.Warning(nameof(CandlesUpdatedEvent), message, context: candlesUpdate.ToJson());
+                    _log.Warning(nameof(ProcessCandlesUpdatedEventAsync), message, context: candlesUpdate.ToJson());
 
                     return;
                 }
