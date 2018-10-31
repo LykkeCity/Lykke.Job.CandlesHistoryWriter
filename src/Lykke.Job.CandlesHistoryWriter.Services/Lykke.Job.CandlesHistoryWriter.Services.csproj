@@ -8,6 +8,7 @@
   <ItemGroup>
     <PackageReference Include="Lykke.RabbitMqBroker" Version="7.5.0" />
     <PackageReference Include="Lykke.SettingsReader" Version="4.1.1" />
+    <PackageReference Include="Lykke.Sdk" Version="5.4.0" />
     <PackageReference Include="morelinq" Version="2.10.0" />
     <PackageReference Include="Polly" Version="6.1.0" />
     <PackageReference Include="StackExchange.Redis" Version="1.2.6" />
@@ -17,12 +18,6 @@
   <ItemGroup>
     <ProjectReference Include="..\Lykke.Job.CandleHistoryWriter.Repositories\Lykke.Job.CandleHistoryWriter.Repositories.csproj" />
     <ProjectReference Include="..\Lykke.Job.CandlesHistoryWriter.Core\Lykke.Job.CandlesHistoryWriter.Core.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="Lykke.Sdk, Version=5.4.0.0, Culture=neutral, PublicKeyToken=null">
-      <HintPath>..\..\..\..\..\.nuget\packages\lykke.sdk\5.4.0\lib\netstandard2.0\Lykke.Sdk.dll</HintPath>
-    </Reference>
   </ItemGroup>
 
 </Project>
