@@ -6,6 +6,7 @@ using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Candles;
 using Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration;
+using Lykke.Sdk;
 
 namespace Lykke.Job.CandlesHistoryWriter.Services
 {
@@ -47,38 +48,38 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
             _migrationEnabled = migrationEnabled;
         }
 
-        public async Task ShutdownAsync()
+        public async Task StopAsync()
         {
             IsShuttingDown = true;
 
             if (!_migrationEnabled)
             {
-                _log.Info(nameof(ShutdownAsync), "Stopping candles subscriber...");
+                _log.Info(nameof(StopAsync), "Stopping candles subscriber...");
 
                 _candlesSubcriber.Stop();
             }
 
-            _log.Info(nameof(ShutdownAsync), "Stopping persistence manager...");
+            _log.Info(nameof(StopAsync), "Stopping persistence manager...");
                 
             _persistenceManager.Stop();
 
-            _log.Info(nameof(ShutdownAsync), "Stopping persistence queue...");
+            _log.Info(nameof(StopAsync), "Stopping persistence queue...");
                 
             _persistenceQueue.Stop();
             
-            _log.Info(nameof(ShutdownAsync), "Serializing state...");
+            _log.Info(nameof(StopAsync), "Serializing state...");
 
             await _snapshotSerializer.SerializeAsync(_persistenceQueue, _persistenceQueueSnapshotRepository);
 
             // We can not combine it with the previous if(!_migration...) due to launch order importance.
             if (_migrationEnabled)
             {
-                _log.Info(nameof(ShutdownAsync), "Stopping candles migration manager...");
+                _log.Info(nameof(StopAsync), "Stopping candles migration manager...");
 
                 _migrationManager.Stop();
             }
 
-            _log.Info(nameof(ShutdownAsync), "Shutted down");
+            _log.Info(nameof(StopAsync), "Shutted down");
 
             IsShuttedDown = true;
             IsShuttingDown = false;

@@ -22,7 +22,7 @@ using Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration;
 using Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration.HistoryProviders;
 using Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration.HistoryProviders.MeFeedHistory;
 using Lykke.Job.CandlesHistoryWriter.Services.Settings;
-using Lykke.Sdk.Settings;
+using Lykke.Sdk;
 using Lykke.Service.Assets.Client;
 using Lykke.SettingsReader;
 using Lykke.SettingsReader.ReloadingManager;
@@ -125,7 +125,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Modules
 
             builder.RegisterType<CandlesHistoryRepository>()
                 .As<ICandlesHistoryRepository>()
-                .WithParameter(TypedParameter.From(_settings.CurrentValue.CandleHistoryAssetConnections))
+                .WithParameter(TypedParameter.From(_settings.Nested(x => _marketType == MarketType.Spot
+                    ? x.CandleHistoryAssetConnections
+                    : x.MtCandleHistoryAssetConnections)))
                 .SingleInstance();
 
             builder.RegisterType<StartupManager>()
@@ -153,6 +155,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Modules
             else
                 builder.RegisterType<CandlesCheckerSilent>()
                     .As<ICandlesChecker>()
+                    .WithParameter(TypedParameter.From(nameof(CandlesCheckerSilent)))
                     .SingleInstance();
 
             builder.RegisterType<CandlesSubscriber>()
