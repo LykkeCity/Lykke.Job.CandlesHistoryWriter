@@ -19,4 +19,10 @@
     <ProjectReference Include="..\Lykke.Job.CandlesHistoryWriter.Core\Lykke.Job.CandlesHistoryWriter.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="Lykke.Sdk, Version=5.4.0.0, Culture=neutral, PublicKeyToken=null">
+      <HintPath>..\..\..\..\..\.nuget\packages\lykke.sdk\5.4.0\lib\netstandard2.0\Lykke.Sdk.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
 </Project>
