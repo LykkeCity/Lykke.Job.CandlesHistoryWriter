@@ -93,7 +93,11 @@ namespace Lykke.Job.CandlesHistoryWriter.Modules
 
         private void RegisterRedis(ContainerBuilder builder)
         {
-            builder.Register(c => ConnectionMultiplexer.Connect(_settings.CurrentValue.RedisSettings.Configuration))
+            builder.Register(c =>
+                {
+                    var lazy = new Lazy<ConnectionMultiplexer>(() => ConnectionMultiplexer.Connect(_settings.CurrentValue.RedisSettings.Configuration)); 
+                    return lazy.Value;
+                })
                 .As<IConnectionMultiplexer>()
                 .SingleInstance();
 
