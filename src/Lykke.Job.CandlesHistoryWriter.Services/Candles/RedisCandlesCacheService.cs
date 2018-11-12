@@ -29,6 +29,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         private readonly IHealthService _healthService;
         private readonly IDatabase _database;
         private readonly MarketType _market;
+        private SlotType? _activeSlot;
 
         public RedisCandlesCacheService(ICandlesCacheSemaphore cacheSem, IHealthService healthService, IDatabase database, MarketType market)
         {
@@ -206,20 +207,31 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
         public SlotType GetActiveSlot(MarketType marketType)
         {
-            var key = GetActiveSlotKey(marketType);
-
-            if (_database.KeyExists(key)) 
-                return Enum.Parse<SlotType>(_database.StringGet(key));
-
-            _database.StringSet(key, SlotType.Slot0.ToString());
+            if (_activeSlot != null)
+                return _activeSlot.Value;
             
-            return SlotType.Slot0;
+            var key = GetActiveSlotKey(marketType);
+            
+            var value = _database.StringGet(key);
+
+            if (value.HasValue)
+            {
+                _activeSlot = Enum.Parse<SlotType>(value);
+            }
+            else
+            {
+                _database.StringSet(key, SlotType.Slot0.ToString());
+                _activeSlot = SlotType.Slot0;
+            }
+            
+            return _activeSlot.Value;
         }
 
         public void SetActiveSlot(MarketType marketType, SlotType slotType)
         {
             var key = GetActiveSlotKey(marketType);
             _database.StringSet(key, slotType.ToString());
+            _activeSlot = slotType;
         }
 
         private static string GetKey(MarketType market, string assetPairId, CandlePriceType priceType, CandleTimeInterval timeInterval, SlotType slotType)
