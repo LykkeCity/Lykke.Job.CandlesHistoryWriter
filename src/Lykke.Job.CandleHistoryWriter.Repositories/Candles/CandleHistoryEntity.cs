@@ -68,15 +68,17 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
         public void ReadEntity(IDictionary<string, EntityProperty> properties, OperationContext operationContext)
         {
-            if (properties.TryGetValue("Data", out var property))
-            {
-                var json = property.StringValue;
-                if (!string.IsNullOrEmpty(json))
-                {
-                    Candles = new List<CandleHistoryItem>(60);
-                    Candles.AddRange(JsonConvert.DeserializeObject<IEnumerable<CandleHistoryItem>>(json));
-                }
-            }
+            //TODO uncomment before using Azure
+            throw new Exception("fix it before using Azure");
+//            if (properties.TryGetValue("Data", out var property))
+//            {
+//                var json = property.StringValue;
+//                if (!string.IsNullOrEmpty(json))
+//                {
+//                    Candles = new List<CandleHistoryItem>(60);
+//                    Candles.AddRange(JsonConvert.DeserializeObject<IEnumerable<CandleHistoryItem>>(json));
+//                }
+//            }
         }
 
         public IDictionary<string, EntityProperty> WriteEntity(OperationContext operationContext)
