@@ -45,18 +45,18 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             // TODO: such an approach is Ok for the case of the single running service instance. But once we get
             // TODO: a necessity to run more instances, the code below will provoke a problem.
 
-            TruncateCache();
+            await TruncateCache();
 
             await ReloadCacheIfNeededAsync();
         }
 
-        private void TruncateCache()
+        private async Task TruncateCache()
         {
             // Shall not truncate cache while reloading data.
             if (_cacheInitalizationService.InitializationState != CacheInitializationState.Idle)
                 return;
             
-            SlotType activeSlot = _redisCacheService.GetActiveSlot(_marketType);
+            SlotType activeSlot = await _redisCacheService.GetActiveSlotAsync(_marketType);
 
             foreach (var assetId in _historyRepository.GetStoredAssetPairs())
             {

@@ -110,7 +110,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
                 var transaction = _database.CreateTransaction();
                 var tasks = new List<Task>();
-                SlotType activeSlot = GetActiveSlot(_market);
+                SlotType activeSlot = await GetActiveSlotAsync(_market);
 
                 foreach (var candle in candles)
                 {
@@ -205,14 +205,14 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             _database.SortedSetRemoveRangeByRank(key, 0, -storedCandlesCountLimit - 1, CommandFlags.FireAndForget);
         }
 
-        public SlotType GetActiveSlot(MarketType marketType)
+        public async Task<SlotType> GetActiveSlotAsync(MarketType marketType)
         {
             if (_activeSlot != null)
                 return _activeSlot.Value;
             
             var key = GetActiveSlotKey(marketType);
             
-            var value = _database.StringGet(key);
+            var value = await _database.StringGetAsync(key);
 
             if (value.HasValue)
             {

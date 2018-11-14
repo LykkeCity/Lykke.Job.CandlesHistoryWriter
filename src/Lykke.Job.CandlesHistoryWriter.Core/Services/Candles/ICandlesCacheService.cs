@@ -13,7 +13,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Services.Candles
         Task InjectCacheValidityToken();
         bool CheckCacheValidity();
         void TruncateCache(string assetId, CandlePriceType priceType, CandleTimeInterval timeInterval, int storedCandlesCountLimit, SlotType slotType);
-        SlotType GetActiveSlot(MarketType marketType);
+        Task<SlotType> GetActiveSlotAsync(MarketType marketType);
         void SetActiveSlot(MarketType marketType, SlotType slotType);
     }
 }

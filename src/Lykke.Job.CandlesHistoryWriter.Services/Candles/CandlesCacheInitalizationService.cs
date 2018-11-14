@@ -79,7 +79,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             {
                 _log.Info(nameof(InitializeCacheAsync), "Caching candles history...");
 
-                SlotType activeSlot = _candlesCacheService.GetActiveSlot(_marketType);
+                SlotType activeSlot = await _candlesCacheService.GetActiveSlotAsync(_marketType);
                 
                 //initialize cache to inactive slot
                 SlotType initSlot = activeSlot == SlotType.Slot0 
