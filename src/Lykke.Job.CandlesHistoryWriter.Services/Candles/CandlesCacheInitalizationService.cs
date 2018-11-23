@@ -96,7 +96,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
                 await _candlesCacheService.InjectCacheValidityToken(); // Initial validation token set.
 
-                _candlesCacheService.SetActiveSlot(_marketType, initSlot); //switch slots
+                await _candlesCacheService.SetActiveSlotAsync(_marketType, initSlot); //switch slots
 
                 _log.Info(nameof(InitializeCacheAsync), "All candles history is cached");
             }

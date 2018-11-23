@@ -11,9 +11,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Services.Candles
         Task InitializeAsync(string assetPairId, CandlePriceType priceType, CandleTimeInterval timeInterval, IReadOnlyCollection<ICandle> candles, SlotType slotType);
         Task CacheAsync(IReadOnlyList<ICandle> candle);
         Task InjectCacheValidityToken();
-        bool CheckCacheValidity();
-        void TruncateCache(string assetId, CandlePriceType priceType, CandleTimeInterval timeInterval, int storedCandlesCountLimit, SlotType slotType);
+        Task<bool> CheckCacheValidityAsync();
+        Task TruncateCacheAsync(string assetId, CandlePriceType priceType, CandleTimeInterval timeInterval, int storedCandlesCountLimit, SlotType slotType);
         Task<SlotType> GetActiveSlotAsync(MarketType marketType);
-        void SetActiveSlot(MarketType marketType, SlotType slotType);
+        Task SetActiveSlotAsync(MarketType marketType, SlotType slotType);
     }
 }

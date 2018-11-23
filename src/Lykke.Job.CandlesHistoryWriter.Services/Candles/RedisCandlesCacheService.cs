@@ -192,17 +192,18 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             await _database.SetAddAsync(vkey, $"CandlesHistoryCacheIsStillValidIfYouCanSeeMe.LastKeyUpdate-{DateTime.UtcNow}");
         }
 
-        public bool CheckCacheValidity()
+        public Task<bool> CheckCacheValidityAsync()
         {
             var vkey = GetValidationKey(_market);
-            return _database.KeyExists(vkey);
+            return _database.KeyExistsAsync(vkey);
         }
 
-        public void TruncateCache(string assetId, CandlePriceType priceType, CandleTimeInterval timeInterval, int storedCandlesCountLimit, SlotType slotType)
+        public Task TruncateCacheAsync(string assetId, CandlePriceType priceType, CandleTimeInterval timeInterval,
+            int storedCandlesCountLimit, SlotType slotType)
         {
             var key = GetKey(_market, assetId, priceType, timeInterval, slotType);
 
-            _database.SortedSetRemoveRangeByRank(key, 0, -storedCandlesCountLimit - 1, CommandFlags.FireAndForget);
+            return _database.SortedSetRemoveRangeByRankAsync(key, 0, -storedCandlesCountLimit - 1, CommandFlags.FireAndForget);
         }
 
         public async Task<SlotType> GetActiveSlotAsync(MarketType marketType)
@@ -220,17 +221,17 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             }
             else
             {
-                _database.StringSet(key, SlotType.Slot0.ToString());
+                await _database.StringSetAsync(key, SlotType.Slot0.ToString());
                 _activeSlot = SlotType.Slot0;
             }
             
             return _activeSlot.Value;
         }
 
-        public void SetActiveSlot(MarketType marketType, SlotType slotType)
+        public async Task SetActiveSlotAsync(MarketType marketType, SlotType slotType)
         {
             var key = GetActiveSlotKey(marketType);
-            _database.StringSet(key, slotType.ToString());
+            await _database.StringSetAsync(key, slotType.ToString());
             _activeSlot = slotType;
         }
 
