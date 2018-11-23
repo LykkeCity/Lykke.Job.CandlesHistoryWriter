@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Autofac;
@@ -45,18 +46,19 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             // TODO: such an approach is Ok for the case of the single running service instance. But once we get
             // TODO: a necessity to run more instances, the code below will provoke a problem.
 
-            await TruncateCache();
+            await TruncateCacheAsync();
 
             await ReloadCacheIfNeededAsync();
         }
 
-        private async Task TruncateCache()
+        private async Task TruncateCacheAsync()
         {
             // Shall not truncate cache while reloading data.
             if (_cacheInitalizationService.InitializationState != CacheInitializationState.Idle)
                 return;
             
             SlotType activeSlot = await _redisCacheService.GetActiveSlotAsync(_marketType);
+            var tasks = new List<Task>();
 
             foreach (var assetId in _historyRepository.GetStoredAssetPairs())
             {
@@ -64,15 +66,17 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                 {
                     foreach (var timeInterval in Constants.StoredIntervals)
                     {
-                        _redisCacheService.TruncateCache(assetId, priceType, timeInterval, _amountOfCandlesToStore, activeSlot);
+                        tasks.Add(_redisCacheService.TruncateCacheAsync(assetId, priceType, timeInterval, _amountOfCandlesToStore, activeSlot));
                     }
                 }
             }
+
+            await Task.WhenAll(tasks);
         }
 
         private async Task ReloadCacheIfNeededAsync()
         {
-            if ( ! _redisCacheService.CheckCacheValidity())
+            if (!await _redisCacheService.CheckCacheValidityAsync())
                 await _cacheInitalizationService.InitializeCacheAsync();
         }
 
