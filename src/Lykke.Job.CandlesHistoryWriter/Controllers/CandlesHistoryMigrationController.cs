@@ -6,6 +6,9 @@ using Lykke.Job.CandlesHistoryWriter.Models.Migration;
 using Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration;
 using Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration.HistoryProviders.MeFeedHistory;
 using Microsoft.AspNetCore.Mvc;
+using Lykke.Job.CandlesProducer.Contract;
+using Constants = Lykke.Job.CandlesHistoryWriter.Services.Candles.Constants;
+
 namespace Lykke.Job.CandlesHistoryWriter.Controllers
 {
     [Route("api/[controller]")]

@@ -1,5 +1,7 @@
 ﻿using Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.Filtration;
 using System.Collections.Generic;
+using Lykke.Job.CandlesProducer.Contract;
+using Constants = Lykke.Job.CandlesHistoryWriter.Services.Candles.Constants;
 
 namespace Lykke.Job.CandlesHistoryWriter.Models.Filtration
 {
@@ -8,6 +10,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Models.Filtration
         public string AssetPairId { get; set; }
         public double LimitLow { get; set; }
         public double LimitHigh { get; set; }
+        public CandlePriceType? PriceType { get; set; }
 
         public static IReadOnlyDictionary<string, string> CheckupModel(CandlesFiltrationRequestModel request)
         {
