@@ -35,7 +35,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.Filtration
         public ConcurrentDictionary<CandlePriceType, int> DeletedCandlesCount { get; }
         public ConcurrentDictionary<CandlePriceType, int> ReplacedCandlesCount { get; }
         
-        public List<ICandle> ExtremeCandles { get; }
+        public ConcurrentDictionary<CandleTimeInterval, List<ICandle>> ExtremeCandles { get; }
 
         public ConcurrentBag<string> Errors;
 
@@ -53,7 +53,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.Filtration
             DeletedCandlesCount = new ConcurrentDictionary<CandlePriceType, int>();
             ReplacedCandlesCount = new ConcurrentDictionary<CandlePriceType, int>();
             
-            ExtremeCandles = new List<ICandle>();
+            ExtremeCandles = new ConcurrentDictionary<CandleTimeInterval, List<ICandle>>();
             
             Errors = new ConcurrentBag<string>();
         }

@@ -10,6 +10,7 @@ using Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.Filtration;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Assets;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.HistoryMigration;
 using Lykke.Job.CandlesProducer.Contract;
+using MoreLinq;
 using Constants = Lykke.Job.CandlesHistoryWriter.Services.Candles.Constants;
 
 namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
@@ -125,7 +126,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                     Health.DeletedCandlesCount[priceType] = secondCandlesCount;
                     Health.ReplacedCandlesCount[priceType] = extremeCandles.Count - secondCandlesCount;
 
-                    Health.ExtremeCandles.AddRange(extremeCandles.OrderBy(x => x.TimeInterval).ThenBy(x => x.Timestamp));
+                    extremeCandles.GroupBy(x => x.TimeInterval).ForEach(x => Health.ExtremeCandles[x.Key] = x.OrderBy(y => y.Timestamp).ToList());
 
                     _log.Info(nameof(DoFiltrateAsync),
                         $"Filtration for price type {priceType} finished: analyze only. Candles to delete: {Health.DeletedCandlesCount[priceType]}, " +
