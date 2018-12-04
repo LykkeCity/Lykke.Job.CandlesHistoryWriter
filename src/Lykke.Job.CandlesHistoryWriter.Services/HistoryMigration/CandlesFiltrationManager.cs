@@ -10,6 +10,7 @@ using Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.Filtration;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Assets;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.HistoryMigration;
 using Lykke.Job.CandlesProducer.Contract;
+using MoreLinq;
 using Constants = Lykke.Job.CandlesHistoryWriter.Services.Candles.Constants;
 
 namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
@@ -64,10 +65,21 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             Health = new CandlesFiltrationHealthReport(request.AssetPairId, request.LimitLow, request.LimitHigh, analyzeOnly);
 
             var priceTypeTasks = new List<Task>();
-            foreach (var priceType in Constants.StoredPriceTypes)
+
+            if (request.PriceType.HasValue)
             {
                 priceTypeTasks.Add(
-                    DoFiltrateAsync(request.AssetPairId, request.LimitLow, request.LimitHigh, priceType, epsilon, analyzeOnly));
+                    DoFiltrateAsync(request.AssetPairId, request.LimitLow, request.LimitHigh, request.PriceType.Value, epsilon,
+                        analyzeOnly));
+            }
+            else
+            {
+                foreach (var priceType in Constants.StoredPriceTypes)
+                {
+                    priceTypeTasks.Add(
+                        DoFiltrateAsync(request.AssetPairId, request.LimitLow, request.LimitHigh, priceType, epsilon,
+                            analyzeOnly));
+                }
             }
 
             Task.WhenAll(priceTypeTasks.ToArray()).ContinueWith(t =>
@@ -87,7 +99,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             return FiltrationLaunchResult.Started;
         }
 
-        private async Task DoFiltrateAsync(string assetId, double limitLow, double limitHigh, CandlePriceType priceType, double epsilon, bool analyzeOnly)
+        private async Task DoFiltrateAsync(string assetPairId, double limitLow, double limitHigh, CandlePriceType priceType, double epsilon, bool analyzeOnly)
         {
             try
             {
@@ -95,7 +107,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                     $"Starting candles with extreme prices filtration for price type {priceType}...");
 
                 // First of all we need to find out if there are any extreme candles with the given parameters or there are not.
-                var extremeCandles = await _candlesFiltrationService.TryGetExtremeCandlesAsync(assetId, priceType, limitLow, limitHigh, epsilon);
+                var extremeCandles = await _candlesFiltrationService.TryGetExtremeCandlesAsync(assetPairId, priceType, limitLow, limitHigh, epsilon);
 
                 if (!extremeCandles.Any())
                 {
@@ -110,9 +122,11 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                 {
                     var secondCandlesCount = extremeCandles
                         .Count(c => c.TimeInterval == CandleTimeInterval.Sec);
-
+                    
                     Health.DeletedCandlesCount[priceType] = secondCandlesCount;
                     Health.ReplacedCandlesCount[priceType] = extremeCandles.Count - secondCandlesCount;
+
+                    extremeCandles.GroupBy(x => x.TimeInterval).ForEach(x => Health.ExtremeCandles[x.Key] = x.OrderBy(y => y.Timestamp).ToList());
 
                     _log.Info(nameof(DoFiltrateAsync),
                         $"Filtration for price type {priceType} finished: analyze only. Candles to delete: {Health.DeletedCandlesCount[priceType]}, " +
@@ -133,7 +147,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             }
             catch (Exception ex)
             {
-                Health.Errors.Add($"{assetId} - {priceType}: {ex.Message}");
+                Health.Errors.Add($"{assetPairId} - {priceType}: {ex.Message}");
                 _log.Error(nameof(DoFiltrateAsync), ex);
             }
         }
