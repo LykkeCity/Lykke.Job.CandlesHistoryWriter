@@ -140,7 +140,8 @@ namespace Lykke.Job.CandlesHistoryWriter
             {
                 await ApplicationContainer.Resolve<IStartupManager>().StartAsync();
 
-                var monitoringServiceClientSettings = ApplicationContainer.Resolve<MonitoringServiceClientSettings>(); 
+                var monitoringServiceClientSettings =
+                    ApplicationContainer.ResolveOptional<MonitoringServiceClientSettings>(); 
 
                 if (monitoringServiceClientSettings != null &&
                     !string.IsNullOrEmpty(monitoringServiceClientSettings.MonitoringServiceUrl))
