@@ -47,16 +47,17 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             _systemClock = new SystemClock();
             _log = log;
             _connectionString = connectionString;
-            _tableName = $"[Candles].[candleshistory_{assetName}]";
-            var createTableScript = CreateTableScript.Replace("UNIQUEINDEX", assetName.Replace("-", "_"));
+            const string schemaName = "Candles";
+            var justTableName = $"candleshistory_{assetName}";
+            _tableName = $"[{schemaName}].[{justTableName}]";
+            var createTableScript = CreateTableScript.Replace("UNIQUEINDEX", assetName);
 
             using (var conn = new SqlConnection(_connectionString))
             {
-
-                try { conn.CreateTableIfDoesntExists(createTableScript, _tableName); }
+                try { conn.CreateTableIfDoesntExists(createTableScript, justTableName, schemaName); }
                 catch (Exception ex)
                 {
-                    _log?.WriteErrorAsync(nameof(SqlAssetPairCandlesHistoryRepository), "CreateTableIfDoesntExists", null, ex);
+                    log?.WriteErrorAsync(nameof(SqlAssetPairCandlesHistoryRepository), "CreateTableIfDoesntExists", null, ex);
                     throw;
                 }
             }
