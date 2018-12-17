@@ -40,7 +40,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
                 new ConcurrentDictionary<string, AssetPairCandlesHistoryRepository>(new Dictionary<string, AssetPairCandlesHistoryRepository>
                 {
                     {"BTCUSD_minute", _assetPairCandleHistoryRepository}
-                }));
+                }), DateTime.MinValue);
         }
 
         [TestMethod]

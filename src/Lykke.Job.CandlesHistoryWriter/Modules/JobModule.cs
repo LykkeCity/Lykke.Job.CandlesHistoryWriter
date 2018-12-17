@@ -132,6 +132,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Modules
                 .WithParameter(TypedParameter.From(_settings.Nested(x => _marketType == MarketType.Spot
                     ? x.CandleHistoryAssetConnections
                     : x.MtCandleHistoryAssetConnections)))
+                .WithParameter(TypedParameter.From(_settings.CurrentValue.CandlesHistoryWriter.MinDate))
                 .SingleInstance();
 
             builder.RegisterType<StartupManager>()

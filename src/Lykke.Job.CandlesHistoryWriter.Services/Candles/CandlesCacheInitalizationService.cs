@@ -108,19 +108,25 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
         private async Task CacheAssetPairCandlesAsync(AssetPair assetPair, DateTime now, SlotType slotType)
         {
-            _log.Info(nameof(InitializeCacheAsync), $"Caching {assetPair.Id} candles history...");
-
-            foreach (var priceType in Constants.StoredPriceTypes)
+            try
             {
-                foreach (var timeInterval in Constants.StoredIntervals)
-                {
-                    var candles = await _candlesHistoryRepository.GetExactCandlesAsync(assetPair.Id, timeInterval, priceType, now, _amountOfCandlesToStore);
-                    
-                    await _candlesCacheService.InitializeAsync(assetPair.Id, priceType, timeInterval, candles.ToArray(), slotType);
-                }
-            }
+                _log.Info(nameof(InitializeCacheAsync), $"Caching {assetPair.Id} candles history...");
 
-            _log.Info(nameof(InitializeCacheAsync), $"{assetPair.Id} candles history is cached");
+                foreach (var priceType in Constants.StoredPriceTypes)
+                {
+                    foreach (var timeInterval in Constants.StoredIntervals)
+                    {
+                        var candles = await _candlesHistoryRepository.GetExactCandlesAsync(assetPair.Id, timeInterval, priceType, now, _amountOfCandlesToStore);
+                        await _candlesCacheService.InitializeAsync(assetPair.Id, priceType, timeInterval, candles.ToArray(), slotType);
+                    }
+                }
+
+                _log.Info(nameof(InitializeCacheAsync), $"{assetPair.Id} candles history is cached");
+            }
+            catch (Exception ex)
+            {
+                _log.Error(nameof(CacheAssetPairCandlesAsync), ex);
+            }
         }
     }
 }
