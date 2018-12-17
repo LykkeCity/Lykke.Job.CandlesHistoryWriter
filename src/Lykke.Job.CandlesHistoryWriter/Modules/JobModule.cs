@@ -133,7 +133,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Modules
                     ? x.CandleHistoryAssetConnections
                     : x.MtCandleHistoryAssetConnections)))
                 .WithParameter(TypedParameter.From(_marketType == MarketType.Spot 
-                    ?_settings.CurrentValue.CandlesHistoryWriter.MinDate
+                    ? _settings.CurrentValue.CandlesHistoryWriter.MinDate
                     : _settings.CurrentValue.MtCandlesHistoryWriter.MinDate))
                 .SingleInstance();
 
