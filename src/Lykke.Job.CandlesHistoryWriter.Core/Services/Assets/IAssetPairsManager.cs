@@ -9,5 +9,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Services.Assets
         Task<AssetPair> TryGetAssetPairAsync(string assetPairId);
         Task<AssetPair> TryGetEnabledPairAsync(string assetPairId);
         Task<IEnumerable<AssetPair>> GetAllEnabledAsync();
+        Task<IEnumerable<AssetPair>> GetAllAsync();
     }
 }
