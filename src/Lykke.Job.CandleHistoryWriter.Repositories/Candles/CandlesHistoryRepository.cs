@@ -188,7 +188,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                 {
                     alignedFromDate = alignedToDate.AddMilliseconds(-(interval * needIntervals).TotalMilliseconds).TruncateTo(timeInterval);
                 }
-                catch
+                catch (ArgumentOutOfRangeException)
                 {
                     alignedFromDate = alignedToDate.AddIntervalTicks(-needIntervals, timeInterval);
                 }
