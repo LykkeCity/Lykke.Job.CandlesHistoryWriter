@@ -20,6 +20,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
         private readonly IHealthService _healthService;
         private readonly ILogFactory _logFactory;
         private readonly IReloadingManager<Dictionary<string, string>> _assetConnectionStrings;
+        private const int MaxIntervalsCount = 10;
 
         private readonly ConcurrentDictionary<string, AssetPairCandlesHistoryRepository> _assetPairRepositories;
 
@@ -164,8 +165,21 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                 {
                     var interval = alignedToDate - alignedFromDate;
                     alignedToDate = alignedFromDate;
-                    var need = candlesCount / candles.Count;
-                    alignedFromDate = alignedToDate.AddMilliseconds(-(interval * need).TotalMilliseconds);
+                    var needIntervals = candlesCount / candles.Count;
+                    
+                    if (needIntervals > MaxIntervalsCount)
+                    {
+                        needIntervals = MaxIntervalsCount;
+                    }
+
+                    try
+                    {
+                        alignedFromDate = alignedToDate.AddMilliseconds(-(interval * needIntervals).TotalMilliseconds);
+                    }
+                    catch
+                    {
+                        alignedFromDate = alignedToDate.AddIntervalTicks(-needIntervals, timeInterval);
+                    }
                 }
                 
             } while (!finished);
