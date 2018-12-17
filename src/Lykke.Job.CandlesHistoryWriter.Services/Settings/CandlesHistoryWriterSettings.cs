@@ -13,5 +13,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Settings
         public ErrorManagementSettings ErrorManagement { get; set; }
         public ResourceMonitorSettings ResourceMonitor { get; set; }
         public HistoryCacheSettings HistoryCache { get; set; }
+        public DateTime MinDate { get; set; }
     }
 }
