@@ -14,7 +14,7 @@ using Polly;
 
 namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 {
-    internal sealed class AssetPairCandlesHistoryRepository
+    public sealed class AssetPairCandlesHistoryRepository
     {
         private readonly IHealthService _healthService;
         private readonly ILog _log;
