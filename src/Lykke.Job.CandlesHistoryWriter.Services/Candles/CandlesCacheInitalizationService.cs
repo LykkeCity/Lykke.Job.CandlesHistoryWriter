@@ -3,7 +3,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Common.Log;
 using Lykke.Common.Log;
-using Lykke.Job.CandlesProducer.Contract;
 using Lykke.Service.Assets.Client.Models;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services;
@@ -109,21 +108,25 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
         private async Task CacheAssetPairCandlesAsync(AssetPair assetPair, DateTime now, SlotType slotType)
         {
-            _log.Info(nameof(InitializeCacheAsync), $"Caching {assetPair.Id} candles history...");
-
-            foreach (var priceType in Constants.StoredPriceTypes)
+            try
             {
-                foreach (var timeInterval in Constants.StoredIntervals)
-                {
-                    var alignedToDate = now.TruncateTo(timeInterval).AddIntervalTicks(1, timeInterval);
-                    var alignedFromDate = alignedToDate.AddIntervalTicks(-_amountOfCandlesToStore - 1, timeInterval);
-                    var candles = await _candlesHistoryRepository.GetCandlesAsync(assetPair.Id, timeInterval, priceType, alignedFromDate, alignedToDate);
-                    
-                    await _candlesCacheService.InitializeAsync(assetPair.Id, priceType, timeInterval, candles.ToArray(), slotType);
-                }
-            }
+                _log.Info(nameof(InitializeCacheAsync), $"Caching {assetPair.Id} candles history...");
 
-            _log.Info(nameof(InitializeCacheAsync), $"{assetPair.Id} candles history is cached");
+                foreach (var priceType in Constants.StoredPriceTypes)
+                {
+                    foreach (var timeInterval in Constants.StoredIntervals)
+                    {
+                        var candles = await _candlesHistoryRepository.GetExactCandlesAsync(assetPair.Id, timeInterval, priceType, now, _amountOfCandlesToStore);
+                        await _candlesCacheService.InitializeAsync(assetPair.Id, priceType, timeInterval, candles.ToArray(), slotType);
+                    }
+                }
+
+                _log.Info(nameof(InitializeCacheAsync), $"{assetPair.Id} candles history is cached");
+            }
+            catch (Exception ex)
+            {
+                _log.Error(nameof(CacheAssetPairCandlesAsync), ex);
+            }
         }
     }
 }

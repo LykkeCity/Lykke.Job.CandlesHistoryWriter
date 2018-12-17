@@ -20,16 +20,31 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
         private readonly IHealthService _healthService;
         private readonly ILogFactory _logFactory;
         private readonly IReloadingManager<Dictionary<string, string>> _assetConnectionStrings;
+        private readonly DateTime _minDate;
+        private const int MaxIntervalsCount = 10;
+        private const int MaxEmptyIntervalsCount = 5;
 
         private readonly ConcurrentDictionary<string, AssetPairCandlesHistoryRepository> _assetPairRepositories;
 
-        public CandlesHistoryRepository(IHealthService healthService, ILogFactory logFactory, IReloadingManager<Dictionary<string, string>> assetConnectionStrings)
+        public CandlesHistoryRepository(IHealthService healthService, ILogFactory logFactory, IReloadingManager<Dictionary<string, string>> assetConnectionStrings, DateTime minDate)
+        {
+            _healthService = healthService;
+            _logFactory = logFactory;
+            _assetConnectionStrings = assetConnectionStrings;
+            _minDate = minDate;
+
+            _assetPairRepositories = new ConcurrentDictionary<string, AssetPairCandlesHistoryRepository>();
+        }
+        
+        public CandlesHistoryRepository(IHealthService healthService, ILogFactory logFactory, IReloadingManager<Dictionary<string, string>> assetConnectionStrings,
+            ConcurrentDictionary<string, AssetPairCandlesHistoryRepository> repositories, DateTime minDate)
         {
             _healthService = healthService;
             _logFactory = logFactory;
             _assetConnectionStrings = assetConnectionStrings;
 
-            _assetPairRepositories = new ConcurrentDictionary<string, AssetPairCandlesHistoryRepository>();
+            _assetPairRepositories = repositories;
+            _minDate = minDate;
         }
 
         public bool CanStoreAssetPair(string assetPairId)
@@ -121,6 +136,65 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                 ResetRepo(assetPairId, interval);
                 throw;
             }
+        }
+
+        public async Task<IEnumerable<ICandle>> GetExactCandlesAsync(string assetPairId, CandleTimeInterval timeInterval, CandlePriceType priceType, DateTime to, int candlesCount)
+        {
+            var candlesToCache = new List<ICandle>();
+            var alignedToDate = to.TruncateTo(timeInterval).AddIntervalTicks(1, timeInterval);
+            var alignedFromDate = alignedToDate.AddIntervalTicks(-candlesCount - 1, timeInterval);
+            
+            var repo = GetRepo(assetPairId, timeInterval);
+            int emptyIntervals = 0;
+            
+            do
+            {
+                var candles = (await repo.GetCandlesAsync(priceType, timeInterval, alignedFromDate, alignedToDate)).ToList();
+
+                if (candles.Any())
+                {
+                    emptyIntervals = 0;
+                    candlesToCache.InsertRange(0, candles);
+
+                    if (candlesToCache.Count >= candlesCount)
+                    {
+                        candlesToCache = candlesToCache
+                            .Skip(candlesToCache.Count - candlesCount)
+                            .ToList();
+
+                        break;
+                    }
+                }
+                else
+                {
+                    emptyIntervals++;
+                }
+                
+                if (alignedFromDate < _minDate || emptyIntervals > MaxEmptyIntervalsCount)
+                    break;
+                
+                var interval = alignedToDate - alignedFromDate;
+                alignedToDate = alignedFromDate;
+                var needIntervals = candles.Any() 
+                    ? candlesCount / candles.Count
+                    : MaxIntervalsCount;
+                
+                if (needIntervals > MaxIntervalsCount)
+                {
+                    needIntervals = MaxIntervalsCount;
+                }
+
+                try
+                {
+                    alignedFromDate = alignedToDate.AddMilliseconds(-(interval * needIntervals).TotalMilliseconds).TruncateTo(timeInterval);
+                }
+                catch (ArgumentOutOfRangeException)
+                {
+                    alignedFromDate = alignedToDate.AddIntervalTicks(-needIntervals, timeInterval);
+                }
+            } while (true);
+
+            return candlesToCache;
         }
 
         private (string assetPairId, CandleTimeInterval interval, CandlePriceType priceType) PreEvaluateInputCandleSet(
