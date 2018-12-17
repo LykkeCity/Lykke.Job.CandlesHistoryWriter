@@ -305,7 +305,13 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
             return 0;
         }
 
-        #region NotImplemented"
+        #region NotImplemented
+
+        public async Task<IEnumerable<ICandle>> GetExactCandlesAsync(string assetPairId, CandleTimeInterval interval, CandlePriceType priceType, DateTime to,
+            int candlesCount)
+        {
+            throw new NotImplementedException();
+        }
 
         public bool CanStoreAssetPair(string assetPairId)
         {
