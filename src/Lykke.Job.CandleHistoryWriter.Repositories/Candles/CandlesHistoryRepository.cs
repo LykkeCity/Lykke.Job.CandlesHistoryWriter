@@ -20,6 +20,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
         private readonly IHealthService _healthService;
         private readonly ILogFactory _logFactory;
         private readonly IReloadingManager<Dictionary<string, string>> _assetConnectionStrings;
+        private const int MaxIntervalsCount = 10;
 
         private readonly ConcurrentDictionary<string, AssetPairCandlesHistoryRepository> _assetPairRepositories;
 
@@ -30,6 +31,16 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             _assetConnectionStrings = assetConnectionStrings;
 
             _assetPairRepositories = new ConcurrentDictionary<string, AssetPairCandlesHistoryRepository>();
+        }
+        
+        public CandlesHistoryRepository(IHealthService healthService, ILogFactory logFactory, IReloadingManager<Dictionary<string, string>> assetConnectionStrings,
+            ConcurrentDictionary<string, AssetPairCandlesHistoryRepository> repositories)
+        {
+            _healthService = healthService;
+            _logFactory = logFactory;
+            _assetConnectionStrings = assetConnectionStrings;
+
+            _assetPairRepositories = repositories;
         }
 
         public bool CanStoreAssetPair(string assetPairId)
@@ -121,6 +132,59 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                 ResetRepo(assetPairId, interval);
                 throw;
             }
+        }
+
+        public async Task<IEnumerable<ICandle>> GetExactCandlesAsync(string assetPairId, CandleTimeInterval timeInterval, CandlePriceType priceType, DateTime to, int candlesCount)
+        {
+            bool finished = false;
+            var candlesToCache = new List<ICandle>();
+            var alignedToDate = to.TruncateTo(timeInterval).AddIntervalTicks(1, timeInterval);
+            var alignedFromDate = alignedToDate.AddIntervalTicks(-candlesCount - 1, timeInterval);
+            
+            var repo = GetRepo(assetPairId, timeInterval);
+
+            do
+            {
+                var candles = (await repo.GetCandlesAsync(priceType, timeInterval, alignedFromDate, alignedToDate)).ToList();
+
+                if (candles.Count == 0)
+                    break;
+                
+                candlesToCache.AddRange(candles);
+
+                if (candlesToCache.Count >= candlesCount)
+                {
+                    candlesToCache = candlesToCache
+                        .OrderByDescending(item => item.Timestamp)
+                        .Take(candlesCount)
+                        .OrderBy(item => item.Timestamp)
+                        .ToList();
+                    finished = true;
+                }
+                else
+                {
+                    var interval = alignedToDate - alignedFromDate;
+                    alignedToDate = alignedFromDate;
+                    var needIntervals = candlesCount / candles.Count;
+                    
+                    if (needIntervals > MaxIntervalsCount)
+                    {
+                        needIntervals = MaxIntervalsCount;
+                    }
+
+                    try
+                    {
+                        alignedFromDate = alignedToDate.AddMilliseconds(-(interval * needIntervals).TotalMilliseconds);
+                    }
+                    catch
+                    {
+                        alignedFromDate = alignedToDate.AddIntervalTicks(-needIntervals, timeInterval);
+                    }
+                }
+                
+            } while (!finished);
+
+            return candlesToCache;
         }
 
         private (string assetPairId, CandleTimeInterval interval, CandlePriceType priceType) PreEvaluateInputCandleSet(
