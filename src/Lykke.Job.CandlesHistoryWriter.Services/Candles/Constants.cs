@@ -22,8 +22,5 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             CandlePriceType.Mid,
             CandlePriceType.Trades
         );
-
-        // The precision constant for comparing double values with 0.
-        public static double Epsilon => 0.0000001;
     }
 }

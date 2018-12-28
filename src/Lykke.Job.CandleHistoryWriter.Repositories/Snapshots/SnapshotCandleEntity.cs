@@ -74,7 +74,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Snapshots
                 TradingOppositeVolume = ConvertDouble(candle.TradingOppositeVolume),
                 LastTradePrice = ConvertDouble(candle.LastTradePrice),
                 LastUpdateTimestamp = candle.LastUpdateTimestamp
-            }; 
+            };
         }
 
         private static decimal ConvertDouble(double d)
