@@ -8,7 +8,6 @@ using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Assets;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Candles;
-using Lykke.Job.CandlesProducer.Contract;
 
 namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 {
@@ -117,11 +116,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                 {
                     foreach (var timeInterval in Constants.StoredIntervals)
                     {
-                        var alignedToDate = now.TruncateTo(timeInterval).AddIntervalTicks(1, timeInterval);
-                        var alignedFromDate = alignedToDate.AddIntervalTicks(-_amountOfCandlesToStore - 1, timeInterval);
-                        var candles = (await _candlesHistoryRepository.GetCandlesAsync(assetPair.Id, timeInterval, priceType, alignedFromDate, alignedToDate)).ToArray();
-                        _log.Info(nameof(InitializeCacheAsync),$"{priceType} {timeInterval} {assetPair.Id} candles to cache = {candles.Length}");
-                        await _candlesCacheService.InitializeAsync(assetPair.Id, priceType, timeInterval, candles, slotType);
+                        var candles = await _candlesHistoryRepository.GetExactCandlesAsync(assetPair.Id, timeInterval, priceType, now, _amountOfCandlesToStore);
+                        await _candlesCacheService.InitializeAsync(assetPair.Id, priceType, timeInterval, candles.ToArray(), slotType);
                     }
                 }
 
