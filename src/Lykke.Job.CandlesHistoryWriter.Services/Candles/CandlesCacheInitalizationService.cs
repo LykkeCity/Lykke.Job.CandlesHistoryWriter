@@ -117,9 +117,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                 {
                     var alignedToDate = now.TruncateTo(timeInterval).AddIntervalTicks(1, timeInterval);
                     var alignedFromDate = alignedToDate.AddIntervalTicks(-_amountOfCandlesToStore - 1, timeInterval);
-                    var candles = await _candlesHistoryRepository.GetCandlesAsync(assetPair.Id, timeInterval, priceType, alignedFromDate, alignedToDate);
+                    var candles = (await _candlesHistoryRepository.GetCandlesAsync(assetPair.Id, timeInterval, priceType, alignedFromDate, alignedToDate)).ToArray();
                     
-                    await _candlesCacheService.InitializeAsync(assetPair.Id, priceType, timeInterval, candles.ToArray(), slotType);
+                    _log.Info(nameof(InitializeCacheAsync),$"{priceType} {timeInterval} {assetPair.Id} candles to cache = {candles.Length}");
+                    await _candlesCacheService.InitializeAsync(assetPair.Id, priceType, timeInterval, candles, slotType);
                 }
             }
 
