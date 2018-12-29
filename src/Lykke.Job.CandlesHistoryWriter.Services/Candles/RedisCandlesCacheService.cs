@@ -83,16 +83,21 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
             var key = GetKey(_market, assetPairId, priceType, timeInterval, slotType);
 
-            await _database.KeyDeleteAsync(key);
+            var tasks = new List<Task>
+            {
+                _database.KeyDeleteAsync(key)
+            };
 
-            foreach (var candlesBatch in candles.Batch(100))
+            foreach (var candlesBatch in candles.Batch(400))
             {
                 var entites = candlesBatch
                     .Select(candle => new SortedSetEntry(SerializeCandle(candle), 0))
                     .ToArray();
 
-                await _database.SortedSetAddAsync(key, entites);
+                tasks.Add(_database.SortedSetAddAsync(key, entites));
             }
+            
+            _database.WaitAll(tasks.ToArray());
         }
 
         public async Task CacheAsync(IReadOnlyList<ICandle> candles)
