@@ -138,7 +138,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             }
         }
 
-        public async Task<IEnumerable<ICandle>> GetExactCandlesAsync(string assetPairId, CandleTimeInterval timeInterval, CandlePriceType priceType, DateTime to, int candlesCount)
+        public async Task<IReadOnlyCollection<ICandle>> GetExactCandlesAsync(string assetPairId, CandleTimeInterval timeInterval, CandlePriceType priceType, DateTime to, int candlesCount)
         {
             var candlesToCache = new List<ICandle>();
             var alignedToDate = to.TruncateTo(timeInterval).AddIntervalTicks(1, timeInterval);
