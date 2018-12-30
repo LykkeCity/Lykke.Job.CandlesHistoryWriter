@@ -307,7 +307,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
 
         #region NotImplemented
 
-        public async Task<IEnumerable<ICandle>> GetExactCandlesAsync(string assetPairId, CandleTimeInterval interval, CandlePriceType priceType, DateTime to,
+        public async Task<IReadOnlyCollection<ICandle>> GetExactCandlesAsync(string assetPairId, CandleTimeInterval interval, CandlePriceType priceType, DateTime to,
             int candlesCount)
         {
             throw new NotImplementedException();
