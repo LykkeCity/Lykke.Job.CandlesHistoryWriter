@@ -121,7 +121,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                         if (!candles.Any()) 
                             continue;
                         
-                        _log.Info(nameof(InitializeCacheAsync),$"{priceType} {timeInterval} {assetPair.Id} candles to cache = {candles.Count}");
+                        _log.Info($"{priceType} {timeInterval} {assetPair.Id} candles to cache = {candles.Count}");
                         await _candlesCacheService.InitializeAsync(assetPair.Id, priceType, timeInterval, candles, slotType);
                     }
                 }
