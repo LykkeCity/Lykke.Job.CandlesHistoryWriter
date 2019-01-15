@@ -76,7 +76,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
             try
             {
-                _log.Info(nameof(InitializeCacheAsync), "Caching candles history...");
+                Console.WriteLine("Caching candles history...");
 
                 SlotType activeSlot = await _candlesCacheService.GetActiveSlotAsync(_marketType);
                 
@@ -97,7 +97,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
                 await _candlesCacheService.SetActiveSlotAsync(_marketType, initSlot); //switch slots
 
-                _log.Info(nameof(InitializeCacheAsync), "All candles history is cached");
+                Console.WriteLine("All candles history is cached");
             }
             finally
             {
@@ -110,7 +110,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         {
             try
             {
-                _log.Info(nameof(InitializeCacheAsync), $"Caching {assetPair.Id} candles history...");
+                Console.WriteLine($"Caching {assetPair.Id} candles history...");
 
                 foreach (var priceType in Constants.StoredPriceTypes)
                 {
@@ -120,17 +120,18 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
                         if (!candles.Any()) 
                             continue;
+
+                        Console.WriteLine($"{priceType} {timeInterval} {assetPair.Id}: {candles.Count} candles");
                         
-                        _log.Info($"{priceType} {timeInterval} {assetPair.Id} candles to cache = {candles.Count}");
                         await _candlesCacheService.InitializeAsync(assetPair.Id, priceType, timeInterval, candles, slotType);
                     }
                 }
 
-                _log.Info(nameof(InitializeCacheAsync), $"{assetPair.Id} candles history is cached");
+                Console.WriteLine($"{assetPair.Id} candles history is cached");
             }
             catch (Exception ex)
             {
-                _log.Error(nameof(CacheAssetPairCandlesAsync), ex);
+                Console.WriteLine(ex.Message);
             }
         }
     }

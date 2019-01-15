@@ -150,6 +150,11 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             do
             {
                 var candles = (await repo.GetCandlesAsync(priceType, timeInterval, alignedFromDate, alignedToDate)).ToList();
+                
+                if (candles.Count > candlesCount * 3)
+                {
+                    Console.WriteLine($"{priceType} {timeInterval} {assetPairId}: Got {candles.Count} candles! (period from {alignedFromDate} to {alignedToDate}");
+                }
 
                 if (candles.Any())
                 {

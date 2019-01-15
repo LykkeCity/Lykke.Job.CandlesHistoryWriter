@@ -165,10 +165,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Modules
                     .WithParameter(TypedParameter.From(nameof(CandlesCheckerSilent)))
                     .SingleInstance();
 
-            builder.RegisterType<CandlesSubscriber>()
-                .As<ICandlesSubscriber>()
-                .WithParameter(TypedParameter.From(_serviceSettings.Rabbit.CandlesSubscription))
-                .SingleInstance();
+//            builder.RegisterType<CandlesSubscriber>()
+//                .As<ICandlesSubscriber>()
+//                .WithParameter(TypedParameter.From(_serviceSettings.Rabbit.CandlesSubscription))
+//                .SingleInstance();
 
             builder.RegisterType<CandlesManager>()
                 .As<ICandlesManager>()
