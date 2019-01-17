@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Common.Log;
@@ -8,6 +9,7 @@ using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Assets;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Candles;
+using MoreLinq;
 
 namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 {
@@ -91,7 +93,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                     .Where(a => _candlesHistoryRepository.CanStoreAssetPair(a.Id))
                     .Select(assetPair => CacheAssetPairCandlesAsync(assetPair, now, initSlot));
 
-                await Task.WhenAll(cacheAssetPairTasks);
+                foreach (var canlesTask in cacheAssetPairTasks.Batch(5))
+                {
+                    await Task.WhenAll(canlesTask);
+                }
 
                 await _candlesCacheService.InjectCacheValidityToken(); // Initial validation token set.
 
@@ -110,19 +115,23 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         {
             try
             {
+                var sw = new Stopwatch();
                 Console.WriteLine($"Caching {assetPair.Id} candles history...");
 
                 foreach (var priceType in Constants.StoredPriceTypes)
                 {
                     foreach (var timeInterval in Constants.StoredIntervals)
                     {
+                        
+                        sw.Start();
                         var candles = await _candlesHistoryRepository.GetExactCandlesAsync(assetPair.Id, timeInterval, priceType, now, _amountOfCandlesToStore);
-
+                        sw.Stop();
+                        
                         if (!candles.Any()) 
                             continue;
 
-                        Console.WriteLine($"{priceType} {timeInterval} {assetPair.Id}: {candles.Count} candles");
-                        
+                        Console.WriteLine($"{priceType} {timeInterval} {assetPair.Id}: {candles.Count} [{sw.Elapsed.TotalSeconds} sec.]");
+
                         await _candlesCacheService.InitializeAsync(assetPair.Id, priceType, timeInterval, candles, slotType);
                     }
                 }

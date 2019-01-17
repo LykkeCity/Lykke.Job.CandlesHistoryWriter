@@ -96,8 +96,15 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
                 tasks.Add(_database.SortedSetAddAsync(key, entites));
             }
-            
-            _database.WaitAll(tasks.ToArray());
+
+            try
+            {
+                _database.WaitAll(tasks.ToArray());
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error writing to cache: {ex.Message}");
+            }
         }
 
         public async Task CacheAsync(IReadOnlyList<ICandle> candles)
