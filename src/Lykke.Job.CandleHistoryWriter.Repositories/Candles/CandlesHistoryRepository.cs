@@ -141,12 +141,11 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
         {
             var candlesToCache = new List<ICandle>();
             var alignedToDate = to.TruncateTo(timeInterval).AddIntervalTicks(1, timeInterval);
-            var alignedFromDate = alignedToDate.AddIntervalTicks(-candlesCount - 1, timeInterval);
+            var alignedFromDate = alignedToDate.AddIntervalTicks(-candlesCount * 2 - 1, timeInterval);
             
             var repo = GetRepo(assetPairId, timeInterval);
             int emptyIntervals = 0;
             
-            var candleInterval = alignedToDate - alignedFromDate;
             int processedInvervals = 1;
             
             do
@@ -176,7 +175,6 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                 }
                 else
                 {
-                    Console.WriteLine($"{priceType} {timeInterval} {assetPairId}: no candles in period");
                     emptyIntervals++;
                 }
 
@@ -188,6 +186,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                     break;
                 }
                 
+                var candleInterval = alignedToDate - alignedFromDate;
                 alignedToDate = alignedFromDate;
                 var maxIntervals = GetMaxIntervalsCount(timeInterval);
                 var needIntervals = candles.Any()
@@ -208,6 +207,9 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                     alignedFromDate = alignedToDate.AddIntervalTicks(-needIntervals, timeInterval);
                 }
 
+                if (alignedFromDate < _minDate)
+                    alignedToDate = _minDate;
+
                 processedInvervals++;
             } while (true);
 
@@ -219,7 +221,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             switch (interval)
             {
                 case CandleTimeInterval.Sec:
-                    return 100;
+                    return 50;
                 case CandleTimeInterval.Minute:
                 case CandleTimeInterval.Min5:
                 case CandleTimeInterval.Min15:
