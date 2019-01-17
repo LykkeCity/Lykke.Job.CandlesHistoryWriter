@@ -21,8 +21,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
         private readonly ILogFactory _logFactory;
         private readonly IReloadingManager<Dictionary<string, string>> _assetConnectionStrings;
         private readonly DateTime _minDate;
-        private const int MaxIntervalsCount = 10;
-        private const int MaxEmptyIntervalsCount = 20;
+        private const int MaxEmptyIntervalsCount = 10;
 
         private readonly ConcurrentDictionary<string, AssetPairCandlesHistoryRepository> _assetPairRepositories;
 
@@ -148,6 +147,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             int emptyIntervals = 0;
             
             var candleInterval = alignedToDate - alignedFromDate;
+            int processedInvervals = 1;
             
             do
             {
@@ -165,6 +165,8 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
                     if (candlesToCache.Count >= candlesCount)
                     {
+                        if (processedInvervals > 1)
+                            Console.WriteLine($"{priceType} {timeInterval} {assetPairId}: {processedInvervals} invervals prccessed");
                         candlesToCache = candlesToCache
                             .Skip(candlesToCache.Count - candlesCount)
                             .ToList();
@@ -174,33 +176,66 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                 }
                 else
                 {
+                    Console.WriteLine($"{priceType} {timeInterval} {assetPairId}: no candles in period");
                     emptyIntervals++;
                 }
-                
+
                 if (alignedFromDate < _minDate || emptyIntervals > MaxEmptyIntervalsCount)
+                {
+                    if (emptyIntervals > MaxEmptyIntervalsCount)
+                        Console.WriteLine($"{priceType} {timeInterval} {assetPairId}: {MaxEmptyIntervalsCount} empty intervals reached");
+
                     break;
+                }
                 
                 alignedToDate = alignedFromDate;
-                var needIntervals = candles.Any() 
+                var maxIntervals = GetMaxIntervalsCount(timeInterval);
+                var needIntervals = candles.Any()
                     ? candlesCount / candles.Count
-                    : MaxIntervalsCount;
+                    : maxIntervals;
                 
-                if (needIntervals > MaxIntervalsCount)
+                if (needIntervals > maxIntervals)
                 {
-                    needIntervals = MaxIntervalsCount;
+                    needIntervals = maxIntervals;
                 }
 
                 try
                 {
-                    alignedFromDate = alignedToDate.AddMilliseconds(-(candleInterval * needIntervals).TotalMilliseconds).TruncateTo(timeInterval);
+                    alignedFromDate = alignedToDate.AddMilliseconds(-(candleInterval * needIntervals*(emptyIntervals + 1)).TotalMilliseconds).TruncateTo(timeInterval);
                 }
                 catch (ArgumentOutOfRangeException)
                 {
                     alignedFromDate = alignedToDate.AddIntervalTicks(-needIntervals, timeInterval);
                 }
+
+                processedInvervals++;
             } while (true);
 
             return candlesToCache;
+        }
+
+        private int GetMaxIntervalsCount(CandleTimeInterval interval)
+        {
+            switch (interval)
+            {
+                case CandleTimeInterval.Sec:
+                    return 100;
+                case CandleTimeInterval.Minute:
+                case CandleTimeInterval.Min5:
+                case CandleTimeInterval.Min15:
+                case CandleTimeInterval.Min30:
+                    return 10;
+                case CandleTimeInterval.Hour:
+                case CandleTimeInterval.Hour4:
+                case CandleTimeInterval.Hour6:
+                case CandleTimeInterval.Hour12:
+                case CandleTimeInterval.Day:
+                case CandleTimeInterval.Week:
+                case CandleTimeInterval.Month:
+                    return 1;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(interval), interval, null);
+            }
         }
 
         private (string assetPairId, CandleTimeInterval interval, CandlePriceType priceType) PreEvaluateInputCandleSet(

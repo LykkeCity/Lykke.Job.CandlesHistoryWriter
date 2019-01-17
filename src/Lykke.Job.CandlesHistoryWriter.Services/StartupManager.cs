@@ -25,6 +25,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
             var sw = new Stopwatch();
             sw.Start();
             await _cacheInitalizationService.InitializeCacheAsync();
+            _cacheInitalizationService.ShowStat();
             sw.Stop();
             Console.WriteLine("Started up");
             Console.WriteLine(sw.Elapsed);

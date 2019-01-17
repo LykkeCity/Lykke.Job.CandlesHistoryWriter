@@ -9,5 +9,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Services.Candles
     {
         Task InitializeCacheAsync();
         CacheInitializationState InitializationState { get; }
+        void ShowStat();
     }
 }

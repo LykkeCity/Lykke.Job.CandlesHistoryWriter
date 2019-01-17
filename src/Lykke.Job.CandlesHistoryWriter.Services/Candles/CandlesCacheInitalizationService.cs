@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
@@ -23,6 +24,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         private readonly ICandlesHistoryRepository _candlesHistoryRepository;
         private readonly int _amountOfCandlesToStore;
         private readonly MarketType _marketType;
+        private readonly Dictionary<string, double> _pairTime;
 
         private readonly object _initializationStateLocker = new object();
 
@@ -52,6 +54,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             _marketType = marketType;
 
             InitializationState = CacheInitializationState.Idle;
+            _pairTime = new Dictionary<string, double>();
         }
 
         public async Task InitializeCacheAsync()
@@ -111,20 +114,23 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             }
         }
 
+        public void ShowStat()
+        {
+            Console.WriteLine($"Avg for pair processing: {_pairTime.Values.Sum()/_pairTime.Keys.Count} sec");
+        }
+
         private async Task CacheAssetPairCandlesAsync(AssetPair assetPair, DateTime now, SlotType slotType)
         {
             try
             {
                 var candlesSw = new Stopwatch();
                 var pairSw = new Stopwatch();
-                Console.WriteLine($"Caching {assetPair.Id} candles history...");
                 pairSw.Start();
 
                 foreach (var priceType in Constants.StoredPriceTypes)
                 {
                     foreach (var timeInterval in Constants.StoredIntervals)
                     {
-                        
                         candlesSw.Start();
                         var candles = await _candlesHistoryRepository.GetExactCandlesAsync(assetPair.Id, timeInterval, priceType, now, _amountOfCandlesToStore);
                         candlesSw.Stop();
@@ -143,6 +149,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
                 pairSw.Stop();
                 Console.WriteLine($"{assetPair.Id} candles history is cached [{pairSw.Elapsed}]");
+                _pairTime.Add(assetPair.Id, pairSw.Elapsed.TotalSeconds);
                 pairSw.Reset();
             }
             catch (Exception ex)
