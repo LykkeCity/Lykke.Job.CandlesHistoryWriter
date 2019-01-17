@@ -131,6 +131,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                             continue;
 
                         Console.WriteLine($"{priceType} {timeInterval} {assetPair.Id}: {candles.Count} [{sw.Elapsed.TotalSeconds} sec.]");
+                        sw.Reset();
 
                         await _candlesCacheService.InitializeAsync(assetPair.Id, priceType, timeInterval, candles, slotType);
                     }
