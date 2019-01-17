@@ -144,6 +144,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             var alignedFromDate = alignedToDate.AddIntervalTicks(-candlesCount * 2 - 1, timeInterval);
             
             var repo = GetRepo(assetPairId, timeInterval);
+            var candleInterval = alignedToDate - alignedFromDate;
             int emptyIntervals = 0;
             
             int processedInvervals = 1;
@@ -186,7 +187,6 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                     break;
                 }
                 
-                var candleInterval = alignedToDate - alignedFromDate;
                 alignedToDate = alignedFromDate;
                 var maxIntervals = GetMaxIntervalsCount(timeInterval);
                 var needIntervals = candles.Any()
