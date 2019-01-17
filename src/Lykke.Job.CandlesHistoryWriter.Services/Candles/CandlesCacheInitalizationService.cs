@@ -116,7 +116,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             try
             {
                 var candlesSw = new Stopwatch();
+                var pairSw = new Stopwatch();
                 Console.WriteLine($"Caching {assetPair.Id} candles history...");
+                pairSw.Start();
 
                 foreach (var priceType in Constants.StoredPriceTypes)
                 {
@@ -130,14 +132,18 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                         if (!candles.Any()) 
                             continue;
 
-                        Console.WriteLine($"{priceType} {timeInterval} {assetPair.Id}: {candles.Count} [{candlesSw.Elapsed.TotalSeconds} sec.]");
+                        if (candlesSw.Elapsed.TotalSeconds > 2)
+                            Console.WriteLine($"{priceType} {timeInterval} {assetPair.Id}: {candles.Count} [{candlesSw.Elapsed.TotalSeconds} sec.]");
+                        
                         candlesSw.Reset();
 
                         await _candlesCacheService.InitializeAsync(assetPair.Id, priceType, timeInterval, candles, slotType);
                     }
                 }
 
-                Console.WriteLine($"{assetPair.Id} candles history is cached");
+                pairSw.Stop();
+                Console.WriteLine($"{assetPair.Id} candles history is cached [{pairSw.Elapsed}]");
+                pairSw.Reset();
             }
             catch (Exception ex)
             {
