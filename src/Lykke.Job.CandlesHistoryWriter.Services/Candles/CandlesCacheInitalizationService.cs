@@ -115,7 +115,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         {
             try
             {
-                var sw = new Stopwatch();
+                var candlesSw = new Stopwatch();
                 Console.WriteLine($"Caching {assetPair.Id} candles history...");
 
                 foreach (var priceType in Constants.StoredPriceTypes)
@@ -123,15 +123,15 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                     foreach (var timeInterval in Constants.StoredIntervals)
                     {
                         
-                        sw.Start();
+                        candlesSw.Start();
                         var candles = await _candlesHistoryRepository.GetExactCandlesAsync(assetPair.Id, timeInterval, priceType, now, _amountOfCandlesToStore);
-                        sw.Stop();
+                        candlesSw.Stop();
                         
                         if (!candles.Any()) 
                             continue;
 
-                        Console.WriteLine($"{priceType} {timeInterval} {assetPair.Id}: {candles.Count} [{sw.Elapsed.TotalSeconds} sec.]");
-                        sw.Reset();
+                        Console.WriteLine($"{priceType} {timeInterval} {assetPair.Id}: {candles.Count} [{candlesSw.Elapsed.TotalSeconds} sec.]");
+                        candlesSw.Reset();
 
                         await _candlesCacheService.InitializeAsync(assetPair.Id, priceType, timeInterval, candles, slotType);
                     }
