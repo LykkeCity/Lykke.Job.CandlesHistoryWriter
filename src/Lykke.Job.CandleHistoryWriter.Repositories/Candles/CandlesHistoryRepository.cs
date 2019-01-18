@@ -21,7 +21,8 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
         private readonly ILogFactory _logFactory;
         private readonly IReloadingManager<Dictionary<string, string>> _assetConnectionStrings;
         private readonly DateTime _minDate;
-        private const int MaxEmptyIntervalsCount = 20;
+        private const int MaxEmptyIntervalsCount = 10;
+        private const int MaxIntervalsCount = 10;
 
         private readonly ConcurrentDictionary<string, AssetPairCandlesHistoryRepository> _assetPairRepositories;
 
@@ -188,7 +189,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                 }
                 
                 alignedToDate = alignedFromDate;
-                var maxIntervals = GetMaxIntervalsCount(timeInterval);
+                var maxIntervals = MaxIntervalsCount;
                 var needIntervals = candles.Any()
                     ? candlesCount / candles.Count
                     : maxIntervals;
@@ -214,30 +215,6 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             } while (true);
 
             return candlesToCache;
-        }
-
-        private int GetMaxIntervalsCount(CandleTimeInterval interval)
-        {
-            switch (interval)
-            {
-                case CandleTimeInterval.Sec:
-                    return 50;
-                case CandleTimeInterval.Minute:
-                case CandleTimeInterval.Min5:
-                case CandleTimeInterval.Min15:
-                case CandleTimeInterval.Min30:
-                    return 10;
-                case CandleTimeInterval.Hour:
-                case CandleTimeInterval.Hour4:
-                case CandleTimeInterval.Hour6:
-                case CandleTimeInterval.Hour12:
-                case CandleTimeInterval.Day:
-                case CandleTimeInterval.Week:
-                case CandleTimeInterval.Month:
-                    return 1;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(interval), interval, null);
-            }
         }
 
         private (string assetPairId, CandleTimeInterval interval, CandlePriceType priceType) PreEvaluateInputCandleSet(

@@ -252,7 +252,12 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
         public void KeysCount()
         {
-            Console.WriteLine($"Keys in redis: {_server.Keys(_database.Database, "CandlesHistory:*").Count()}");
+            Console.WriteLine($"Keys in redis: {_server.Keys(_database.Database, "CandlesHistory:*").Count() - 2}");
+        }
+
+        public void FlushDb()
+        {
+            _server.FlushDatabase(_database.Database);
         }
 
         private static string GetKey(MarketType market, string assetPairId, CandlePriceType priceType, CandleTimeInterval timeInterval, SlotType slotType)
