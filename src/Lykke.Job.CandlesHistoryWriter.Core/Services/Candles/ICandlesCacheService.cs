@@ -16,6 +16,5 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Services.Candles
         Task<SlotType> GetActiveSlotAsync(MarketType marketType);
         Task SetActiveSlotAsync(MarketType marketType, SlotType slotType);
         void KeysCount();
-        void FlushDb();
     }
 }
