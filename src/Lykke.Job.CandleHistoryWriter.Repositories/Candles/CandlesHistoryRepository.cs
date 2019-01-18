@@ -142,7 +142,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
         {
             var candlesToCache = new List<ICandle>();
             var alignedToDate = to.TruncateTo(timeInterval).AddIntervalTicks(1, timeInterval);
-            var alignedFromDate = alignedToDate.AddIntervalTicks(-candlesCount * 2 - 1, timeInterval);
+            var alignedFromDate = alignedToDate.AddIntervalTicks(-candlesCount - 1, timeInterval);
             
             var repo = GetRepo(assetPairId, timeInterval);
             var candleInterval = alignedToDate - alignedFromDate;
@@ -154,11 +154,8 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             {
                 var candles = (await repo.GetCandlesAsync(priceType, timeInterval, alignedFromDate, alignedToDate)).ToList();
                 
-                if (candles.Count > candlesCount * 3)
-                {
-                    Console.WriteLine($"{priceType} {timeInterval} {assetPairId}: Got {candles.Count} candles! (period from {alignedFromDate} to {alignedToDate}");
-                }
-
+                Console.WriteLine($"{priceType} {timeInterval} {assetPairId}: Got {candles.Count} candles. [from {alignedFromDate:dd.MM.yyyy hh:mm:ss} to {alignedToDate:dd.MM.yyyy hh:mm:ss}]");
+                
                 if (candles.Any())
                 {
                     emptyIntervals = 0;
@@ -167,7 +164,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                     if (candlesToCache.Count >= candlesCount)
                     {
                         if (processedInvervals > 1)
-                            Console.WriteLine($"{priceType} {timeInterval} {assetPairId}: {processedInvervals} invervals prccessed");
+                            Console.WriteLine($"{priceType} {timeInterval} {assetPairId}: {processedInvervals} intervals processed");
                         candlesToCache = candlesToCache
                             .Skip(candlesToCache.Count - candlesCount)
                             .ToList();
@@ -201,7 +198,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
                 try
                 {
-                    alignedFromDate = alignedToDate.AddMilliseconds(-(candleInterval * needIntervals * (emptyIntervals + 1)).TotalMilliseconds).TruncateTo(timeInterval);
+                    alignedFromDate = alignedToDate.AddMilliseconds(-(candleInterval * needIntervals).TotalMilliseconds).TruncateTo(timeInterval);
                 }
                 catch (ArgumentOutOfRangeException)
                 {
