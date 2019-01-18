@@ -221,7 +221,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             switch (interval)
             {
                 case CandleTimeInterval.Sec:
-                    return 150;
+                    return 50;
                 case CandleTimeInterval.Minute:
                 case CandleTimeInterval.Min5:
                 case CandleTimeInterval.Min15:
