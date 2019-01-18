@@ -117,6 +117,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         public void ShowStat()
         {
             Console.WriteLine($"Avg for pair processing: {_pairTime.Values.Sum()/_pairTime.Keys.Count} sec");
+            _candlesCacheService.KeysCount();
         }
 
         private async Task CacheAssetPairCandlesAsync(AssetPair assetPair, DateTime now, SlotType slotType)

@@ -21,7 +21,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
         private readonly ILogFactory _logFactory;
         private readonly IReloadingManager<Dictionary<string, string>> _assetConnectionStrings;
         private readonly DateTime _minDate;
-        private const int MaxEmptyIntervalsCount = 10;
+        private const int MaxEmptyIntervalsCount = 20;
 
         private readonly ConcurrentDictionary<string, AssetPairCandlesHistoryRepository> _assetPairRepositories;
 
@@ -200,7 +200,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
                 try
                 {
-                    alignedFromDate = alignedToDate.AddMilliseconds(-(candleInterval * needIntervals*(emptyIntervals + 1)).TotalMilliseconds).TruncateTo(timeInterval);
+                    alignedFromDate = alignedToDate.AddMilliseconds(-(candleInterval * needIntervals * (emptyIntervals + 1)).TotalMilliseconds).TruncateTo(timeInterval);
                 }
                 catch (ArgumentOutOfRangeException)
                 {
@@ -221,7 +221,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             switch (interval)
             {
                 case CandleTimeInterval.Sec:
-                    return 50;
+                    return 150;
                 case CandleTimeInterval.Minute:
                 case CandleTimeInterval.Min5:
                 case CandleTimeInterval.Min15:

@@ -30,13 +30,16 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         private readonly IDatabase _database;
         private readonly MarketType _market;
         private SlotType? _activeSlot;
+        private IServer _server;
 
-        public RedisCandlesCacheService(ICandlesCacheSemaphore cacheSem, IHealthService healthService, IDatabase database, MarketType market)
+        public RedisCandlesCacheService(ICandlesCacheSemaphore cacheSem, IHealthService healthService, IDatabase database, MarketType market, IConnectionMultiplexer connectionMultiplexer)
         {
             _cacheSem = cacheSem ?? throw new ArgumentNullException(nameof(cacheSem));
             _healthService = healthService ?? throw new ArgumentNullException(nameof(healthService));
             _database = database ?? throw new ArgumentNullException(nameof(database));
             _market = market;
+            var endPoints = connectionMultiplexer.GetEndPoints();
+            _server = connectionMultiplexer.GetServer(endPoints.First());
         }
 
         public IImmutableDictionary<string, IImmutableList<ICandle>> GetState()
@@ -245,6 +248,11 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             var key = GetActiveSlotKey(marketType);
             await _database.StringSetAsync(key, slotType.ToString());
             _activeSlot = slotType;
+        }
+
+        public void KeysCount()
+        {
+            Console.WriteLine($"Keys in redis: {_server.Keys(_database.Database, "CandlesHistory:*")}");
         }
 
         private static string GetKey(MarketType market, string assetPairId, CandlePriceType priceType, CandleTimeInterval timeInterval, SlotType slotType)
