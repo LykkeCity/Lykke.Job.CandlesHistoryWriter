@@ -184,7 +184,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                     emptyIntervals++;
                 }
 
-                if (alignedFromDate < _minDate || emptyIntervals > MaxEmptyIntervalsCount)
+                if (alignedFromDate <= _minDate || emptyIntervals > MaxEmptyIntervalsCount)
                 {
                     if (emptyIntervals > MaxEmptyIntervalsCount)
                         Console.WriteLine($"{priceType} {timeInterval} {assetPairId}: {MaxEmptyIntervalsCount} empty intervals reached");
