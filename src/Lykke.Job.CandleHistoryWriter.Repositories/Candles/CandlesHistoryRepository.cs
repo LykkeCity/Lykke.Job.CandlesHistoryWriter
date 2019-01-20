@@ -226,7 +226,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             switch (timeInterval)
             {
                 case CandleTimeInterval.Minute:
-                    return 4;
+                    return 8;
                 case CandleTimeInterval.Hour:
                     return 2;
                 case CandleTimeInterval.Day:
