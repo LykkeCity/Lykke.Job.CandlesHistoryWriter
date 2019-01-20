@@ -213,7 +213,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                 }
 
                 if (alignedFromDate < _minDate)
-                    alignedToDate = _minDate;
+                    alignedFromDate = _minDate;
 
                 processedInvervals++;
             } while (true);
