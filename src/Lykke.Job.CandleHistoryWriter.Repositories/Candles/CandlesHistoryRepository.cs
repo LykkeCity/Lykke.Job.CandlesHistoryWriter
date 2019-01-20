@@ -141,8 +141,14 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
         public async Task<IReadOnlyCollection<ICandle>> GetExactCandlesAsync(string assetPairId, CandleTimeInterval timeInterval, CandlePriceType priceType, DateTime to, int candlesCount)
         {
             var candlesToCache = new List<ICandle>();
+
+            var intervalMultiplier = GetIntervalMultiplier(timeInterval);
+            
             var alignedToDate = to.TruncateTo(timeInterval).AddIntervalTicks(1, timeInterval);
-            var alignedFromDate = alignedToDate.AddIntervalTicks(-candlesCount - 1, timeInterval);
+            var alignedFromDate = alignedToDate.AddIntervalTicks(-candlesCount * intervalMultiplier - 1, timeInterval);
+
+            if (alignedFromDate < _minDate)
+                alignedFromDate = _minDate;
             
             var repo = GetRepo(assetPairId, timeInterval);
             var candleInterval = alignedToDate - alignedFromDate;
@@ -153,8 +159,9 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             do
             {
                 var candles = (await repo.GetCandlesAsync(priceType, timeInterval, alignedFromDate, alignedToDate)).ToList();
+                var totalIntervals = GetTotalIntervalsCount(alignedToDate - _minDate, timeInterval);
                 
-                Console.WriteLine($"{priceType} {timeInterval} {assetPairId}: Got {candles.Count} candles. [from {alignedFromDate:dd.MM.yyyy hh:mm:ss} to {alignedToDate:dd.MM.yyyy hh:mm:ss}]");
+                Console.WriteLine($"{priceType} {timeInterval} {assetPairId}: Got {candles.Count} candles. [from {alignedFromDate:dd.MM.yyyy hh:mm:ss} to {alignedToDate:dd.MM.yyyy hh:mm:ss} = {alignedToDate - alignedFromDate} ({totalIntervals} {timeInterval} intervals)]");
                 
                 if (candles.Any())
                 {
@@ -184,7 +191,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
                     break;
                 }
-                
+
                 alignedToDate = alignedFromDate;
                 var maxIntervals = MaxIntervalsCount;
                 var needIntervals = candles.Any()
@@ -198,7 +205,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
                 try
                 {
-                    alignedFromDate = alignedToDate.AddMilliseconds(-(candleInterval * needIntervals).TotalMilliseconds).TruncateTo(timeInterval);
+                    alignedFromDate = alignedToDate.AddMilliseconds(-(candleInterval * intervalMultiplier * needIntervals).TotalMilliseconds).TruncateTo(timeInterval);
                 }
                 catch (ArgumentOutOfRangeException)
                 {
@@ -212,6 +219,42 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             } while (true);
 
             return candlesToCache;
+        }
+
+        private int GetIntervalMultiplier(CandleTimeInterval timeInterval)
+        {
+            switch (timeInterval)
+            {
+                case CandleTimeInterval.Minute:
+                    return 4;
+                case CandleTimeInterval.Hour:
+                    return 2;
+                case CandleTimeInterval.Day:
+                case CandleTimeInterval.Week:
+                case CandleTimeInterval.Month:
+                    return 1;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(timeInterval), timeInterval, null);
+            }
+        }
+
+        private int GetTotalIntervalsCount(TimeSpan period, CandleTimeInterval timeInterval)
+        {
+            switch (timeInterval)
+            {
+                case CandleTimeInterval.Minute:
+                    return (int)period.TotalMinutes;
+                case CandleTimeInterval.Hour:
+                    return (int)period.TotalHours;
+                case CandleTimeInterval.Day:
+                    return (int)period.TotalDays;
+                case CandleTimeInterval.Week:
+                    return (int)period.TotalDays / 7;
+                case CandleTimeInterval.Month:
+                    return (int)period.TotalDays/30;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(timeInterval), timeInterval, null);
+            }
         }
 
         private (string assetPairId, CandleTimeInterval interval, CandlePriceType priceType) PreEvaluateInputCandleSet(
