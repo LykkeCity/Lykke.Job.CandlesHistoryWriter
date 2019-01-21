@@ -160,8 +160,6 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                 var candles = (await repo.GetCandlesAsync(priceType, timeInterval, alignedFromDate, alignedToDate)).ToList();
                 var totalIntervals = GetTotalIntervalsCount(alignedToDate - _minDate, timeInterval);
                 
-                Console.WriteLine($"{priceType} {timeInterval} {assetPairId}: Got {candles.Count} candles. [from {alignedFromDate:dd.MM.yyyy hh:mm:ss} to {alignedToDate:dd.MM.yyyy hh:mm:ss} = {alignedToDate - alignedFromDate} ({totalIntervals} {timeInterval} intervals)]");
-                
                 if (candles.Any())
                 {
                     emptyIntervals = 0;
@@ -191,7 +189,6 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                     break;
                 }
 
-                alignedToDate = alignedFromDate.AddIntervalTicks(1, timeInterval);
                 var maxIntervals = MaxIntervalsCount;
                 var needIntervals = candles.Any()
                     ? candlesCount / candles.Count
@@ -201,6 +198,10 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                 {
                     needIntervals = maxIntervals;
                 }
+                
+                Console.WriteLine($"{priceType} {timeInterval} {assetPairId}: Got {candles.Count} candles. [from {alignedFromDate:dd.MM.yyyy hh:mm:ss} to {alignedToDate:dd.MM.yyyy hh:mm:ss} = {alignedToDate - alignedFromDate} (need intervals: {needIntervals})]");
+                
+                alignedToDate = alignedFromDate.AddIntervalTicks(1, timeInterval);
 
                 try
                 {
