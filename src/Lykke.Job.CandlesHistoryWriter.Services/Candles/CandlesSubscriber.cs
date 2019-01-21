@@ -58,8 +58,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                     .SetMessageDeserializer(new MessagePackMessageDeserializer<CandlesUpdatedEvent>())
                     .SetMessageReadStrategy(new MessageReadQueueStrategy())
                     .Subscribe(ProcessCandlesUpdatedEventAsync)
-                    .CreateDefaultBinding()
-                    .Start();
+                    .CreateDefaultBinding();
+                    //.Start();
             }
             catch (Exception ex)
             {
