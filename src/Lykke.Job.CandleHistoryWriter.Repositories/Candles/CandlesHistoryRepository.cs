@@ -22,7 +22,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
         private readonly IReloadingManager<Dictionary<string, string>> _assetConnectionStrings;
         private readonly DateTime _minDate;
         private const int MaxEmptyIntervalsCount = 10;
-        private const int MaxIntervalsCount = 40;
+        private const int MaxIntervalsCount = 20;
 
         private readonly ConcurrentDictionary<string, AssetPairCandlesHistoryRepository> _assetPairRepositories;
 
