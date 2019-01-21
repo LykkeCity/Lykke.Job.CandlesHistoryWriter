@@ -22,7 +22,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
         private readonly IReloadingManager<Dictionary<string, string>> _assetConnectionStrings;
         private readonly DateTime _minDate;
         private const int MaxEmptyIntervalsCount = 10;
-        private const int MaxIntervalsCount = 20;
+        private const int MaxIntervalsCount = 40;
 
         private readonly ConcurrentDictionary<string, AssetPairCandlesHistoryRepository> _assetPairRepositories;
 
@@ -158,7 +158,6 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             do
             {
                 var candles = (await repo.GetCandlesAsync(priceType, timeInterval, alignedFromDate, alignedToDate)).ToList();
-                var totalIntervals = GetTotalIntervalsCount(alignedToDate - _minDate, timeInterval);
                 
                 if (candles.Any())
                 {
@@ -199,7 +198,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                     needIntervals = maxIntervals;
                 }
                 
-                Console.WriteLine($"{priceType} {timeInterval} {assetPairId}: Got {candles.Count} candles. [from {alignedFromDate:dd.MM.yyyy hh:mm:ss} to {alignedToDate:dd.MM.yyyy hh:mm:ss} = {alignedToDate - alignedFromDate} (need intervals: {needIntervals})]");
+                //Console.WriteLine($"{priceType} {timeInterval} {assetPairId}: Got {candles.Count} candles. [from {alignedFromDate:dd.MM.yyyy hh:mm:ss} to {alignedToDate:dd.MM.yyyy hh:mm:ss} = {alignedToDate - alignedFromDate} (need intervals: {needIntervals})]");
                 
                 alignedToDate = alignedFromDate.AddIntervalTicks(1, timeInterval);
 
