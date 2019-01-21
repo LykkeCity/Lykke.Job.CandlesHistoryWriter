@@ -22,7 +22,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
         private readonly IReloadingManager<Dictionary<string, string>> _assetConnectionStrings;
         private readonly DateTime _minDate;
         private const int MaxEmptyIntervalsCount = 10;
-        private const int MaxIntervalsCount = 10;
+        private const int MaxIntervalsCount = 20;
 
         private readonly ConcurrentDictionary<string, AssetPairCandlesHistoryRepository> _assetPairRepositories;
 
@@ -151,7 +151,6 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                 alignedFromDate = _minDate;
             
             var repo = GetRepo(assetPairId, timeInterval);
-            var candleInterval = alignedToDate - alignedFromDate;
             int emptyIntervals = 0;
             
             int processedInvervals = 1;
@@ -192,7 +191,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                     break;
                 }
 
-                alignedToDate = alignedFromDate;
+                alignedToDate = alignedFromDate.AddIntervalTicks(1, timeInterval);
                 var maxIntervals = MaxIntervalsCount;
                 var needIntervals = candles.Any()
                     ? candlesCount / candles.Count
@@ -205,7 +204,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
                 try
                 {
-                    alignedFromDate = alignedToDate.AddMilliseconds(-(candleInterval * intervalMultiplier * needIntervals).TotalMilliseconds).TruncateTo(timeInterval);
+                    alignedFromDate = alignedToDate.AddIntervalTicks(-candlesCount * intervalMultiplier * needIntervals - 1, timeInterval);
                 }
                 catch (ArgumentOutOfRangeException)
                 {
