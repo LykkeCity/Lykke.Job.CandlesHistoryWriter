@@ -96,7 +96,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                     .Where(a => _candlesHistoryRepository.CanStoreAssetPair(a.Id))
                     .Select(assetPair => CacheAssetPairCandlesAsync(assetPair, now, initSlot));
 
-                foreach (var canlesTask in cacheAssetPairTasks.Batch(Environment.ProcessorCount))
+                Console.WriteLine($"Processors count: {Environment.ProcessorCount}");
+                foreach (var canlesTask in cacheAssetPairTasks.Batch(6))
                 {
                     await Task.WhenAll(canlesTask);
                 }
