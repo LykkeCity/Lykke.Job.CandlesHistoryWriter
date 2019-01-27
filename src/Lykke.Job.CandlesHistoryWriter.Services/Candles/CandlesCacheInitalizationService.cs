@@ -93,10 +93,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                 var assetPairs = await _assetPairsManager.GetAllAsync();
                 var now = _clock.UtcNow;
                 var cacheAssetPairTasks = assetPairs
-                    .Where(a => _candlesHistoryRepository.CanStoreAssetPair(a.Id))
+                    .Where(a => _candlesHistoryRepository.CanStoreAssetPair(a.Id) && a.Id == "BTCUSD")
                     .Select(assetPair => CacheAssetPairCandlesAsync(assetPair, now, initSlot));
 
-                Console.WriteLine($"Processors count: {Environment.ProcessorCount}");
                 foreach (var canlesTask in cacheAssetPairTasks.Batch(6))
                 {
                     await Task.WhenAll(canlesTask);
