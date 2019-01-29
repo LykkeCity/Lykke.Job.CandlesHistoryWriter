@@ -98,6 +98,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             }
             
             _database.WaitAll(tasks.ToArray());
+            await Task.WhenAll(tasks);
         }
 
         public async Task CacheAsync(IReadOnlyList<ICandle> candles)

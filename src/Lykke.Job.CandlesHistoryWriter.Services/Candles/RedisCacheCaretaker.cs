@@ -8,6 +8,7 @@ using JetBrains.Annotations;
 using Lykke.Common.Log;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Candles;
+using Lykke.Job.CandlesProducer.Contract;
 
 namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 {
@@ -17,7 +18,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         private readonly ICandlesHistoryRepository _historyRepository;
         private readonly ICandlesCacheService _redisCacheService;
         private readonly ICandlesCacheInitalizationService _cacheInitalizationService;
-        private readonly int _amountOfCandlesToStore;
+        private readonly Dictionary<CandleTimeInterval, int> _amountOfCandlesToStore;
         private readonly MarketType _marketType;
 
         private readonly TimerTrigger _maintainTicker;
@@ -27,7 +28,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             ICandlesCacheService redisCacheService,
             ICandlesCacheInitalizationService cacheInitalizationService,
             TimeSpan cacheCheckupPeriod,
-            int amountOfCandlesToStore,
+            Dictionary<CandleTimeInterval, int> amountOfCandlesToStore,
             MarketType marketType,
             ILogFactory logFactory)
         {
@@ -66,7 +67,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                 {
                     foreach (var timeInterval in Constants.StoredIntervals)
                     {
-                        tasks.Add(_redisCacheService.TruncateCacheAsync(assetId, priceType, timeInterval, _amountOfCandlesToStore, activeSlot));
+                        tasks.Add(_redisCacheService.TruncateCacheAsync(assetId, priceType, timeInterval, _amountOfCandlesToStore[timeInterval], activeSlot));
                     }
                 }
             }

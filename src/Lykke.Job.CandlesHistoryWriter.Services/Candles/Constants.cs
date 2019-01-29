@@ -7,7 +7,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
     {
         public static readonly ImmutableArray<CandleTimeInterval> StoredIntervals = ImmutableArray.Create
         (
-            CandleTimeInterval.Sec,
             CandleTimeInterval.Minute,
             CandleTimeInterval.Hour,
             CandleTimeInterval.Day,
