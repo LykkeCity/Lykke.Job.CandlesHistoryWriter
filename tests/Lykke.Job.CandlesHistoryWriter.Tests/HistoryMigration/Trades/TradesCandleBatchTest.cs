@@ -214,17 +214,17 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
             historyMaker.FlushCandlesIfAny().Wait();
 
             // Assert
-            Assert.AreEqual(repo.Candles.Count, 6);
+            Assert.AreEqual(repo.Candles.Count, Services.Candles.Constants.DbStoredIntervals.Length);
 
-            var secondsCandle = repo.Candles[CandleTimeInterval.Sec].Single();
+            var minuteCandle = repo.Candles[CandleTimeInterval.Minute].Single();
 
-            Assert.IsTrue(Math.Abs(secondsCandle.Open  - 1_000) < PriceEpsilon);
-            Assert.IsTrue(Math.Abs(secondsCandle.Close - 1_000) < PriceEpsilon);
-            Assert.IsTrue(Math.Abs(secondsCandle.High  - 1_000) < PriceEpsilon);
-            Assert.IsTrue(Math.Abs(secondsCandle.Low   - 1_000) < PriceEpsilon);
+            Assert.IsTrue(Math.Abs(minuteCandle.Open  - 1_000) < PriceEpsilon);
+            Assert.IsTrue(Math.Abs(minuteCandle.Close - 1_000) < PriceEpsilon);
+            Assert.IsTrue(Math.Abs(minuteCandle.High  - 1_000) < PriceEpsilon);
+            Assert.IsTrue(Math.Abs(minuteCandle.Low   - 1_000) < PriceEpsilon);
 
-            Assert.IsTrue(Math.Abs(secondsCandle.TradingVolume         - 1)     < VolumeEpsilon);
-            Assert.IsTrue(Math.Abs(secondsCandle.TradingOppositeVolume - 1_000) < VolumeEpsilon);
+            Assert.IsTrue(Math.Abs(minuteCandle.TradingVolume         - 1)     < VolumeEpsilon);
+            Assert.IsTrue(Math.Abs(minuteCandle.TradingOppositeVolume - 1_000) < VolumeEpsilon);
         }
 
         [TestCategory("TradesMigration")]
@@ -242,17 +242,17 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
             historyMaker.FlushCandlesIfAny().Wait();
 
             // Assert
-            Assert.AreEqual(repo.Candles.Count, 6);
+            Assert.AreEqual(repo.Candles.Count, Services.Candles.Constants.DbStoredIntervals.Length);
 
-            var secondsCandle = repo.Candles[CandleTimeInterval.Sec].Single();
+            var minuteCandle = repo.Candles[CandleTimeInterval.Minute].Single();
 
-            Assert.IsTrue(Math.Abs(secondsCandle.Open  - 100_000) < PriceEpsilon);
-            Assert.IsTrue(Math.Abs(secondsCandle.Close - 100_000) < PriceEpsilon);
-            Assert.IsTrue(Math.Abs(secondsCandle.High  - 100_000) < PriceEpsilon);
-            Assert.IsTrue(Math.Abs(secondsCandle.Low   - 100_000) < PriceEpsilon);
+            Assert.IsTrue(Math.Abs(minuteCandle.Open  - 100_000) < PriceEpsilon);
+            Assert.IsTrue(Math.Abs(minuteCandle.Close - 100_000) < PriceEpsilon);
+            Assert.IsTrue(Math.Abs(minuteCandle.High  - 100_000) < PriceEpsilon);
+            Assert.IsTrue(Math.Abs(minuteCandle.Low   - 100_000) < PriceEpsilon);
 
-            Assert.IsTrue(Math.Abs(secondsCandle.TradingVolume         - 0.000002) < VolumeEpsilon);
-            Assert.IsTrue(Math.Abs(secondsCandle.TradingOppositeVolume - 0.2)      < VolumeEpsilon);
+            Assert.IsTrue(Math.Abs(minuteCandle.TradingVolume         - 0.000002) < VolumeEpsilon);
+            Assert.IsTrue(Math.Abs(minuteCandle.TradingOppositeVolume - 0.2)      < VolumeEpsilon);
         }
 
         [TestCategory("TradesMigration")]
@@ -270,17 +270,17 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
             historyMaker.FlushCandlesIfAny().Wait();
 
             // Assert
-            Assert.AreEqual(repo.Candles.Count, 6);
+            Assert.AreEqual(repo.Candles.Count, Services.Candles.Constants.DbStoredIntervals.Length);
 
-            var secondsCandle = repo.Candles[CandleTimeInterval.Sec].Single();
+            var minuteCandle = repo.Candles[CandleTimeInterval.Minute].Single();
 
-            Assert.IsTrue(Math.Abs(secondsCandle.Open  - 10) < PriceEpsilon);
-            Assert.IsTrue(Math.Abs(secondsCandle.Close - 10) < PriceEpsilon);
-            Assert.IsTrue(Math.Abs(secondsCandle.High  - 10) < PriceEpsilon);
-            Assert.IsTrue(Math.Abs(secondsCandle.Low   - 10) < PriceEpsilon);
+            Assert.IsTrue(Math.Abs(minuteCandle.Open  - 10) < PriceEpsilon);
+            Assert.IsTrue(Math.Abs(minuteCandle.Close - 10) < PriceEpsilon);
+            Assert.IsTrue(Math.Abs(minuteCandle.High  - 10) < PriceEpsilon);
+            Assert.IsTrue(Math.Abs(minuteCandle.Low   - 10) < PriceEpsilon);
 
-            Assert.IsTrue(Math.Abs(secondsCandle.TradingVolume         - 0.825) < VolumeEpsilon);
-            Assert.IsTrue(Math.Abs(secondsCandle.TradingOppositeVolume - 8.25) < VolumeEpsilon);
+            Assert.IsTrue(Math.Abs(minuteCandle.TradingVolume         - 0.825) < VolumeEpsilon);
+            Assert.IsTrue(Math.Abs(minuteCandle.TradingOppositeVolume - 8.25) < VolumeEpsilon);
         }
     }
 
@@ -293,7 +293,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
         public CandlesHistoryRepositoryMock()
         {
             Candles = new Dictionary<CandleTimeInterval, List<ICandle>>();
-            foreach (var si in Services.Candles.Constants.StoredIntervals)
+            foreach (var si in Services.Candles.Constants.DbStoredIntervals)
                 Candles.Add(si, new List<ICandle>());
         }
 
@@ -306,12 +306,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
         }
 
         #region NotImplemented
-
-        public async Task<IReadOnlyCollection<ICandle>> GetExactCandlesAsync(string assetPairId, CandleTimeInterval interval, CandlePriceType priceType, DateTime to,
-            int candlesCount)
-        {
-            throw new NotImplementedException();
-        }
 
         public bool CanStoreAssetPair(string assetPairId)
         {

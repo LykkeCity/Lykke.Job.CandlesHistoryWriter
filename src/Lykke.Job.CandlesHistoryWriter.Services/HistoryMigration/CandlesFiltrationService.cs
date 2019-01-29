@@ -44,12 +44,12 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             // prices, and thus, we will be ready to delete 'em and go back through the stored time period list, from the
             // smallest to the biggest, producing the updated (corrected) candles for each of them.
 
-            for (var i = Constants.StoredIntervals.Length - 1; i >= 0; i--)
+            for (var i = Constants.DbStoredIntervals.Length - 1; i >= 0; i--)
             {
                 List<ICandle> currentCandles;
 
-                var interval = Constants.StoredIntervals[i];
-                if (i == Constants.StoredIntervals.Length - 1)
+                var interval = Constants.DbStoredIntervals[i];
+                if (i == Constants.DbStoredIntervals.Length - 1)
                 {
                     var candles = await _candlesHistoryRepository.GetCandlesAsync(assetPairId, interval,
                         priceType, dateFrom, dateTo);
@@ -99,7 +99,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                 .GroupBy(c => (int)c.TimeInterval)
                 .ToSortedDictionary(g => g.Key);
 
-            if (candlesByInterval.Count != Constants.StoredIntervals.Length)
+            if (candlesByInterval.Count != Constants.DbStoredIntervals.Length)
                 throw new ArgumentException($"Something is wrong: the amount of (unique) time intervals in extreme candles list is not equal to stored intervals array length. " +
                     $"Filtration for {priceType} is impossible.");
 
@@ -176,7 +176,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
         {
             var firstBiggestCandle =
                 await _candlesHistoryRepository.TryGetFirstCandleAsync(assetPairId,
-                    Constants.StoredIntervals.Last(),
+                    Constants.DbStoredIntervals.Last(),
                     priceType);
 
             // If we have no such a candle in repository, we return fake dates for further decision making in the caller code
@@ -212,7 +212,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 
         private static CandleTimeInterval GetSmallerInterval(CandleTimeInterval interval)
         {
-            if (!Constants.StoredIntervals.Contains(interval))
+            if (!Constants.DbStoredIntervals.Contains(interval))
                 throw new ArgumentException($"The candle of the given time interval {interval} can not be stored.");
 
             // The following is important while calculating month candles: we can't derive em from week ones for week
@@ -220,23 +220,23 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             if (interval == CandleTimeInterval.Month)
                 return CandleTimeInterval.Day;
             
-            if (interval == CandleTimeInterval.Sec)
+            if (interval == CandleTimeInterval.Minute)
                 throw new ArgumentException($"There is no smaller stored candle time interval for {interval}.");
 
-            var index = Constants.StoredIntervals.IndexOf(interval);
-            return Constants.StoredIntervals[index - 1];
+            var index = Constants.DbStoredIntervals.IndexOf(interval);
+            return Constants.DbStoredIntervals[index - 1];
         }
 
         private static CandleTimeInterval GetBiggerInterval(CandleTimeInterval interval)
         {
-            if (!Constants.StoredIntervals.Contains(interval))
+            if (!Constants.DbStoredIntervals.Contains(interval))
                 throw new ArgumentException($"The candle of the given time interval {interval} can not be stored.");
 
             if (interval == CandleTimeInterval.Month)
                 throw new ArgumentException($"There is no bigger stored candle time interval for {interval}.");
 
-            var index = Constants.StoredIntervals.IndexOf(interval);
-            return Constants.StoredIntervals[index + 1];
+            var index = Constants.DbStoredIntervals.IndexOf(interval);
+            return Constants.DbStoredIntervals[index + 1];
         }
 
         #endregion

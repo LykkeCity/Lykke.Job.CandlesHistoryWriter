@@ -132,9 +132,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Modules
                 .WithParameter(TypedParameter.From(_settings.Nested(x => _marketType == MarketType.Spot
                     ? x.CandleHistoryAssetConnections
                     : x.MtCandleHistoryAssetConnections)))
-                .WithParameter(TypedParameter.From(_marketType == MarketType.Spot 
-                    ? _settings.CurrentValue.CandlesHistoryWriter.MinDate
-                    : _settings.CurrentValue.MtCandlesHistoryWriter.MinDate))
                 .SingleInstance();
 
             builder.RegisterType<StartupManager>()
@@ -196,8 +193,11 @@ namespace Lykke.Job.CandlesHistoryWriter.Modules
                 .AutoActivate();
 
             builder.RegisterType<CandlesCacheInitalizationService>()
-                .WithParameter(TypedParameter.From(_serviceSettings.HistoryCache.HistoryTicksCacheSize))
+                .WithParameter(TypedParameter.From(_serviceSettings.HistoryCache.HistoryTicksCacheSizes))
                 .WithParameter(TypedParameter.From(_marketType))
+                .WithParameter(TypedParameter.From(_marketType == MarketType.Spot 
+                    ? _settings.CurrentValue.CandlesHistoryWriter.HistoryCache.MinDate
+                    : _settings.CurrentValue.MtCandlesHistoryWriter.HistoryCache.MinDate))
                 .As<ICandlesCacheInitalizationService>()
                 .SingleInstance();
 
@@ -210,7 +210,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Modules
                 .SingleInstance()
                 .WithParameter(TypedParameter.From(_marketType))
                 .WithParameter(TypedParameter.From(_serviceSettings.HistoryCache.CacheCheckupPeriod))
-                .WithParameter(TypedParameter.From(_serviceSettings.HistoryCache.HistoryTicksCacheSize));
+                .WithParameter(TypedParameter.From(_serviceSettings.HistoryCache.HistoryTicksCacheSizes));
 
             RegisterCandlesMigration(builder);
 

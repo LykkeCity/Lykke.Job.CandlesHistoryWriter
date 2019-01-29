@@ -81,7 +81,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                 {
                     await Task.Delay(5000);
                     throw new InvalidOperationException("Initialization in progress");
-                };
+                }
                 
                 var validationErrors = ValidateQuote(candlesUpdate);
 
@@ -95,7 +95,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
                 var candles = candlesUpdate.Candles
                     .Where(candleUpdate =>
-                        Constants.StoredIntervals.Contains(candleUpdate.TimeInterval) &&
+                        Constants.DbStoredIntervals.Contains(candleUpdate.TimeInterval) &&
                         _candlesChecker.CanHandleAssetPair(candleUpdate.AssetPairId))
                     .Select(candleUpdate => Candle.Create(
                         priceType: candleUpdate.PriceType,

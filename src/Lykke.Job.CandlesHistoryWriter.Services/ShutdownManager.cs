@@ -3,7 +3,6 @@ using System.Threading.Tasks;
 using Common.Log;
 using Lykke.Common.Log;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
-using Lykke.Job.CandlesHistoryWriter.Core.Services;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Candles;
 using Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration;
 using Lykke.Sdk;
