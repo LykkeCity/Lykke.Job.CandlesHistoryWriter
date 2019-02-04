@@ -48,7 +48,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             _log = log;
             _connectionString = connectionString;
             const string schemaName = "Candles";
-            var justTableName = $"candleshistory_{assetName}";
+            var justTableName = $"candleshistory_{assetName.Replace("-", "_")}";
             _tableName = $"[{schemaName}].[{justTableName}]";
             var createTableScript = CreateTableScript.Replace("UNIQUEINDEX", assetName);
 
