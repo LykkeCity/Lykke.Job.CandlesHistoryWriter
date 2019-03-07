@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Common;
 using JetBrains.Annotations;
@@ -96,7 +98,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
                 tasks.Add(_database.SortedSetAddAsync(key, entites));
             }
-            
+
             _database.WaitAll(tasks.ToArray());
             await Task.WhenAll(tasks);
         }
@@ -239,6 +241,25 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             var key = GetActiveSlotKey(marketType);
             await _database.StringSetAsync(key, slotType.ToString());
             _activeSlot = slotType;
+        }
+
+        public CandleTimeInterval[] GetRedisCacheIntervals(CandleTimeInterval interval)
+        {
+            switch (interval)
+            {
+                case CandleTimeInterval.Minute:
+                    return new []{CandleTimeInterval.Min5, CandleTimeInterval.Min15, CandleTimeInterval.Min30};
+                case CandleTimeInterval.Hour:
+                    return new []{CandleTimeInterval.Hour, CandleTimeInterval.Hour4, CandleTimeInterval.Hour6, CandleTimeInterval.Hour12};
+                case CandleTimeInterval.Day:
+                    return new[] {CandleTimeInterval.Day};
+                case CandleTimeInterval.Week:
+                    return new[] {CandleTimeInterval.Week};
+                case CandleTimeInterval.Month:
+                    return new[] {CandleTimeInterval.Month};
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(interval), interval, "This interval is not stored in the db");
+            }
         }
 
         private static string GetKey(MarketType market, string assetPairId, CandlePriceType priceType, CandleTimeInterval timeInterval, SlotType slotType)

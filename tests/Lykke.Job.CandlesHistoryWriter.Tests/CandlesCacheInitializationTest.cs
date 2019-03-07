@@ -111,6 +111,32 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
                 .Setup(r => r.CanStoreAssetPair(It.Is<string>(a => new[] {"EURUSD", "USDCHF"}.Contains(a))))
                 .Returns<string>(a => true);
 
+            _cacheServiceMock
+                .Setup(c => c.GetRedisCacheIntervals(It.IsAny<CandleTimeInterval>()))
+                .Returns((CandleTimeInterval interval) =>
+                {
+                    switch (interval)
+                    {
+                        case CandleTimeInterval.Minute:
+                            return new[] {CandleTimeInterval.Min5, CandleTimeInterval.Min15, CandleTimeInterval.Min30};
+                        case CandleTimeInterval.Hour:
+                            return new[]
+                            {
+                                CandleTimeInterval.Hour, CandleTimeInterval.Hour4, CandleTimeInterval.Hour6,
+                                CandleTimeInterval.Hour12
+                            };
+                        case CandleTimeInterval.Day:
+                            return new[] {CandleTimeInterval.Day};
+                        case CandleTimeInterval.Week:
+                            return new[] {CandleTimeInterval.Week};
+                        case CandleTimeInterval.Month:
+                            return new[] {CandleTimeInterval.Month};
+                        default:
+                            throw new ArgumentOutOfRangeException(nameof(interval), interval,
+                                "This interval is not stored in the db");
+                    }
+                });
+
             // Act
             await _service.InitializeCacheAsync();
 
@@ -129,6 +155,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
                                     It.Is<DateTime>(d => d == now.TruncateTo(interval).AddIntervalTicks(-_amountOfCandlesToStore[interval], interval)),
                                     It.Is<DateTime>(d => d == now.TruncateTo(interval).AddIntervalTicks(1, interval))),
                             Times.Once);
+                        
+                        if (interval == CandleTimeInterval.Minute)
+                            continue;
 
                         _cacheServiceMock.Verify(s =>
                                 s.InitializeAsync(

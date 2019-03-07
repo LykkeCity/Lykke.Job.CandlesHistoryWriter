@@ -214,7 +214,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
             historyMaker.FlushCandlesIfAny().Wait();
 
             // Assert
-            Assert.AreEqual(repo.Candles.Count, Services.Candles.Constants.StoredIntervals.Length);
+            Assert.AreEqual(repo.Candles.Count, Services.Candles.Constants.DbStoredIntervals.Length);
 
             var minuteCandle = repo.Candles[CandleTimeInterval.Minute].Single();
 
@@ -242,7 +242,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
             historyMaker.FlushCandlesIfAny().Wait();
 
             // Assert
-            Assert.AreEqual(repo.Candles.Count, Services.Candles.Constants.StoredIntervals.Length);
+            Assert.AreEqual(repo.Candles.Count, Services.Candles.Constants.DbStoredIntervals.Length);
 
             var minuteCandle = repo.Candles[CandleTimeInterval.Minute].Single();
 
@@ -270,7 +270,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
             historyMaker.FlushCandlesIfAny().Wait();
 
             // Assert
-            Assert.AreEqual(repo.Candles.Count, Services.Candles.Constants.StoredIntervals.Length);
+            Assert.AreEqual(repo.Candles.Count, Services.Candles.Constants.DbStoredIntervals.Length);
 
             var minuteCandle = repo.Candles[CandleTimeInterval.Minute].Single();
 
@@ -293,7 +293,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
         public CandlesHistoryRepositoryMock()
         {
             Candles = new Dictionary<CandleTimeInterval, List<ICandle>>();
-            foreach (var si in Services.Candles.Constants.StoredIntervals)
+            foreach (var si in Services.Candles.Constants.DbStoredIntervals)
                 Candles.Add(si, new List<ICandle>());
         }
 

@@ -10,6 +10,7 @@ using Lykke.Job.CandlesHistoryWriter.Core.Services;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Assets;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Candles;
 using Lykke.Job.CandlesProducer.Contract;
+using MoreLinq;
 
 namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 {
@@ -92,11 +93,12 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
                 var assetPairs = await _assetPairsManager.GetAllAsync();
                 var now = _clock.UtcNow;
-                var cacheAssetPairTasks = assetPairs
-                    .Where(a => _candlesHistoryRepository.CanStoreAssetPair(a.Id))
-                    .Select(assetPair => CacheAssetPairCandlesAsync(assetPair, now, initSlot));
 
-                await Task.WhenAll(cacheAssetPairTasks);
+                foreach (var pairs in assetPairs.Where(a => _candlesHistoryRepository.CanStoreAssetPair(a.Id)).Batch(6))
+                {
+                    var tasks = pairs.Select(p => CacheAssetPairCandlesAsync(p, now, initSlot));
+                    await Task.WhenAll(tasks);
+                }
 
                 await _candlesCacheService.InjectCacheValidityToken(); // Initial validation token set.
 
@@ -117,26 +119,35 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             {
                 _log.Info(nameof(InitializeCacheAsync), $"Caching {assetPair.Id} candles history...");
 
-                foreach (var priceType in Constants.StoredPriceTypes)
+                foreach (CandlePriceType priceType in Constants.StoredPriceTypes)
                 {
-                    foreach (var timeInterval in Constants.StoredIntervals)
+                    foreach (CandleTimeInterval timeInterval in Constants.DbStoredIntervals)
                     {
-                        var alignedToDate = now.TruncateTo(timeInterval).AddIntervalTicks(1, timeInterval);
-                        var alignedFromDate = alignedToDate.AddIntervalTicks(-_amountOfCandlesToStore[timeInterval] - 1, timeInterval);
+                        DateTime alignedToDate = now.TruncateTo(timeInterval).AddIntervalTicks(1, timeInterval);
+                        DateTime alignedFromDate = alignedToDate.AddIntervalTicks(-_amountOfCandlesToStore[timeInterval] - 1, timeInterval);
 
                         if (alignedFromDate < _minDate)
                             alignedFromDate = _minDate.TruncateTo(timeInterval);
                         
-                        var candles = (await _candlesHistoryRepository.GetCandlesAsync(assetPair.Id, timeInterval, priceType, alignedFromDate, alignedToDate)).ToArray();
+                        ICandle[] candles = (await _candlesHistoryRepository.GetCandlesAsync(assetPair.Id, timeInterval, priceType, alignedFromDate, alignedToDate)).ToArray();
 
                         if (!candles.Any()) 
                             continue;
                         
-                        await _candlesCacheService.InitializeAsync(assetPair.Id, priceType, timeInterval, candles, slotType);
+                        var intervals = _candlesCacheService.GetRedisCacheIntervals(timeInterval);
+
+                        foreach (var interval in intervals)
+                        {
+                            IEnumerable<ICandle> intervalCandles = interval != timeInterval
+                                ? CandlesMerger.MergeIntoBiggerIntervals(candles, interval)
+                                : candles;
+
+                            await _candlesCacheService.InitializeAsync(assetPair.Id, priceType, interval, intervalCandles.ToArray(), slotType);
+                        }
                     }
                 }
 
-                _log.Info(nameof(InitializeCacheAsync), $"{assetPair.Id} candles history is cached");
+                _log.Info(nameof(InitializeCacheAsync), $"{assetPair.Id} candles history is cached.");
             }
             catch (Exception ex)
             {
