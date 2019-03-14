@@ -65,7 +65,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             {
                 foreach (var priceType in Constants.StoredPriceTypes)
                 {
-                    foreach (var timeInterval in Constants.DbStoredIntervals)
+                    foreach (var timeInterval in Constants.InitFromDbIntervals)
                     {
                         int candlesAmount = _amountOfCandlesToStore[timeInterval];
                         

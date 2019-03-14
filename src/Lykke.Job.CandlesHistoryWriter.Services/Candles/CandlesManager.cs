@@ -26,9 +26,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                 return Task.CompletedTask;
             }
 
-            var cacheTask = _candlesCacheService.CacheAsync(candles);
+            var cacheTask = _candlesCacheService.CacheAsync(candles.Where(x => Constants.RedisIntervals.Contains(x.TimeInterval)).ToArray());
 
-            foreach (var candle in candles)
+            foreach (var candle in candles.Where(x => Constants.DbStoredIntervals.Contains(x.TimeInterval)))
             {
                 _candlesPersistenceQueue.EnqueueCandle(candle);
             }

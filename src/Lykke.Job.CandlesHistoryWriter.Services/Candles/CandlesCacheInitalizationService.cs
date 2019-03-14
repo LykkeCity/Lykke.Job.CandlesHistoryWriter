@@ -121,7 +121,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
                 foreach (CandlePriceType priceType in Constants.StoredPriceTypes)
                 {
-                    foreach (CandleTimeInterval timeInterval in Constants.DbStoredIntervals)
+                    foreach (CandleTimeInterval timeInterval in Constants.InitFromDbIntervals)
                     {
                         DateTime alignedToDate = now.TruncateTo(timeInterval).AddIntervalTicks(1, timeInterval);
                         DateTime alignedFromDate = alignedToDate.AddIntervalTicks(-_amountOfCandlesToStore[timeInterval] - 1, timeInterval);
@@ -138,16 +138,16 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
                         foreach (var interval in intervals)
                         {
-                            IEnumerable<ICandle> intervalCandles = interval != timeInterval
-                                ? CandlesMerger.MergeIntoBiggerIntervals(candles, interval)
+                            ICandle[] intervalCandles = interval != timeInterval
+                                ? CandlesMerger.MergeIntoBiggerIntervals(candles, interval).ToArray()
                                 : candles;
 
-                            await _candlesCacheService.InitializeAsync(assetPair.Id, priceType, interval, intervalCandles.ToArray(), slotType);
+                            await _candlesCacheService.InitializeAsync(assetPair.Id, priceType, interval, intervalCandles, slotType);
                         }
                     }
                 }
 
-                _log.Info(nameof(InitializeCacheAsync), $"{assetPair.Id} candles history is cached.");
+                _log.Info($"{assetPair.Id} candles history is cached.");
             }
             catch (Exception ex)
             {

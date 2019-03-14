@@ -95,7 +95,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
                 var candles = candlesUpdate.Candles
                     .Where(candleUpdate =>
-                        Constants.DbStoredIntervals.Contains(candleUpdate.TimeInterval) &&
                         _candlesChecker.CanHandleAssetPair(candleUpdate.AssetPairId))
                     .Select(candleUpdate => Candle.Create(
                         priceType: candleUpdate.PriceType,
