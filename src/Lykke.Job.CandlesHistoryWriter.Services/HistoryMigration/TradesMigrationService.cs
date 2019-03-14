@@ -127,7 +127,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                 _upperDateLimit = upperDateLimit;
 
                 _persistenceCandleQueue = new Dictionary<CandleTimeInterval, List<ICandle>>();
-                foreach (var si in Candles.Constants.StoredIntervals)
+                foreach (var si in Candles.Constants.DbStoredIntervals)
                     _persistenceCandleQueue.Add(si, new List<ICandle>(_persistenceQueueMaxSize));
 
                 _activeCandles = new Dictionary<CandleTimeInterval, ICandle>();
@@ -153,7 +153,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             {
                 var dataWritingTasks = new List<Task>();
 
-                foreach (var interval in Candles.Constants.StoredIntervals)
+                foreach (var interval in Candles.Constants.DbStoredIntervals)
                 {
                     // If there still remain any active candles which have not been added to persistent queue till this moment.
                     if (_activeCandles.TryGetValue(interval, out var unsavedActiveCandle) &&
@@ -192,7 +192,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             {
                 var dataWritingTasks = new List<Task>();
 
-                foreach (var interval in Candles.Constants.StoredIntervals)
+                foreach (var interval in Candles.Constants.DbStoredIntervals)
                 {
                     if (_activeCandles.TryGetValue(interval, out var activeCandle))
                     {

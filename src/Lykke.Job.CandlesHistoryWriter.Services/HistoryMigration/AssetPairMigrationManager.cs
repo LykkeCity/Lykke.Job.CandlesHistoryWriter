@@ -39,7 +39,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
         private volatile bool _isAskOrBidMigrationCompleted;
 
         private readonly ImmutableArray<CandleTimeInterval> _intervalsToGenerate = Candles.Constants
-            .StoredIntervals
+            .DbStoredIntervals
             .Where(i => i != CandleTimeInterval.Sec)
             .ToImmutableArray();
 

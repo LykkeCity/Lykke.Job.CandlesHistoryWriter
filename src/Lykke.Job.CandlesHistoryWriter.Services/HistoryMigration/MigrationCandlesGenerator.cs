@@ -98,7 +98,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
         {
             foreach (var priceType in Candles.Constants.StoredPriceTypes)
             {
-                foreach (var timeInterval in Candles.Constants.StoredIntervals)
+                foreach (var timeInterval in Candles.Constants.DbStoredIntervals)
                 {
                     _candles.TryRemove(GetKey(assetPair, timeInterval, priceType), out var _);
                 }
