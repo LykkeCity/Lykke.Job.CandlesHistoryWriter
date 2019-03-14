@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
 using Lykke.Job.CandlesProducer.Contract;
@@ -14,17 +13,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
     [TestClass]
     public class CandlesManagerTests
     {
-        private static readonly ImmutableArray<CandleTimeInterval> StoredIntervals = ImmutableArray.Create
-        (
-            CandleTimeInterval.Sec,
-            CandleTimeInterval.Minute,
-            CandleTimeInterval.Min30,
-            CandleTimeInterval.Hour,
-            CandleTimeInterval.Day,
-            CandleTimeInterval.Week,
-            CandleTimeInterval.Month
-        );
-
         private Mock<ICandlesCacheService> _cacheServiceMock;
         private ICandlesManager _manager;
 
@@ -48,8 +36,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
         public async Task Only_candle_for_asset_pairs_with_connection_string_are_processed()
         {
             // Arrange
-            var quote1 = new TestCandle { AssetPairId = "EURUSD", TimeInterval = StoredIntervals.First() };
-            var quote3 = new TestCandle { AssetPairId = "EURRUB", TimeInterval = StoredIntervals.First() };
+            var quote1 = new TestCandle { AssetPairId = "EURUSD", TimeInterval = CandleTimeInterval.Hour };
+            var quote3 = new TestCandle { AssetPairId = "EURRUB", TimeInterval = CandleTimeInterval.Hour };
 
             // Act
             await _manager.ProcessCandlesAsync(new []{quote1, quote3});
