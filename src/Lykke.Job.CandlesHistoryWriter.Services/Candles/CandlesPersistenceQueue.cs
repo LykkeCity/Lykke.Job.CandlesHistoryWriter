@@ -149,18 +149,13 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             try
             {
                 var grouppedCandles = candles
-                    .GroupBy(c => new
-                    {
-                        c.AssetPairId,
-                        c.PriceType,
-                        c.TimeInterval
-                    });
+                    .GroupBy(c => c.AssetPairId);
 
                 foreach (var batch in grouppedCandles.Batch(_settings.NumberOfSaveThreads))
                 {
                     var tasks = batch.Select(g =>
-                        InsertSinglePartitionCandlesAsync(g, g.Key.AssetPairId, g.Key.PriceType,
-                            g.Key.TimeInterval));
+                        InsertSinglePartitionCandlesAsync(g, g.Key, CandlePriceType.Unspecified,
+                            CandleTimeInterval.Unspecified));
 
                     await Task.WhenAll(tasks);
                 }
