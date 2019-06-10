@@ -141,15 +141,20 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
             }
             else
             {
-                builder.RegisterClient<IAssetPairsApi>(_assetSettings.ServiceUrl);
+                builder.RegisterClient<IAssetPairsApi>(_assetSettings.ServiceUrl, builderConfigure =>
+                {
+                    if (!string.IsNullOrWhiteSpace(_assetSettings.ApiKey))
+                    {
+                        builderConfigure = builderConfigure.WithApiKey(_assetSettings.ApiKey);
+                    }
+
+                    return builderConfigure;
+                });
 
                 builder.RegisterType<MtAssetPairsManager>()
                  .As<IAssetPairsManager>()
                  .SingleInstance();
             }
-
-
-
         }
 
         private void RegisterCandles(ContainerBuilder builder)
