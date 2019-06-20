@@ -40,8 +40,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Modules
         public JobModule(IReloadingManager<AppSettings> settings)
         {
             _settings = settings;
-            _marketType = settings.CurrentValue.CandlesHistoryWriter != null 
-                ? MarketType.Spot 
+            _marketType = settings.CurrentValue.CandlesHistoryWriter != null
+                ? MarketType.Spot
                 : MarketType.Mt;
             _serviceSettings = _marketType == MarketType.Spot
                 ? settings.CurrentValue.CandlesHistoryWriter
@@ -95,7 +95,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Modules
         {
             builder.Register(c =>
                 {
-                    var lazy = new Lazy<ConnectionMultiplexer>(() => ConnectionMultiplexer.Connect(_settings.CurrentValue.RedisSettings.Configuration)); 
+                    var lazy = new Lazy<ConnectionMultiplexer>(() => ConnectionMultiplexer.Connect(_settings.CurrentValue.RedisSettings.Configuration));
                     return lazy.Value;
                 })
                 .As<IConnectionMultiplexer>()
@@ -170,7 +170,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Modules
             builder.RegisterType<CandlesManager>()
                 .As<ICandlesManager>()
                 .SingleInstance();
-            
+
             builder.RegisterType<RedisCandlesCacheService>()
                 .As<ICandlesCacheService>()
                 .WithParameter(TypedParameter.From(_marketType))
@@ -195,7 +195,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Modules
             builder.RegisterType<CandlesCacheInitalizationService>()
                 .WithParameter(TypedParameter.From(_serviceSettings.HistoryCache.HistoryTicksCacheSizes))
                 .WithParameter(TypedParameter.From(_marketType))
-                .WithParameter(TypedParameter.From(_marketType == MarketType.Spot 
+                .WithParameter(TypedParameter.From(_marketType == MarketType.Spot
                     ? _settings.CurrentValue.CandlesHistoryWriter.HistoryCache.MinDate
                     : _settings.CurrentValue.MtCandlesHistoryWriter.HistoryCache.MinDate))
                 .As<ICandlesCacheInitalizationService>()
@@ -215,6 +215,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Modules
             RegisterCandlesMigration(builder);
 
             RegisterCandlesFiltration(builder);
+
+            RegisterFixMidCandlePrices(builder);
         }
 
         private void RegisterCandlesMigration(ContainerBuilder builder)
@@ -223,9 +225,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Modules
             {
                 builder.Register(ctx =>
                     new FeedHistoryRepository(AzureTableStorage<FeedHistoryEntity>.Create(
-                        ConstantReloadingManager.From(_serviceSettings.Db.FeedHistoryConnectionString), 
-                        "FeedHistory", 
-                        ctx.Resolve<ILogFactory>(), 
+                        ConstantReloadingManager.From(_serviceSettings.Db.FeedHistoryConnectionString),
+                        "FeedHistory",
+                        ctx.Resolve<ILogFactory>(),
                         maxExecutionTimeout: TimeSpan.FromMinutes(5))))
                     .As<IFeedHistoryRepository>()
                     .SingleInstance();
@@ -251,7 +253,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Modules
             builder.RegisterType<HistoryProvidersManager>()
                 .As<IHistoryProvidersManager>()
                 .SingleInstance();
-                
+
             RegisterHistoryProvider<MeFeedHistoryProvider>(builder);
 
             builder.RegisterType<TradesMigrationHealthService>()
@@ -284,11 +286,18 @@ namespace Lykke.Job.CandlesHistoryWriter.Modules
                 .SingleInstance();
         }
 
-        private static void RegisterHistoryProvider<TProvider>(ContainerBuilder builder) 
+        private static void RegisterHistoryProvider<TProvider>(ContainerBuilder builder)
             where TProvider : IHistoryProvider
         {
             builder.RegisterType<TProvider>()
                 .Named<IHistoryProvider>(typeof(TProvider).Name);
+        }
+
+        private void RegisterFixMidCandlePrices(ContainerBuilder builder)
+        {
+            builder.RegisterType<MidPriceFixManager>()
+                .AsSelf()
+                .SingleInstance();
         }
     }
 }
