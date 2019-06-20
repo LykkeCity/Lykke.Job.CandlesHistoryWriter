@@ -94,7 +94,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             // recalculate (and replace in storage) the bigger candles.
 
             int deletedCountSummary = 0, replacedCountSummary = 0;
-            
+
             var candlesByInterval = extremeCandles
                 .GroupBy(c => (int)c.TimeInterval)
                 .ToSortedDictionary(g => g.Key);
@@ -172,7 +172,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
         #region "Private"
 
         // Calculating the earliest and the latest dates for the biggest interval candles fetching
-        private async Task<(DateTime dateFrom, DateTime dateTo)> GetDateTimeRangeAsync(string assetPairId, CandlePriceType priceType)
+        public async Task<(DateTime dateFrom, DateTime dateTo)> GetDateTimeRangeAsync(string assetPairId, CandlePriceType priceType)
         {
             var firstBiggestCandle =
                 await _candlesHistoryRepository.TryGetFirstCandleAsync(assetPairId,
@@ -219,7 +219,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             // may start/stop not in borders of the month.
             if (interval == CandleTimeInterval.Month)
                 return CandleTimeInterval.Day;
-            
+
             if (interval == CandleTimeInterval.Minute)
                 throw new ArgumentException($"There is no smaller stored candle time interval for {interval}.");
 
