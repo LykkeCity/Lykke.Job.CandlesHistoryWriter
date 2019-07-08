@@ -1,4 +1,7 @@
-﻿using Common.Log;
+﻿// Copyright (c) 2019 Lykke Corp.
+// See the LICENSE file in the project root for more information.
+
+using Common.Log;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.HistoryMigration;
 using Lykke.Job.CandlesProducer.Contract;

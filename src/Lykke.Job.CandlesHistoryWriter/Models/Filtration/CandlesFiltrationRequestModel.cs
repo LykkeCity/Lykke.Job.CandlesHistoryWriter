@@ -1,4 +1,7 @@
-﻿using Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.Filtration;
+﻿// Copyright (c) 2019 Lykke Corp.
+// See the LICENSE file in the project root for more information.
+
+using Lykke.Job.CandlesHistoryWriter.Core.Domain.HistoryMigration.Filtration;
 using System.Collections.Generic;
 
 namespace Lykke.Job.CandlesHistoryWriter.Models.Filtration
