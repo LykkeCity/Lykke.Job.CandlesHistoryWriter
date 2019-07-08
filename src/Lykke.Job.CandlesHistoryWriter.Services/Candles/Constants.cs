@@ -1,4 +1,7 @@
-﻿using System.Collections.Immutable;
+﻿// Copyright (c) 2019 Lykke Corp.
+// See the LICENSE file in the project root for more information.
+
+using System.Collections.Immutable;
 using Lykke.Job.CandlesProducer.Contract;
 
 namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
