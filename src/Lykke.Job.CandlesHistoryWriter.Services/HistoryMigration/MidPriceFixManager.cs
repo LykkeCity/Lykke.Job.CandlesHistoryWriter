@@ -38,63 +38,58 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             _log = logFactory.CreateLog(this);
         }
 
-        public CandlesFiltrationManager.FiltrationLaunchResult FixMidPrices(string assetPairId, bool analyzeOnly)
+        public async Task<LongTaskLaunchResult> RunFixMidPricesAsync(string assetPairId, bool analyzeOnly)
         {
             // We should not run filtration multiple times before the first attempt ends.
             if (Health != null && Health.State == CandlesFiltrationState.InProgress)
-                return CandlesFiltrationManager.FiltrationLaunchResult.AlreadyInProgress;
+                return LongTaskLaunchResult.AlreadyInProgress;
 
             // And also we should check if the specified asset pair is enabled.
-            var storedAssetPair = _assetPairsManager.TryGetEnabledPairAsync(assetPairId).GetAwaiter().GetResult();
+            var storedAssetPair = await _assetPairsManager.TryGetEnabledPairAsync(assetPairId);
             if (storedAssetPair == null || !_candlesHistoryRepository.CanStoreAssetPair(assetPairId))
-                return CandlesFiltrationManager.FiltrationLaunchResult.AssetPairNotSupported;
+                return LongTaskLaunchResult.AssetPairNotSupported;
 
-            _log.Info(nameof(FixMidPrices), $"Starting mid candles price fix for {assetPairId}...");
+            _log.Info($"Starting mid candles price fix for {assetPairId}...");
 
             Health = new MidPricesFixHealthReport(assetPairId, analyzeOnly);
 
-            var tasks = new List<Task>
+#pragma warning disable 4014
+            Task.Run(async () =>
+#pragma warning restore 4014
             {
-                FixMidPricesAsync(assetPairId, storedAssetPair.Accuracy, analyzeOnly)
-            };
+                await FixMidPricesAsync(assetPairId, storedAssetPair.Accuracy, analyzeOnly);
 
-            Task.WhenAll(tasks.ToArray()).ContinueWith(t =>
-            {
                 Health.State = CandlesFiltrationState.Finished;
 
                 if (analyzeOnly)
-                    _log.Info(nameof(FixMidPrices),
-                        $"Mid candle prices fix for {assetPairId} finished: analyze only. Total amount of corrupted candles: {Health.CorruptedCandlesCount}, " +
-                        $" errors count: {Health.Errors.Count}.");
+                    _log.Info($"Mid candle prices fix for {assetPairId} finished: analyze only. Total amount of corrupted candles: {Health.CorruptedCandlesCount}, " +
+                              $" errors count: {Health.Errors.Count}.");
                 else
-                    _log.Info(nameof(FixMidPrices),
-                        $"Mid candle prices fix for {assetPairId} finished. Total amount of corrupted candles: {Health.CorruptedCandlesCount}, " +
-                        $"errors count: {Health.Errors.Count}.");
+                    _log.Info($"Mid candle prices fix for {assetPairId} finished. Total amount of corrupted candles: {Health.CorruptedCandlesCount}, " +
+                              $"errors count: {Health.Errors.Count}.");
             });
 
-            return CandlesFiltrationManager.FiltrationLaunchResult.Started;
+            return LongTaskLaunchResult.Started;
         }
 
         private async Task FixMidPricesAsync(string assetPairId, int assetPairAccuracy, bool analyzeOnly)
         {
             try
             {
-                _log.Info(nameof(FixMidPricesAsync), $"Starting mid candle prices fix for {assetPairId}...");
+                _log.Info($"Starting mid candle prices fix for {assetPairId}...");
 
                 Health.Message = "Getting candles to fix...";
-                var candles = await TryGetCorruptedCandlesAsync(assetPairId, assetPairAccuracy);
+                var candles = await GetFixedCandlesAsync(assetPairId, assetPairAccuracy);
 
                 if (!candles.Any())
                 {
-                    _log.Info(nameof(FixMidPricesAsync),
-                        $"There are no candles to fix for {assetPairId}. Skipping.");
+                    _log.Info($"There are no candles to fix for {assetPairId}. Skipping.");
                     return;
                 }
 
                 if (analyzeOnly)
                 {
-                    _log.Info(nameof(FixMidPricesAsync),
-                        $"Mid candle prices fix for {assetPairId} finished: analyze only. Candles to fix: {Health.CorruptedCandlesCount}");
+                    _log.Info($"Mid candle prices fix for {assetPairId} finished: analyze only. Candles to fix: {Health.CorruptedCandlesCount}");
                     return;
                 }
 
@@ -113,8 +108,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                     Health.FixedCandlesCount += candlesToReplace.Count;
                 }
 
-                _log.Info(nameof(FixMidPricesAsync),
-                    $"Mid candle prices fix for {assetPairId} finished.");
+                _log.Info($"Mid candle prices fix for {assetPairId} finished.");
             }
             catch (Exception ex)
             {
@@ -123,12 +117,12 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             }
         }
 
-        private async Task<IReadOnlyList<ICandle>> TryGetCorruptedCandlesAsync(string assetPairId, int assetPairAccuracy)
+        private async Task<IReadOnlyList<ICandle>> GetFixedCandlesAsync(string assetPairId, int assetPairAccuracy)
         {
             var (dateFrom, dateTo) = await _candlesFiltrationService.GetDateTimeRangeAsync(assetPairId, CandlePriceType.Mid);
 
             if (dateFrom == DateTime.MinValue || dateTo == DateTime.MinValue)
-                return new List<ICandle>();
+                return Array.Empty<ICandle>();
 
             var currentMonthBeginingDateTime = dateTo;
 
@@ -136,16 +130,17 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 
             var (bidMonthCandles, askMonthCandles, midMonthCandles) = await GetCandlesAsync(assetPairId, CandleTimeInterval.Month, dateFrom, dateTo);
 
-            IReadOnlyList<ICandle> lastCandles = GetCorruptedCandlesWithFixedData(bidMonthCandles, askMonthCandles, midMonthCandles, assetPairAccuracy);
+            IReadOnlyList<ICandle> lastCandles = FixMidCandles(bidMonthCandles, askMonthCandles, midMonthCandles, assetPairAccuracy);
 
             // There are no incorrect candles at all - returning.
             if (!lastCandles.Any())
-                return result;
+                return Array.Empty<ICandle>();
 
             result.AddRange(lastCandles);
 
             Health.CorruptedCandlesCount += lastCandles.Count;
 
+            //Constants.DbStoredIntervals.Length - 2 to skip Month interval as its already processed
             for (var i = Constants.DbStoredIntervals.Length - 2; i >= 0; i--)
             {
                 var currentCandles = new List<ICandle>();
@@ -165,9 +160,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
 
                     var (bidCandles, askCandles, midCandles) = await GetCandlesAsync(assetPairId, interval, dateFrom, dateTo);
 
-                    var corruptedCandles = GetCorruptedCandlesWithFixedData(bidCandles, askCandles, midCandles, assetPairAccuracy);
-                    Health.CorruptedCandlesCount += corruptedCandles.Count;
-                    currentCandles.AddRange(corruptedCandles);
+                    var fixedCandles = FixMidCandles(bidCandles, askCandles, midCandles, assetPairAccuracy);
+                    Health.CorruptedCandlesCount += fixedCandles.Count;
+                    currentCandles.AddRange(fixedCandles);
                 }
 
                 lastCandles = currentCandles;
@@ -177,7 +172,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             return result;
         }
 
-        private List<ICandle> GetCorruptedCandlesWithFixedData(IReadOnlyList<ICandle> bidCandles, IReadOnlyList<ICandle> askCandles,
+        private List<ICandle> FixMidCandles(IReadOnlyList<ICandle> bidCandles, IReadOnlyList<ICandle> askCandles,
             IReadOnlyList<ICandle> midCandles, int assetPairAccuracy)
         {
             var result = new List<ICandle>();
@@ -191,7 +186,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                 if (askCandle == null || bidCandle == null)
                     continue;
 
-                var fixedCandle = GetCorruptedCandleWithFixedData(midCandle, askCandle, bidCandle, assetPairAccuracy);
+                var fixedCandle = FixMidCandleOrDefault(midCandle, askCandle, bidCandle, assetPairAccuracy);
 
                 if (fixedCandle == null)
                     continue;
@@ -218,7 +213,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                 midCandles: midCandlesTask.Result.ToList());
         }
 
-        private Candle GetCorruptedCandleWithFixedData(ICandle midCandle, ICandle askCandle, ICandle bidCandle, int assetPairAccuracy)
+        private Candle FixMidCandleOrDefault(ICandle midCandle, ICandle askCandle, ICandle bidCandle, int assetPairAccuracy)
         {
             var openPrice = Math.Round((askCandle.Open + bidCandle.Open) / 2, assetPairAccuracy);
             var closePrice = Math.Round((askCandle.Close + bidCandle.Close) / 2, assetPairAccuracy);

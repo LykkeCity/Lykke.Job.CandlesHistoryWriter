@@ -173,10 +173,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
 
             switch (filtrationLaunchResult)
             {
-                case CandlesFiltrationManager.FiltrationLaunchResult.AlreadyInProgress:
+                case LongTaskLaunchResult.AlreadyInProgress:
                     return Ok("The previous filtration session still has not been finished. Parallel execution is not supported.");
 
-                case CandlesFiltrationManager.FiltrationLaunchResult.AssetPairNotSupported:
+                case LongTaskLaunchResult.AssetPairNotSupported:
                     return BadRequest(
                         ErrorResponse.Create("The specified asset pair is not supported."));
 
@@ -202,7 +202,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
 
         #endregion
 
-        #region MidPriceFiz
+        #region MidPriceFix
 
         /// <summary>
         /// Initiates mid candles price correction.
@@ -211,16 +211,16 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
         /// <param name="analyzeOnly">Set this flag to True if it is only needed to estimate the amount of incorrect candles without any correction. Otherwise, set it False.</param>
         [HttpPost]
         [Route("midCandlesPriceFix/{assetPairId}")]
-        public IActionResult FixMidCandlePrices(string assetPairId, bool analyzeOnly)
+        public async Task<IActionResult> FixMidCandlePrices(string assetPairId, bool analyzeOnly)
         {
-            var filtrationLaunchResult = _midPriceFixManager.FixMidPrices(assetPairId, analyzeOnly);
+            var filtrationLaunchResult = await _midPriceFixManager.RunFixMidPricesAsync(assetPairId, analyzeOnly);
 
             switch (filtrationLaunchResult)
             {
-                case CandlesFiltrationManager.FiltrationLaunchResult.AlreadyInProgress:
+                case LongTaskLaunchResult.AlreadyInProgress:
                     return Ok("The previous fix mid prices session still has not been finished. Parallel execution is not supported.");
 
-                case CandlesFiltrationManager.FiltrationLaunchResult.AssetPairNotSupported:
+                case LongTaskLaunchResult.AssetPairNotSupported:
                     return BadRequest(
                         ErrorResponse.Create("The specified asset pair is not supported."));
 
