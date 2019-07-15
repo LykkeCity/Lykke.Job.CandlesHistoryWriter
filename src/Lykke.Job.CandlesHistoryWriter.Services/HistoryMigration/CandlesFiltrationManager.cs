@@ -18,13 +18,6 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
     [UsedImplicitly]
     public class CandlesFiltrationManager
     {
-        public enum FiltrationLaunchResult
-        {
-            Started,
-            AlreadyInProgress,
-            AssetPairNotSupported
-        }
-
         private readonly IAssetPairsManager _assetPairsManager;
         private readonly ICandlesHistoryRepository _candlesHistoryRepository;
         private readonly ICandlesFiltrationService _candlesFiltrationService;
@@ -47,16 +40,16 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
             Health = null;
         }
 
-        public FiltrationLaunchResult Filtrate(ICandlesFiltrationRequest request, bool analyzeOnly)
+        public LongTaskLaunchResult Filtrate(ICandlesFiltrationRequest request, bool analyzeOnly)
         {
             // We should not run filtration multiple times before the first attempt ends.
             if (Health != null && Health.State == CandlesFiltrationState.InProgress)
-                return FiltrationLaunchResult.AlreadyInProgress;
+                return LongTaskLaunchResult.AlreadyInProgress;
 
             // And also we should check if the specified asset pair is enabled.
             var storedAssetPair = _assetPairsManager.TryGetEnabledPairAsync(request.AssetPairId).GetAwaiter().GetResult();
             if (storedAssetPair == null || !_candlesHistoryRepository.CanStoreAssetPair(request.AssetPairId))
-                return FiltrationLaunchResult.AssetPairNotSupported;
+                return LongTaskLaunchResult.AssetPairNotSupported;
 
             var epsilon = Math.Pow(10, -storedAssetPair.Accuracy);
 
@@ -96,7 +89,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                         $"total amount of replaced bigger candles: {Health.ReplacedCandlesCount.Values.Sum()}. Errors count: {Health.Errors.Count}.");
             });
 
-            return FiltrationLaunchResult.Started;
+            return LongTaskLaunchResult.Started;
         }
 
         private async Task DoFiltrateAsync(string assetPairId, double limitLow, double limitHigh, CandlePriceType priceType, double epsilon, bool analyzeOnly)
@@ -122,7 +115,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration
                 {
                     var secondCandlesCount = extremeCandles
                         .Count(c => c.TimeInterval == CandleTimeInterval.Sec);
-                    
+
                     Health.DeletedCandlesCount[priceType] = secondCandlesCount;
                     Health.ReplacedCandlesCount[priceType] = extremeCandles.Count - secondCandlesCount;
 

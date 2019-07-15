@@ -13,7 +13,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
     {
         public bool IsShuttedDown { get; private set; }
         public bool IsShuttingDown { get; private set; }
-        
+
         private readonly ILog _log;
         private readonly ICandlesSubscriber _candlesSubcriber;
         private readonly ISnapshotSerializer _snapshotSerializer;
@@ -25,7 +25,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
 
         public ShutdownManager(
             ILogFactory logFactory,
-            ICandlesSubscriber candlesSubscriber, 
+            ICandlesSubscriber candlesSubscriber,
             ISnapshotSerializer snapshotSerializer,
             ICandlesPersistenceQueueSnapshotRepository persistenceQueueSnapshotRepository,
             ICandlesPersistenceQueue persistenceQueue,
@@ -35,7 +35,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
         {
             if (logFactory == null)
                 throw new ArgumentNullException(nameof(logFactory));
-            
+
             _log = logFactory.CreateLog(this);
 
             _candlesSubcriber = candlesSubscriber ?? throw new ArgumentNullException(nameof(candlesSubscriber));
@@ -59,13 +59,13 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
             }
 
             _log.Info(nameof(StopAsync), "Stopping persistence manager...");
-                
+
             _persistenceManager.Stop();
 
             _log.Info(nameof(StopAsync), "Stopping persistence queue...");
-                
+
             _persistenceQueue.Stop();
-            
+
             _log.Info(nameof(StopAsync), "Serializing state...");
 
             await _snapshotSerializer.SerializeAsync(_persistenceQueue, _persistenceQueueSnapshotRepository);

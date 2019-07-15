@@ -6,8 +6,6 @@ using Lykke.Job.CandlesHistoryWriter.Models.Migration;
 using Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration;
 using Lykke.Job.CandlesHistoryWriter.Services.HistoryMigration.HistoryProviders.MeFeedHistory;
 using Microsoft.AspNetCore.Mvc;
-using Lykke.Job.CandlesProducer.Contract;
-using Constants = Lykke.Job.CandlesHistoryWriter.Services.Candles.Constants;
 
 namespace Lykke.Job.CandlesHistoryWriter.Controllers
 {
@@ -19,6 +17,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
         private readonly CandlesMigrationManager _candlesMigrationManager;
         private readonly TradesMigrationManager _tradesMigrationManager;
         private readonly CandlesFiltrationManager _candlesFiltrationManager;
+        private readonly MidPriceFixManager _midPriceFixManager;
         private readonly IHistoryProvidersManager _historyProvidersManager;
         private readonly TradesMigrationHealthService _tradesMigrationHealthService;
 
@@ -27,15 +26,17 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
         #region Init
 
         public CandlesHistoryMigrationController(
-            CandlesMigrationManager candlesMigrationManager, 
+            CandlesMigrationManager candlesMigrationManager,
             TradesMigrationManager tradesMigrationManager,
             CandlesFiltrationManager candlesFiltrationManager,
+            MidPriceFixManager midPriceFixManager,
             IHistoryProvidersManager historyProvidersManager,
             TradesMigrationHealthService tradesMigrationHealthService)
         {
             _candlesMigrationManager = candlesMigrationManager;
             _tradesMigrationManager = tradesMigrationManager;
             _candlesFiltrationManager = candlesFiltrationManager;
+            _midPriceFixManager = midPriceFixManager;
             _historyProvidersManager = historyProvidersManager;
             _tradesMigrationHealthService = tradesMigrationHealthService;
         }
@@ -172,10 +173,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
 
             switch (filtrationLaunchResult)
             {
-                case CandlesFiltrationManager.FiltrationLaunchResult.AlreadyInProgress:
+                case LongTaskLaunchResult.AlreadyInProgress:
                     return Ok("The previous filtration session still has not been finished. Parallel execution is not supported.");
 
-                case CandlesFiltrationManager.FiltrationLaunchResult.AssetPairNotSupported:
+                case LongTaskLaunchResult.AssetPairNotSupported:
                     return BadRequest(
                         ErrorResponse.Create("The specified asset pair is not supported."));
 
@@ -192,6 +193,50 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
         public IActionResult ExtremumFilterHealth()
         {
             var healthReport = _candlesFiltrationManager.Health;
+
+            if (healthReport == null)
+                return NoContent();
+
+            return Ok(healthReport);
+        }
+
+        #endregion
+
+        #region MidPriceFix
+
+        /// <summary>
+        /// Initiates mid candles price correction.
+        /// </summary>
+        /// <param name="assetPairId">Asset pair to fix.</param>
+        /// <param name="analyzeOnly">Set this flag to True if it is only needed to estimate the amount of incorrect candles without any correction. Otherwise, set it False.</param>
+        [HttpPost]
+        [Route("midCandlesPriceFix/{assetPairId}")]
+        public async Task<IActionResult> FixMidCandlePrices(string assetPairId, bool analyzeOnly)
+        {
+            var filtrationLaunchResult = await _midPriceFixManager.RunFixMidPricesAsync(assetPairId, analyzeOnly);
+
+            switch (filtrationLaunchResult)
+            {
+                case LongTaskLaunchResult.AlreadyInProgress:
+                    return Ok("The previous fix mid prices session still has not been finished. Parallel execution is not supported.");
+
+                case LongTaskLaunchResult.AssetPairNotSupported:
+                    return BadRequest(
+                        ErrorResponse.Create("The specified asset pair is not supported."));
+
+                default:
+                    return Ok();
+            }
+        }
+
+        /// <summary>
+        /// Shows the state of the actual candles filtration session.
+        /// </summary>
+        [HttpGet]
+        [Route("midCandlesPriceFix/health")]
+        public IActionResult FixMidCandlesPricesHealth()
+        {
+            var healthReport = _midPriceFixManager.Health;
 
             if (healthReport == null)
                 return NoContent();
