@@ -1,10 +1,10 @@
 
-IF EXISTS(SELECT job_id FROM msdb.dbo.sysjobs WHERE (name = N'Candles Cleanup Job'))
+IF NOT EXISTS(SELECT job_id FROM msdb.dbo.sysjobs WHERE (name = N'Candles Cleanup Job'))
     BEGIN
-        EXEC Candles.sp_add_job
+        EXEC msdb.dbo.sp_add_job
              @job_name = N'Candles Cleanup Job' ;
 
-        EXEC sp_add_jobstep
+        EXEC msdb.dbo.sp_add_jobstep
              @job_name = N'Candles Cleanup Job',
              @step_name = N'Candles Cleanup',
              @subsystem = N'TSQL',
@@ -12,6 +12,6 @@ IF EXISTS(SELECT job_id FROM msdb.dbo.sysjobs WHERE (name = N'Candles Cleanup Jo
              @retry_attempts = 0,
              @retry_interval = 0 ;
 
-        EXEC Candles.sp_add_jobserver
+        EXEC msdb.dbo.sp_add_jobserver
              @job_name = N'Candles Cleanup Job';
     END
