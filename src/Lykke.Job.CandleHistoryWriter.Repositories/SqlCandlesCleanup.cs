@@ -7,31 +7,42 @@ using System.Threading.Tasks;
 using Common.Log;
 using Dapper;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain;
+using Lykke.Job.CandlesHistoryWriter.Core.Settings;
 
 namespace Lykke.Job.CandleHistoryWriter.Repositories
 {
     public class SqlCandlesCleanup : ICandlesCleanup
     {
+        private readonly CleanupSettings _cleanupSettings;
         private readonly string _connectionString;
         private readonly ILog _log;
 
         private const string CleanupJobName = "Candles.CleanupJob";
 
-        public SqlCandlesCleanup(string connectionString, ILog log)
+        public SqlCandlesCleanup(CleanupSettings cleanupSettings, string connectionString, ILog log)
         {
+            _cleanupSettings = cleanupSettings;
             _connectionString = connectionString;
             _log = log;
         }
 
         public async Task Invoke()
         {
+            if (!_cleanupSettings.Enabled)
+            {
+                await _log.WriteInfoAsync(nameof(ICandlesCleanup), nameof(Invoke),
+                    "Cleanup is disabled in settings, skipping.");
+                return;
+            }
+            
             using (var conn = new SqlConnection(_connectionString))
             {
                 try
                 {
                     //todo ensure that the process is over
-                    
-                    await conn.ExecuteAsync("01_Candles.SP_Cleanup.sql".GetFileContent());
+
+                    var procedureBody = "01_Candles.SP_Cleanup.sql".GetFileContent();
+                    await conn.ExecuteAsync(string.Format(procedureBody, _cleanupSettings.GetFormatParams()));
                     await conn.ExecuteAsync("02_Candles.CleanupJob.sql".GetFileContent());
 
                     await conn.ExecuteAsync($"EXEC {CleanupJobName}");

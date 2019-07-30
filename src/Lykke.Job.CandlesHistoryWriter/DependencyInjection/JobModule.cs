@@ -273,6 +273,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
                     .SingleInstance();
 
                 builder.RegisterType<SqlCandlesCleanup>()
+                    .WithParameter(TypedParameter.From(_settings.CleanupSettings))
                     .WithParameter(TypedParameter.From(_settings.Db.SnapshotsConnectionString))
                     .As<ICandlesCleanup>();
             }

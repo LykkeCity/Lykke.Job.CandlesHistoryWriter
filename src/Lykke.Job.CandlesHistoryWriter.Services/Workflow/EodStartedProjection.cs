@@ -4,6 +4,7 @@
 using System.Threading.Tasks;
 using BookKeeper.Client.Workflow.Events;
 using JetBrains.Annotations;
+using Lykke.Job.CandlesHistoryWriter.Core.Domain;
 
 namespace Lykke.Job.CandlesHistoryWriter.Services.Workflow
 {
@@ -13,14 +14,17 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Workflow
     [UsedImplicitly]
     public class EodStartedProjection
     {
-        public EodStartedProjection()
+        private readonly ICandlesCleanup _candlesCleanup;
+
+        public EodStartedProjection(ICandlesCleanup candlesCleanup)
         {
+            _candlesCleanup = candlesCleanup;
         }
 
         [UsedImplicitly]
         public async Task Handle(EodProcessStartedEvent @event)
         {
-            
+            await _candlesCleanup.Invoke();
         }
     }
 }
