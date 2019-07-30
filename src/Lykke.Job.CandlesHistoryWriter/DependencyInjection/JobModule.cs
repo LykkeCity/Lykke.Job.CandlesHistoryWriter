@@ -12,6 +12,7 @@ using Common.Log;
 using Lykke.Common;
 using MarginTrading.SettingsService.Contracts;
 using Lykke.HttpClientGenerator;
+using Lykke.Job.CandleHistoryWriter.Repositories;
 using Lykke.Job.CandleHistoryWriter.Repositories.Candles;
 using Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryProviders.MeFeedHistory;
 using Lykke.Job.CandleHistoryWriter.Repositories.Snapshots;
@@ -35,6 +36,7 @@ using Lykke.SettingsReader;
 using Microsoft.Extensions.DependencyInjection;
 using StackExchange.Redis;
 using Lykke.Logs.MsSql;
+using Moq;
 
 namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
 {
@@ -270,13 +272,17 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
                         new SqlCandlesPersistenceQueueSnapshotRepository(_dbSettings.CurrentValue.SnapshotsConnectionString))
                     .SingleInstance();
 
+                builder.RegisterType<SqlCandlesCleanup>()
+                    .WithParameter(TypedParameter.From(_settings.Db.SnapshotsConnectionString))
+                    .As<ICandlesCleanup>();
             }
             else if (_settings.Db.StorageMode == StorageMode.Azure)
             {
                 builder.RegisterType<CandlesPersistenceQueueSnapshotRepository>()
                     .As<ICandlesPersistenceQueueSnapshotRepository>()
                     .WithParameter(TypedParameter.From(AzureBlobStorage.Create(_dbSettings.ConnectionString(x => x.SnapshotsConnectionString), TimeSpan.FromMinutes(10))));
-
+                
+                builder.Register(ctx => Mock.Of<SqlCandlesCleanup>()).As<ICandlesCleanup>();
             }
 
             builder.RegisterType<RedisCacheTruncator>()
