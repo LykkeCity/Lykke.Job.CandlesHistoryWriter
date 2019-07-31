@@ -90,6 +90,7 @@ namespace Lykke.Job.CandlesHistoryWriter
                     settings.CurrentValue.MonitoringServiceClient,
                     candlesHistoryWriter.Nested(x => x.Db),
                     Log));
+                builder.RegisterModule(new CqrsModule(settings.CurrentValue.MtCandlesHistoryWriter.Cqrs, Log));
                 builder.Populate(services);
                 ApplicationContainer = builder.Build();
 

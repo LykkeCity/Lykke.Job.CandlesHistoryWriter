@@ -3,6 +3,7 @@
 
 using System;
 using JetBrains.Annotations;
+using Lykke.Job.CandlesHistoryWriter.Core.Settings;
 using Lykke.SettingsReader.Attributes;
 
 namespace Lykke.Job.CandlesHistoryWriter.Services.Settings
@@ -34,5 +35,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Settings
         
         [Optional]
         public bool UseSerilog { get; set; }
+
+        public CqrsSettings Cqrs { get; set; }
+        
+        [Optional]
+        public CleanupSettings CleanupSettings { get; set; } = new CleanupSettings();
     }
 }
