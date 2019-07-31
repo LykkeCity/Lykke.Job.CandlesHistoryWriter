@@ -14,6 +14,7 @@ using MarginTrading.SettingsService.Contracts;
 using Lykke.HttpClientGenerator;
 using Lykke.Job.CandleHistoryWriter.Repositories;
 using Lykke.Job.CandleHistoryWriter.Repositories.Candles;
+using Lykke.Job.CandleHistoryWriter.Repositories.Cleanup;
 using Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryProviders.MeFeedHistory;
 using Lykke.Job.CandleHistoryWriter.Repositories.Snapshots;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain;

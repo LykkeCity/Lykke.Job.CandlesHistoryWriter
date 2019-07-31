@@ -18,9 +18,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Controllers
         }
 
         /// <summary>
-        /// For testing purposes only!
+        /// Invokes candles cleanup. For testing purposes only!
         /// </summary>
-        [HttpPost]
+        [HttpPost("invoke-cleanup")]
         public async Task InvokeCleanup()
         {
             await _candlesCleanup.Invoke();

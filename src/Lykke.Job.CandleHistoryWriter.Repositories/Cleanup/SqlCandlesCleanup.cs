@@ -4,20 +4,19 @@
 using System;
 using System.Data.SqlClient;
 using System.Threading.Tasks;
+using Common;
 using Common.Log;
 using Dapper;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain;
 using Lykke.Job.CandlesHistoryWriter.Core.Settings;
 
-namespace Lykke.Job.CandleHistoryWriter.Repositories
+namespace Lykke.Job.CandleHistoryWriter.Repositories.Cleanup
 {
     public class SqlCandlesCleanup : ICandlesCleanup
     {
         private readonly CleanupSettings _cleanupSettings;
         private readonly string _connectionString;
         private readonly ILog _log;
-
-        private const string CleanupJobName = "Candles.CleanupJob";
 
         public SqlCandlesCleanup(CleanupSettings cleanupSettings, string connectionString, ILog log)
         {
@@ -39,13 +38,22 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories
             {
                 try
                 {
-                    //todo ensure that the process is over
+                    var status = await conn.QuerySingleOrDefaultAsync<JobStatus>(
+                        "03_Candles.CleanupJobValidation.sql".GetFileContent());
+
+                    if (status?.StepStatus == "Running")
+                    {
+                        throw new Exception($"Previous cleanup process is still running, it is prohibited to run new process until previous is finished. Statistics: {status.ToJson()}.");
+                    }
+
+                    await _log.WriteInfoAsync(nameof(ICandlesCleanup), nameof(Invoke),
+                        $"Previous cleanup statistics: {status?.ToJson() ?? "no data"}.");
 
                     var procedureBody = "01_Candles.SP_Cleanup.sql".GetFileContent();
                     await conn.ExecuteAsync(string.Format(procedureBody, _cleanupSettings.GetFormatParams()));
                     await conn.ExecuteAsync("02_Candles.CleanupJob.sql".GetFileContent());
 
-                    await conn.ExecuteAsync($"EXEC {CleanupJobName}");
+                    await conn.ExecuteAsync("EXEC msdb.dbo.sp_start_job 'Candles Cleanup Job'");
 
                     await _log.WriteInfoAsync(nameof(ICandlesCleanup), nameof(Invoke), "Candles cleanup started.");
                 }
