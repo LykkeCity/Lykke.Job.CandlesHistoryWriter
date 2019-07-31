@@ -27,10 +27,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Settings
         [Optional] public int NumberOfTi3000000 { get; set; }
         [Optional] public int NumberOfTiDefault { get; set; } = 10000;
 
-        public int[] GetFormatParams() => new[]
+        public object[] GetFormatParams() => new[]
         {
             NumberOfTi1, NumberOfTi60, NumberOfTi300, NumberOfTi900, NumberOfTi1800, NumberOfTi3600, NumberOfTi7200,
             NumberOfTi21600, NumberOfTi43200, NumberOfTi86400, NumberOfTi604800, NumberOfTi3000000,
-        }.Select(x => x == default ? NumberOfTiDefault: x).ToArray();
+        }.Select(x => x == default ? NumberOfTiDefault: x).Cast<object>().ToArray();
     }
 }

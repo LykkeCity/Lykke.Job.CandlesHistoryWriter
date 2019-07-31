@@ -11,47 +11,17 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 {
     public class SqlCandleHistoryItem : ICandle
     {
-        public string AssetPairId { get; }
-        public CandlePriceType PriceType { get; }
-        public CandleTimeInterval TimeInterval { get; }
-        public DateTime Timestamp { get; }
-        public double Open { get; }
-        public double Close { get; }
-        public double High { get; }
-        public double Low { get; }
-        public double TradingVolume { get; }
-        public double TradingOppositeVolume { get; }
-        public double LastTradePrice { get; }
-        public DateTime LastUpdateTimestamp { get; }
-
-        private SqlCandleHistoryItem(
-            long Id,
-            string assetPairId,
-            int priceType,
-            double open,
-            double close,
-            double high,
-            double low,
-            int timeInterval,
-            double tradingVolume,
-            double tradingOppositeVolume,
-            double lastTradePrice,
-            DateTime timestamp,
-            DateTime lastUpdateTimestamp)
-        {
-            AssetPairId = assetPairId;
-            PriceType = (CandlePriceType)priceType;
-            TimeInterval = (CandleTimeInterval)timeInterval;
-            Timestamp = timestamp;
-            Open = open;
-            Close = close;
-            High = high;
-            Low = low;
-            TradingVolume = tradingVolume;
-            TradingOppositeVolume = tradingOppositeVolume;
-            LastTradePrice = lastTradePrice;
-            LastUpdateTimestamp = lastUpdateTimestamp;
-        }
-
+        public string AssetPairId { get; set; }
+        public CandlePriceType PriceType { get; set; }
+        public CandleTimeInterval TimeInterval { get; set; }
+        public DateTime Timestamp { get; set; }
+        public double Open { get; set; }
+        public double Close { get; set; }
+        public double High { get; set; }
+        public double Low { get; set; }
+        public double TradingVolume { get; set; }
+        public double TradingOppositeVolume { get; set; }
+        public double LastTradePrice { get; set; }
+        public DateTime LastUpdateTimestamp { get; set; }
     }
 }
