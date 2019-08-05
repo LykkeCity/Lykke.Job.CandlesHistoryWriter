@@ -19,7 +19,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Cleanup
         private readonly CleanupSettings _cleanupSettings;
         private readonly string _connectionString;
         private readonly ILog _log;
-        private static bool _inProgress;
+        private static int _inProgress;
 
         public SqlCandlesCleanup(CleanupSettings cleanupSettings, string connectionString, ILog log)
         {
@@ -39,7 +39,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Cleanup
                 
             using (var conn = new SqlConnection(_connectionString))
             {
-                if (_inProgress)
+                if (1 == Interlocked.Exchange(ref _inProgress, 1))
                 {
                     await _log.WriteInfoAsync(nameof(ICandlesCleanup), nameof(Invoke),
                         "Cleanup is already in progress, skipping.");
@@ -48,8 +48,6 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Cleanup
                 
                 try
                 {
-                    _inProgress = true;
-                    
                     var procedureBody = "01_Candles.SP_Cleanup.sql".GetFileContent();
                     await conn.ExecuteAsync(string.Format(procedureBody, _cleanupSettings.GetFormatParams()));
 
@@ -70,7 +68,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Cleanup
                 }
                 finally
                 {
-                    _inProgress = false;
+                    Interlocked.Exchange(ref _inProgress, 0);
                 }
             }
         }
