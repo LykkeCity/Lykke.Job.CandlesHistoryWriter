@@ -3,6 +3,8 @@
 
 using System;
 using System.Data.SqlClient;
+using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
@@ -17,6 +19,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Cleanup
         private readonly CleanupSettings _cleanupSettings;
         private readonly string _connectionString;
         private readonly ILog _log;
+        private static int _inProgress;
 
         public SqlCandlesCleanup(CleanupSettings cleanupSettings, string connectionString, ILog log)
         {
@@ -33,34 +36,39 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Cleanup
                     "Cleanup is disabled in settings, skipping.");
                 return;
             }
-            
+                
             using (var conn = new SqlConnection(_connectionString))
             {
+                if (1 == Interlocked.Exchange(ref _inProgress, 1))
+                {
+                    await _log.WriteInfoAsync(nameof(ICandlesCleanup), nameof(Invoke),
+                        "Cleanup is already in progress, skipping.");
+                    return;
+                }
+                
                 try
                 {
-                    var status = await conn.QuerySingleOrDefaultAsync<JobStatus>(
-                        "03_Candles.CleanupJobValidation.sql".GetFileContent());
-
-                    if (status?.StepStatus == "Running")
-                    {
-                        throw new Exception($"Previous cleanup process is still running, it is prohibited to run new process until previous is finished. Statistics: {status.ToJson()}.");
-                    }
-
-                    await _log.WriteInfoAsync(nameof(ICandlesCleanup), nameof(Invoke),
-                        $"Previous cleanup statistics: {status?.ToJson() ?? "no data"}.");
-
                     var procedureBody = "01_Candles.SP_Cleanup.sql".GetFileContent();
                     await conn.ExecuteAsync(string.Format(procedureBody, _cleanupSettings.GetFormatParams()));
-                    await conn.ExecuteAsync("02_Candles.CleanupJob.sql".GetFileContent());
 
-                    await conn.ExecuteAsync("EXEC msdb.dbo.sp_start_job 'Candles Cleanup Job'");
+                    await _log.WriteInfoAsync(nameof(ICandlesCleanup), nameof(Invoke), "Starting candles cleanup.");
+                    var sw = new Stopwatch();
+                    sw.Start();
 
-                    await _log.WriteInfoAsync(nameof(ICandlesCleanup), nameof(Invoke), "Candles cleanup started.");
+                    await conn.ExecuteAsync("EXEC Candles.SP_Cleanup", commandTimeout: 24 * 60 * 60);
+
+                    await _log.WriteInfoAsync(nameof(ICandlesCleanup), nameof(Invoke),
+                        $"Candles cleanup finished in {sw.Elapsed:G}.");
+
                 }
                 catch (Exception ex)
                 {
-                    await _log.WriteErrorAsync(nameof(SqlCandlesCleanup), "Initialization", null, ex);
+                    await _log.WriteErrorAsync(nameof(SqlCandlesCleanup), nameof(Invoke), null, ex);
                     throw;
+                }
+                finally
+                {
+                    Interlocked.Exchange(ref _inProgress, 0);
                 }
             }
         }
