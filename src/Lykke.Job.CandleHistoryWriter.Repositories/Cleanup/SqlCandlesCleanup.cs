@@ -4,6 +4,7 @@
 using System;
 using System.Data.SqlClient;
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
@@ -18,6 +19,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Cleanup
         private readonly CleanupSettings _cleanupSettings;
         private readonly string _connectionString;
         private readonly ILog _log;
+        private static bool _inProgress;
 
         public SqlCandlesCleanup(CleanupSettings cleanupSettings, string connectionString, ILog log)
         {
@@ -34,18 +36,27 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Cleanup
                     "Cleanup is disabled in settings, skipping.");
                 return;
             }
-            
+                
             using (var conn = new SqlConnection(_connectionString))
             {
+                if (_inProgress)
+                {
+                    await _log.WriteInfoAsync(nameof(ICandlesCleanup), nameof(Invoke),
+                        "Cleanup is already in progress, skipping.");
+                    return;
+                }
+                
                 try
                 {
+                    _inProgress = true;
+                    
                     var procedureBody = "01_Candles.SP_Cleanup.sql".GetFileContent();
                     await conn.ExecuteAsync(string.Format(procedureBody, _cleanupSettings.GetFormatParams()));
 
                     await _log.WriteInfoAsync(nameof(ICandlesCleanup), nameof(Invoke), "Starting candles cleanup.");
                     var sw = new Stopwatch();
                     sw.Start();
-                    
+
                     await conn.ExecuteAsync("EXEC Candles.SP_Cleanup", commandTimeout: 24 * 60 * 60);
 
                     await _log.WriteInfoAsync(nameof(ICandlesCleanup), nameof(Invoke),
@@ -56,6 +67,10 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Cleanup
                 {
                     await _log.WriteErrorAsync(nameof(SqlCandlesCleanup), nameof(Invoke), null, ex);
                     throw;
+                }
+                finally
+                {
+                    _inProgress = false;
                 }
             }
         }
