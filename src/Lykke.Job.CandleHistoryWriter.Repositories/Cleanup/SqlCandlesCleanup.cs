@@ -3,6 +3,7 @@
 
 using System;
 using System.Data.SqlClient;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
@@ -38,28 +39,22 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Cleanup
             {
                 try
                 {
-                    var status = await conn.QuerySingleOrDefaultAsync<JobStatus>(
-                        "03_Candles.CleanupJobValidation.sql".GetFileContent());
-
-                    if (status?.StepStatus == "Running")
-                    {
-                        throw new Exception($"Previous cleanup process is still running, it is prohibited to run new process until previous is finished. Statistics: {status.ToJson()}.");
-                    }
-
-                    await _log.WriteInfoAsync(nameof(ICandlesCleanup), nameof(Invoke),
-                        $"Previous cleanup statistics: {status?.ToJson() ?? "no data"}.");
-
                     var procedureBody = "01_Candles.SP_Cleanup.sql".GetFileContent();
                     await conn.ExecuteAsync(string.Format(procedureBody, _cleanupSettings.GetFormatParams()));
-                    await conn.ExecuteAsync("02_Candles.CleanupJob.sql".GetFileContent());
 
-                    await conn.ExecuteAsync("EXEC msdb.dbo.sp_start_job 'Candles Cleanup Job'");
+                    await _log.WriteInfoAsync(nameof(ICandlesCleanup), nameof(Invoke), "Starting candles cleanup.");
+                    var sw = new Stopwatch();
+                    sw.Start();
+                    
+                    await conn.ExecuteAsync("EXEC Candles.SP_Cleanup", commandTimeout: 24 * 60 * 60);
 
-                    await _log.WriteInfoAsync(nameof(ICandlesCleanup), nameof(Invoke), "Candles cleanup started.");
+                    await _log.WriteInfoAsync(nameof(ICandlesCleanup), nameof(Invoke),
+                        $"Candles cleanup finished in {sw.Elapsed:G}.");
+
                 }
                 catch (Exception ex)
                 {
-                    await _log.WriteErrorAsync(nameof(SqlCandlesCleanup), "Initialization", null, ex);
+                    await _log.WriteErrorAsync(nameof(SqlCandlesCleanup), nameof(Invoke), null, ex);
                     throw;
                 }
             }
