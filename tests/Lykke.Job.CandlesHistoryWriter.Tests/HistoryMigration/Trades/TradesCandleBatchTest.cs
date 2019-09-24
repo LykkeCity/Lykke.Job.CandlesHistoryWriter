@@ -217,7 +217,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
             historyMaker.FlushCandlesIfAny().Wait();
 
             // Assert
-            Assert.AreEqual(repo.Candles.Count, 6);
+            Assert.AreEqual(repo.Candles.Count, 12);
 
             var secondsCandle = repo.Candles[CandleTimeInterval.Sec].Single();
 
@@ -245,7 +245,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
             historyMaker.FlushCandlesIfAny().Wait();
 
             // Assert
-            Assert.AreEqual(repo.Candles.Count, 6);
+            Assert.AreEqual(repo.Candles.Count, 12);
 
             var secondsCandle = repo.Candles[CandleTimeInterval.Sec].Single();
 
@@ -273,7 +273,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
             historyMaker.FlushCandlesIfAny().Wait();
 
             // Assert
-            Assert.AreEqual(repo.Candles.Count, 6);
+            Assert.AreEqual(repo.Candles.Count, 12);
 
             var secondsCandle = repo.Candles[CandleTimeInterval.Sec].Single();
 
