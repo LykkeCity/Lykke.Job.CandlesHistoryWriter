@@ -292,7 +292,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
                 .SingleInstance()
                 .WithParameter(TypedParameter.From(_marketType))
                 .WithParameter(TypedParameter.From(_settings.CacheCleanupPeriod))
-                .WithParameter(TypedParameter.From(_settings.HistoryTicksCacheSize))
+                .WithParameter(TypedParameter.From(_settings.CleanupSettings))
                 .AutoActivate();
 
             RegisterCandlesMigration(builder);
