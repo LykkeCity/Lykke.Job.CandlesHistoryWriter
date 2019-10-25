@@ -23,6 +23,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         private readonly IDatabase _database;
         private readonly MarketType _market;
         private readonly CleanupSettings _cleanupSettings;
+        private readonly int _amountOfCandlesToStore;
 
         public RedisCacheTruncator(
             IAssetPairsApi assetPairsApi,
@@ -30,6 +31,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             MarketType market,
             TimeSpan cacheCleanupPeriod,
             CleanupSettings cleanupSettings,
+            int amountOfCandlesToStore,
             ILog log)
             : base(nameof(RedisCacheTruncator), (int)cacheCleanupPeriod.TotalMilliseconds, log)
         {
@@ -37,6 +39,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             _database = database;
             _market = market;
             _cleanupSettings = cleanupSettings;
+            _amountOfCandlesToStore = amountOfCandlesToStore;
         }
 
         public override async Task Execute()
@@ -49,7 +52,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                     {
                         var key = RedisCandlesCacheService.GetKey(_market, assetId, priceType, timeInterval);
 
-                        _database.SortedSetRemoveRangeByRank(key, 0, -timeInterval.GetCleaupSettings(_cleanupSettings) - 1, CommandFlags.FireAndForget);
+                        var stop = _cleanupSettings.Enabled
+                            ? timeInterval.GetCleaupSettings(_cleanupSettings)
+                            : _amountOfCandlesToStore;
+                        _database.SortedSetRemoveRangeByRank(key, 0, -stop - 1, CommandFlags.FireAndForget);
                     }
                 }
             }

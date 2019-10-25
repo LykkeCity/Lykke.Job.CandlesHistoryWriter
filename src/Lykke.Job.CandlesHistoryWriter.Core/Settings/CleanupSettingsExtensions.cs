@@ -9,23 +9,53 @@ namespace Lykke.Job.CandlesHistoryWriter.Core.Settings
     {
         public static int GetCleaupSettings(this CandleTimeInterval timeInterval, CleanupSettings cleanupSettings)
         {
+            var retVal = 0;
+
             switch (timeInterval)
             {
-                case CandleTimeInterval.Sec: return cleanupSettings.NumberOfTi1;
-                case CandleTimeInterval.Minute: return cleanupSettings.NumberOfTi60;
-                case CandleTimeInterval.Min5: return cleanupSettings.NumberOfTi300;
-                case CandleTimeInterval.Min15: return cleanupSettings.NumberOfTi900;
-                case CandleTimeInterval.Min30: return cleanupSettings.NumberOfTi1800;
-                case CandleTimeInterval.Hour: return cleanupSettings.NumberOfTi3600;
-                case CandleTimeInterval.Hour4: return cleanupSettings.NumberOfTi7200;
-                case CandleTimeInterval.Hour6: return cleanupSettings.NumberOfTi21600;
-                case CandleTimeInterval.Hour12: return cleanupSettings.NumberOfTi43200;
-                case CandleTimeInterval.Day: return cleanupSettings.NumberOfTi86400;
-                case CandleTimeInterval.Week: return cleanupSettings.NumberOfTi604800;
-                case CandleTimeInterval.Month: return cleanupSettings.NumberOfTi3000000;
-                case CandleTimeInterval.Unspecified: return cleanupSettings.NumberOfTiDefault;
+                case CandleTimeInterval.Sec:
+                    retVal = cleanupSettings.NumberOfTi1;
+                    break;
+                case CandleTimeInterval.Minute:
+                    retVal = cleanupSettings.NumberOfTi60;
+                    break;
+                case CandleTimeInterval.Min5:
+                    retVal = cleanupSettings.NumberOfTi300;
+                    break;
+                case CandleTimeInterval.Min15:
+                    retVal = cleanupSettings.NumberOfTi900;
+                    break;
+                case CandleTimeInterval.Min30:
+                    retVal = cleanupSettings.NumberOfTi1800;
+                    break;
+                case CandleTimeInterval.Hour:
+                    retVal = cleanupSettings.NumberOfTi3600;
+                    break;
+                case CandleTimeInterval.Hour4:
+                    retVal = cleanupSettings.NumberOfTi7200;
+                    break;
+                case CandleTimeInterval.Hour6:
+                    retVal = cleanupSettings.NumberOfTi21600;
+                    break;
+                case CandleTimeInterval.Hour12:
+                    retVal = cleanupSettings.NumberOfTi43200;
+                    break;
+                case CandleTimeInterval.Day:
+                    retVal = cleanupSettings.NumberOfTi86400;
+                    break;
+                case CandleTimeInterval.Week:
+                    retVal = cleanupSettings.NumberOfTi604800;
+                    break;
+                case CandleTimeInterval.Month:
+                    retVal = cleanupSettings.NumberOfTi3000000;
+                    break;
+                case CandleTimeInterval.Unspecified:
+                    retVal = cleanupSettings.NumberOfTiDefault;
+                    break;
                 default: throw new NotImplementedException();
             }
+
+            return retVal > 0 ? retVal : cleanupSettings.NumberOfTiDefault;
         }
     }
 }
