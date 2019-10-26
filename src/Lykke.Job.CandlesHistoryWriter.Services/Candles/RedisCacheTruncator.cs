@@ -9,8 +9,7 @@ using Common;
 using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
-using Lykke.Job.CandlesHistoryWriter.Core.Settings;
-using Lykke.Job.CandlesProducer.Contract;
+using Lykke.Job.CandlesHistoryWriter.Core.Services.Candles;
 using MarginTrading.SettingsService.Contracts;
 using StackExchange.Redis;
 
@@ -22,24 +21,21 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         private readonly IAssetPairsApi _assetPairsApi;
         private readonly IDatabase _database;
         private readonly MarketType _market;
-        private readonly CleanupSettings _cleanupSettings;
-        private readonly int _amountOfCandlesToStore;
+        private readonly ICandlesAmountManager _candlesAmountManager;
 
         public RedisCacheTruncator(
             IAssetPairsApi assetPairsApi,
             IDatabase database,
             MarketType market,
             TimeSpan cacheCleanupPeriod,
-            CleanupSettings cleanupSettings,
-            int amountOfCandlesToStore,
+            ICandlesAmountManager candlesAmountManager,
             ILog log)
             : base(nameof(RedisCacheTruncator), (int)cacheCleanupPeriod.TotalMilliseconds, log)
         {
             _assetPairsApi = assetPairsApi;
             _database = database;
             _market = market;
-            _cleanupSettings = cleanupSettings;
-            _amountOfCandlesToStore = amountOfCandlesToStore;
+            _candlesAmountManager = candlesAmountManager;
         }
 
         public override async Task Execute()
@@ -52,10 +48,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                     {
                         var key = RedisCandlesCacheService.GetKey(_market, assetId, priceType, timeInterval);
 
-                        var stop = _cleanupSettings.Enabled
-                            ? timeInterval.GetCleaupSettings(_cleanupSettings)
-                            : _amountOfCandlesToStore;
-                        _database.SortedSetRemoveRangeByRank(key, 0, -stop - 1, CommandFlags.FireAndForget);
+                        var candlesAmountToStore = _candlesAmountManager.GetCandlesAmountToStore(timeInterval);
+                        _database.SortedSetRemoveRangeByRank(key, 0, -candlesAmountToStore - 1, CommandFlags.FireAndForget);
                     }
                 }
             }

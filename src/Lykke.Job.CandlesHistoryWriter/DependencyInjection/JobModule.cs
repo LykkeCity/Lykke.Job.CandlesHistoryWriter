@@ -241,6 +241,12 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
                 .As<ICandlesManager>()
                 .SingleInstance();
 
+            builder.RegisterType<CandlesAmountManager>()
+                .WithParameter(TypedParameter.From(_settings.CleanupSettings))
+                .WithParameter(TypedParameter.From(_settings.HistoryTicksCacheSize))
+                .As<ICandlesAmountManager>()
+                .SingleInstance();
+
             builder.RegisterType<RedisCandlesCacheService>()
                 .As<ICandlesCacheService>()
                 .WithParameter(TypedParameter.From(_marketType))
@@ -264,7 +270,6 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
                 .AutoActivate();
 
             builder.RegisterType<CandlesCacheInitalizationService>()
-                .WithParameter(TypedParameter.From(_settings.HistoryTicksCacheSize))
                 .As<ICandlesCacheInitalizationService>();
 
             if (_settings.Db.StorageMode == StorageMode.SqlServer)
@@ -292,8 +297,6 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
                 .SingleInstance()
                 .WithParameter(TypedParameter.From(_marketType))
                 .WithParameter(TypedParameter.From(_settings.CacheCleanupPeriod))
-                .WithParameter(TypedParameter.From(_settings.CleanupSettings))
-                .WithParameter(TypedParameter.From(_settings.HistoryTicksCacheSize))
                 .AutoActivate();
 
             RegisterCandlesMigration(builder);

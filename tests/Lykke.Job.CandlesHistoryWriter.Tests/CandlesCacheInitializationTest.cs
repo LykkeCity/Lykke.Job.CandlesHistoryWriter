@@ -46,6 +46,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
         private Mock<IClock> _dateTimeProviderMock;
         private Mock<ICandlesCacheService> _cacheServiceMock;
         private Mock<ICandlesHistoryRepository> _historyRepositoryMock;
+        private Mock<ICandlesAmountManager> _candlesAmountManager;
         private Mock<IAssetPairsManager> _assetPairsManagerMock;
         private List<AssetPair> _assetPairs;
 
@@ -57,6 +58,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
             _dateTimeProviderMock = new Mock<IClock>();
             _cacheServiceMock = new Mock<ICandlesCacheService>();
             _historyRepositoryMock = new Mock<ICandlesHistoryRepository>();
+            _candlesAmountManager = new Mock<ICandlesAmountManager>();
             _assetPairsManagerMock = new Mock<IAssetPairsManager>();
 
             _assetPairs = new List<AssetPair>
@@ -79,7 +81,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
                 _dateTimeProviderMock.Object,
                 _cacheServiceMock.Object,
                 _historyRepositoryMock.Object,
-                AmountOfCandlesToStore);
+                _candlesAmountManager.Object);
         }
 
         [TestMethod]
