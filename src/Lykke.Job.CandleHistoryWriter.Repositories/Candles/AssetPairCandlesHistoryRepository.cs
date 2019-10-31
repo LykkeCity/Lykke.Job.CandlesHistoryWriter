@@ -205,6 +205,24 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
             return candles.Where(c => c.Timestamp >= from && c.Timestamp < to);
         }
 
+        public async Task<IEnumerable<ICandle>> GetLastCandlesAsync(CandlePriceType priceType, CandleTimeInterval interval, DateTime to, int number)
+        {
+            if (priceType == CandlePriceType.Unspecified)
+            {
+                throw new ArgumentException(nameof(priceType));
+            }
+
+            var query = GetTableQuery(priceType, interval, DateTime.MinValue, to);
+            var entities = await _tableStorage.WhereAsync(query);
+            var candles = entities
+                .SelectMany(e => e.Candles.Select(ci => ci.ToCandle(_assetPairId, e.PriceType, e.DateTime, interval)));
+
+            return candles.Where(c => c.Timestamp < to)
+                .OrderByDescending(c => c.Timestamp)
+                .Take(number)
+                .OrderBy(c => c.Timestamp);
+        }
+
         public async Task<ICandle> TryGetFirstCandleAsync(CandlePriceType priceType, CandleTimeInterval timeInterval)
         {
             var candleEntity = await _tableStorage.GetTopRecordAsync(CandleHistoryEntity.GeneratePartitionKey(priceType));
@@ -218,7 +236,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
         #endregion
 
         #region Delete
-        
+
         #endregion
 
         #region Private

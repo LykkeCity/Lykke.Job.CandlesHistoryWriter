@@ -86,7 +86,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                         $" BEGIN INSERT INTO {_tableName} ({GetColumns}) values ({GetFields}) END";
 
                     await conn.ExecuteAsync(sql, candles, transaction, commandTimeout: WriteCommandTimeout);
-                    
+
                     transaction.Commit();
                 }
                 catch (Exception ex)
@@ -115,6 +115,29 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                 catch (Exception ex)
                 {
                     _log?.WriteErrorAsync(nameof(SqlCandlesHistoryRepository), nameof(GetCandlesAsync),
+                        "Failed to get an candle list", ex);
+                    return Enumerable.Empty<ICandle>();
+                }
+            }
+        }
+
+        public async Task<IEnumerable<ICandle>> GetLastCandlesAsync(CandlePriceType priceType, CandleTimeInterval interval, DateTime to, int number)
+        {
+            var whereClause =
+                "WHERE PriceType=@priceTypeVar AND TimeInterval=@intervalVar AND Timestamp <= @toVar";
+
+            using (var conn = new SqlConnection(_connectionString))
+            {
+                try
+                {
+                    var objects = await conn.QueryAsync<SqlCandleHistoryItem>($"SELECT TOP {number} * FROM {_tableName} {whereClause} ORDER BY Timestamp DESC",
+                        new { priceTypeVar = priceType, intervalVar = interval, toVar = to }, null, commandTimeout: ReadCommandTimeout);
+                    return objects.OrderBy(x => x.Timestamp);
+                }
+
+                catch (Exception ex)
+                {
+                    _log?.WriteErrorAsync(nameof(SqlCandlesHistoryRepository), nameof(GetLastCandlesAsync),
                         "Failed to get an candle list", ex);
                     return Enumerable.Empty<ICandle>();
                 }
