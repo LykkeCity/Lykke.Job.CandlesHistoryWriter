@@ -340,6 +340,11 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests.HistoryMigration.Trades
             throw new NotImplementedException();
         }
 
+        public Task<IEnumerable<ICandle>> GetLastCandlesAsync(string assetPairId, CandleTimeInterval interval, CandlePriceType priceType, DateTime to, int number)
+        {
+            throw new NotImplementedException();
+        }
+
         #endregion
     }
 

@@ -22,7 +22,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         private readonly IClock _clock;
         private readonly ICandlesCacheService _candlesCacheService;
         private readonly ICandlesHistoryRepository _candlesHistoryRepository;
-        private readonly int _amountOfCandlesToStore;
+        private readonly ICandlesAmountManager _candlesAmountManager;
 
         public CandlesCacheInitalizationService(
             ILog log,
@@ -30,14 +30,14 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             IClock clock,
             ICandlesCacheService candlesCacheService,
             ICandlesHistoryRepository candlesHistoryRepository,
-            int amountOfCandlesToStore)
+            ICandlesAmountManager candlesAmountManager)
         {
             _log = log;
             _assetPairsManager = assetPairsManager;
             _clock = clock;
             _candlesCacheService = candlesCacheService;
             _candlesHistoryRepository = candlesHistoryRepository;
-            _amountOfCandlesToStore = amountOfCandlesToStore;
+            _candlesAmountManager = candlesAmountManager;
         }
 
         public async Task InitializeCacheAsync()
@@ -64,9 +64,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                 foreach (var timeInterval in Constants.StoredIntervals)
                 {
                     var alignedToDate = now.TruncateTo(timeInterval).AddIntervalTicks(1, timeInterval);
-                    var alignedFromDate = alignedToDate.AddIntervalTicks(-_amountOfCandlesToStore - 1, timeInterval);
-                    var candles = await _candlesHistoryRepository.GetCandlesAsync(assetPair.Id, timeInterval, priceType, alignedFromDate, alignedToDate);
-                    
+                    var candlesAmountToStore = _candlesAmountManager.GetCandlesAmountToStore(timeInterval);
+                    var candles = await _candlesHistoryRepository.GetLastCandlesAsync(assetPair.Id, timeInterval, priceType, alignedToDate, candlesAmountToStore);
+
                     await _candlesCacheService.InitializeAsync(assetPair.Id, priceType, timeInterval, candles.ToArray());
                 }
             }

@@ -52,6 +52,15 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
         }
 
+        public async Task<IEnumerable<ICandle>> GetLastCandlesAsync(string assetPairId, CandleTimeInterval interval,
+            CandlePriceType priceType, DateTime to, int number)
+        {
+            var repo = GetRepo(assetPairId);
+
+            return await repo.GetLastCandlesAsync(priceType, interval, to, number);
+
+        }
+
         public async Task<ICandle> TryGetFirstCandleAsync(string assetPairId, CandleTimeInterval interval, CandlePriceType priceType)
         {
             var repo = GetRepo(assetPairId);

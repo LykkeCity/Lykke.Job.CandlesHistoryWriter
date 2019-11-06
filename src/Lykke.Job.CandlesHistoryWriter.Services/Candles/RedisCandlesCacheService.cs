@@ -54,7 +54,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         }
 
         public async Task InitializeAsync(
-            string assetPairId, 
+            string assetPairId,
             CandlePriceType priceType,
             CandleTimeInterval timeInterval,
             IReadOnlyCollection<ICandle> candles)
@@ -105,7 +105,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             var tasks = new List<Task>();
 
             foreach (var candle in candles)
-            {  
+            {
                 var key = GetKey(_market, candle.AssetPairId, candle.PriceType, candle.TimeInterval);
                 var serializedValue = SerializeCandle(candle);
 
@@ -118,7 +118,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
                 // Adds new candle
 
-                tasks.Add(transaction.SortedSetAddAsync(key, serializedValue, 0));
+                tasks.Add(transaction.SortedSetAddAsync(key, serializedValue, candle.Timestamp.Ticks));
             }
 
             if (!await transaction.ExecuteAsync())
