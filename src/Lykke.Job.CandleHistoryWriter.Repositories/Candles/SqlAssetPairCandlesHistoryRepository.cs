@@ -101,7 +101,7 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
         public async Task<IEnumerable<ICandle>> GetCandlesAsync(CandlePriceType priceType, CandleTimeInterval interval, DateTime from, DateTime to)
         {
             var whereClause =
-                "WHERE PriceType=@priceTypeVar AND TimeInterval=@intervalVar AND CAST(Timestamp as time) >= CAST(@fromVar as time) AND CAST(Timestamp as time) <= CAST(@toVar as time)";
+                "WHERE PriceType=@priceTypeVar AND TimeInterval=@intervalVar AND Timestamp >= @fromVar AND Timestamp <= @toVar";
 
             using (var conn = new SqlConnection(_connectionString))
             {
