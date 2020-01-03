@@ -12,7 +12,6 @@ using Common.Log;
 using Lykke.Common;
 using MarginTrading.SettingsService.Contracts;
 using Lykke.HttpClientGenerator;
-using Lykke.Job.CandleHistoryWriter.Repositories;
 using Lykke.Job.CandleHistoryWriter.Repositories.Candles;
 using Lykke.Job.CandleHistoryWriter.Repositories.Cleanup;
 using Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryProviders.MeFeedHistory;
@@ -36,8 +35,8 @@ using Lykke.Job.CandlesHistoryWriter.Services.Settings;
 using Lykke.SettingsReader;
 using Microsoft.Extensions.DependencyInjection;
 using StackExchange.Redis;
-using Lykke.Logs.MsSql;
 using Moq;
+using Lykke.Job.CandlesProducer.Contract;
 
 namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
 {
@@ -91,13 +90,21 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
             RegisterAssets(builder);
             RegisterCandles(builder);
 
+            builder.RegisterType<RabbitMqSubscriptionSettingsHelper>()
+                .As<IRabbitMqSubscriptionSettingsHelper>()
+                .WithParameter(TypedParameter.From(_settings.Rabbit.CandlesSubscription))
+                .SingleInstance();
+            builder.RegisterType<RabbitPoisonHandingService<CandlesUpdatedEvent>>()
+                .As<IRabbitPoisonHandingService<CandlesUpdatedEvent>>()
+                .SingleInstance();
+
             builder.Populate(_services);
         }
 
         private void RegisterResourceMonitor(ContainerBuilder builder)
         {
             var monitorSettings = _settings.ResourceMonitor;
-            if (monitorSettings != null && _monitoringServiceClient != null 
+            if (monitorSettings != null && _monitoringServiceClient != null
                 && !string.IsNullOrEmpty(_monitoringServiceClient.MonitoringServiceUrl))
             {
                 switch (monitorSettings.MonitorMode)
@@ -213,7 +220,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
                     .WithParameter(TypedParameter.From(false))
                     .SingleInstance();
             }
-            
+
 
             builder.RegisterType<SnapshotSerializer>()
                 .As<ISnapshotSerializer>()
@@ -234,7 +241,6 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
 
             builder.RegisterType<CandlesSubscriber>()
                 .As<ICandlesSubscriber>()
-                .WithParameter(TypedParameter.From(_settings.Rabbit.CandlesSubscription))
                 .SingleInstance();
 
             builder.RegisterType<CandlesManager>()
@@ -288,7 +294,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
                 builder.RegisterType<CandlesPersistenceQueueSnapshotRepository>()
                     .As<ICandlesPersistenceQueueSnapshotRepository>()
                     .WithParameter(TypedParameter.From(AzureBlobStorage.Create(_dbSettings.ConnectionString(x => x.SnapshotsConnectionString), TimeSpan.FromMinutes(10))));
-                
+
                 builder.Register(ctx => Mock.Of<SqlCandlesCleanup>()).As<ICandlesCleanup>();
             }
 
@@ -306,7 +312,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
 
         private void RegisterCandlesMigration(ContainerBuilder builder)
         {
-           
+
 
             if (_settings.Migration != null)
             {
@@ -362,7 +368,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
                     .WithParameter(TypedParameter.From(_settings.Migration.MigrationEnabled))
                     .SingleInstance();
             }
-         
+
         }
 
         private void RegisterCandlesFiltration(ContainerBuilder builder)

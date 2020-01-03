@@ -13,7 +13,6 @@ using Lykke.RabbitMqBroker;
 using Lykke.RabbitMqBroker.Subscriber;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Candles;
-using Lykke.Job.CandlesHistoryWriter.Services.Settings;
 
 namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 {
@@ -23,23 +22,21 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         private readonly ILog _log;
         private readonly ICandlesManager _candlesManager;
         private readonly ICandlesChecker _candlesChecker;
-        private readonly RabbitEndpointSettings _settings;
+        private readonly IRabbitMqSubscriptionSettingsHelper _rabbitMqSubscriptionSettingsHelper;
 
         private RabbitMqSubscriber<CandlesUpdatedEvent> _subscriber;
 
-        public CandlesSubscriber(ILog log, ICandlesManager candlesManager, ICandlesChecker checker, RabbitEndpointSettings settings)
+        public CandlesSubscriber(ILog log, ICandlesManager candlesManager, ICandlesChecker checker, IRabbitMqSubscriptionSettingsHelper rabbitMqSubscriptionSettingsHelper)
         {
             _log = log;
             _candlesManager = candlesManager;
             _candlesChecker = checker;
-            _settings = settings;
+            _rabbitMqSubscriptionSettingsHelper = rabbitMqSubscriptionSettingsHelper;
         }
 
         public void Start()
         {
-            var settings = RabbitMqSubscriptionSettings
-                .CreateForSubscriber(_settings.ConnectionString, _settings.Namespace, "candles-v2", _settings.Namespace, "candleshistory")
-                .MakeDurable();
+            var settings = _rabbitMqSubscriptionSettingsHelper.SettingsForCandlesUpdatedEvent;
 
             try
             {
