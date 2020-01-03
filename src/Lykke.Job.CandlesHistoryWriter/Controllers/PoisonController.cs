@@ -1,5 +1,5 @@
 ﻿using System.Threading.Tasks;
-using Lykke.Job.CandlesHistoryWriter.Services;
+using Lykke.Job.CandlesHistoryWriter.Core.Services;
 using Lykke.Job.CandlesProducer.Contract;
 using Microsoft.AspNetCore.Mvc;
 
