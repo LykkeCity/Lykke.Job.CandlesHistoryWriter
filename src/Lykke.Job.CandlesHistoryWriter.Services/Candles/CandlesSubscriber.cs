@@ -13,6 +13,7 @@ using Lykke.RabbitMqBroker;
 using Lykke.RabbitMqBroker.Subscriber;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Candles;
+using Lykke.Job.CandlesHistoryWriter.Services.Settings;
 
 namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 {
@@ -22,29 +23,42 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         private readonly ILog _log;
         private readonly ICandlesManager _candlesManager;
         private readonly ICandlesChecker _candlesChecker;
-        private readonly IRabbitMqSubscriptionSettingsHelper _rabbitMqSubscriptionSettingsHelper;
+        private readonly RabbitEndpointSettings _settings;
 
         private RabbitMqSubscriber<CandlesUpdatedEvent> _subscriber;
 
-        public CandlesSubscriber(ILog log, ICandlesManager candlesManager, ICandlesChecker checker, IRabbitMqSubscriptionSettingsHelper rabbitMqSubscriptionSettingsHelper)
+        public CandlesSubscriber(ILog log, ICandlesManager candlesManager, ICandlesChecker checker, RabbitEndpointSettings settings)
         {
             _log = log;
             _candlesManager = candlesManager;
             _candlesChecker = checker;
-            _rabbitMqSubscriptionSettingsHelper = rabbitMqSubscriptionSettingsHelper;
+            _settings = settings;
+        }
+
+        private RabbitMqSubscriptionSettings _subscriptionSettings;
+        public RabbitMqSubscriptionSettings SubscriptionSettings
+        {
+            get
+            {
+                if (_subscriptionSettings == null)
+                {
+                    _subscriptionSettings = RabbitMqSubscriptionSettings
+                        .CreateForSubscriber(_settings.ConnectionString, _settings.Namespace, "candles-v2", _settings.Namespace, "candleshistory")
+                        .MakeDurable();
+                }
+                return _subscriptionSettings;
+            }
         }
 
         public void Start()
         {
-            var settings = _rabbitMqSubscriptionSettingsHelper.SettingsForCandlesUpdatedEvent;
-
             try
             {
-                _subscriber = new RabbitMqSubscriber<CandlesUpdatedEvent>(settings,
-                        new ResilientErrorHandlingStrategy(_log, settings,
+                _subscriber = new RabbitMqSubscriber<CandlesUpdatedEvent>(SubscriptionSettings,
+                        new ResilientErrorHandlingStrategy(_log, SubscriptionSettings,
                             retryTimeout: TimeSpan.FromSeconds(10),
                             retryNum: 10,
-                            next: new DeadQueueErrorHandlingStrategy(_log, settings)))
+                            next: new DeadQueueErrorHandlingStrategy(_log, SubscriptionSettings)))
                     .SetMessageDeserializer(new MessagePackMessageDeserializer<CandlesUpdatedEvent>())
                     .SetMessageReadStrategy(new MessageReadQueueStrategy())
                     .Subscribe(ProcessCandlesUpdatedEventAsync)

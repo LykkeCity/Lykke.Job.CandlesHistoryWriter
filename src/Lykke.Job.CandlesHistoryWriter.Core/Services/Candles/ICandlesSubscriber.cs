@@ -3,10 +3,12 @@
 
 using Autofac;
 using Common;
+using Lykke.RabbitMqBroker.Subscriber;
 
 namespace Lykke.Job.CandlesHistoryWriter.Core.Services.Candles
 {
     public interface ICandlesSubscriber : IStartable, IStopable
     {
+        RabbitMqSubscriptionSettings SubscriptionSettings { get; }
     }
 }

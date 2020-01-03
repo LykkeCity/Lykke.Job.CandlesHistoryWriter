@@ -90,13 +90,9 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
             RegisterAssets(builder);
             RegisterCandles(builder);
 
-            builder.RegisterType<RabbitMqSubscriptionSettingsHelper>()
-                .As<IRabbitMqSubscriptionSettingsHelper>()
-                .WithParameter(TypedParameter.From(_settings.Rabbit.CandlesSubscription))
-                .SingleInstance();
-            builder.RegisterType<RabbitPoisonHandingService<CandlesUpdatedEvent>>()
-                .As<IRabbitPoisonHandingService<CandlesUpdatedEvent>>()
-                .SingleInstance();
+            _services.AddSingleton<IRabbitPoisonHandingService<CandlesUpdatedEvent>>(provider => new RabbitPoisonHandingService<CandlesUpdatedEvent>(
+                provider.GetService<ILog>(),
+                provider.GetService<ICandlesSubscriber>().SubscriptionSettings));
 
             builder.Populate(_services);
         }
@@ -241,6 +237,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
 
             builder.RegisterType<CandlesSubscriber>()
                 .As<ICandlesSubscriber>()
+                .WithParameter(TypedParameter.From(_settings.Rabbit.CandlesSubscription))
                 .SingleInstance();
 
             builder.RegisterType<CandlesManager>()

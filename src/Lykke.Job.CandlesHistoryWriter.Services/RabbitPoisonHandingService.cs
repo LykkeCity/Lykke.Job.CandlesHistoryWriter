@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Common.Log;
-using Lykke.Job.CandlesHistoryWriter.Services.Candles;
 using Lykke.RabbitMqBroker.Publisher;
 using Lykke.RabbitMqBroker.Subscriber;
 using RabbitMQ.Client;
@@ -16,7 +15,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
     public class RabbitPoisonHandingService<T> : IRabbitPoisonHandingService<T>, IDisposable where T : class
     {
         private readonly ILog _log;
-        private readonly RabbitMqSubscriptionSettings _rabbitMqSubscriptionSettings;
+        private readonly RabbitMqSubscriptionSettings _subscriptionSettings;
 
         private readonly IMessageDeserializer<T> _messageDeserializer = new MessagePackMessageDeserializer<T>();
         private readonly IRabbitMqSerializer<T> _messageSerializer = new MessagePackMessageSerializer<T>();
@@ -25,14 +24,14 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
         private IConnection _connection;
         private readonly SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1, 1);
 
-        private string PoisonQueueName => $"{_rabbitMqSubscriptionSettings.QueueName}-poison";
+        private string PoisonQueueName => $"{_subscriptionSettings.QueueName}-poison";
 
         public RabbitPoisonHandingService(
             ILog log,
-            IRabbitMqSubscriptionSettingsHelper rabbitMqSubscriptionSettingsHelper)
+            RabbitMqSubscriptionSettings subscriptionSettings)
         {
             _log = log;
-            _rabbitMqSubscriptionSettings = rabbitMqSubscriptionSettingsHelper.SettingsForCandlesUpdatedEvent;
+            _subscriptionSettings = subscriptionSettings;
         }
 
         public async Task<string> PutMessagesBack()
@@ -46,9 +45,9 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
 
             try
             {
-                var factory = new ConnectionFactory { Uri = _rabbitMqSubscriptionSettings.ConnectionString };
+                var factory = new ConnectionFactory { Uri = _subscriptionSettings.ConnectionString };
                 await _log.WriteInfoAsync(nameof(RabbitPoisonHandingService<T>), nameof(PutMessagesBack),
-                    $"Trying to connect to {factory.Endpoint} ({_rabbitMqSubscriptionSettings.ExchangeName})");
+                    $"Trying to connect to {factory.Endpoint} ({_subscriptionSettings.ExchangeName})");
 
                 _connection = factory.CreateConnection();
 
@@ -58,11 +57,11 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
 
                 var publishingArgs = new Dictionary<string, object>()
                 {
-                    {"x-dead-letter-exchange", _rabbitMqSubscriptionSettings.DeadLetterExchangeName}
+                    {"x-dead-letter-exchange", _subscriptionSettings.DeadLetterExchangeName}
                 };
 
                 subscriptionChannel.QueueDeclare(PoisonQueueName,
-                    _rabbitMqSubscriptionSettings.IsDurable, false, false, null);
+                    _subscriptionSettings.IsDurable, false, false, null);
 
                 var messagesFound = subscriptionChannel.MessageCount(PoisonQueueName);
                 var processedMessages = 0;
@@ -83,8 +82,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
                         $"{messagesFound} messages found in poison queue. Starting the process.");
                 }
 
-                publishingChannel.QueueDeclare(_rabbitMqSubscriptionSettings.QueueName,
-                    _rabbitMqSubscriptionSettings.IsDurable, false, false, publishingArgs);
+                publishingChannel.QueueDeclare(_subscriptionSettings.QueueName,
+                    _subscriptionSettings.IsDurable, false, false, publishingArgs);
 
                 var consumer = new EventingBasicConsumer(subscriptionChannel);
                 consumer.Received += (ch, ea) =>
@@ -95,12 +94,12 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
                     {
                         try
                         {
-                            var properties = !string.IsNullOrEmpty(_rabbitMqSubscriptionSettings.RoutingKey)
-                                ? new BasicProperties { Type = _rabbitMqSubscriptionSettings.RoutingKey }
+                            var properties = !string.IsNullOrEmpty(_subscriptionSettings.RoutingKey)
+                                ? new BasicProperties { Type = _subscriptionSettings.RoutingKey }
                                 : null;
 
-                            publishingChannel.BasicPublish(_rabbitMqSubscriptionSettings.ExchangeName,
-                                _rabbitMqSubscriptionSettings.RoutingKey ?? "", properties, message);
+                            publishingChannel.BasicPublish(_subscriptionSettings.ExchangeName,
+                                _subscriptionSettings.RoutingKey ?? "", properties, message);
 
                             subscriptionChannel.BasicAck(ea.DeliveryTag, false);
 
@@ -146,7 +145,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
             catch (Exception exception)
             {
                 var result =
-                    $"Exception [{exception.Message}] thrown while putting messages back from poison to queue {_rabbitMqSubscriptionSettings.QueueName}. Stopping the process.";
+                    $"Exception [{exception.Message}] thrown while putting messages back from poison to queue {_subscriptionSettings.QueueName}. Stopping the process.";
 
                 await _log.WriteErrorAsync(nameof(RabbitPoisonHandingService<T>), nameof(PutMessagesBack), result, exception);
 
