@@ -30,12 +30,16 @@ using Lykke.MonitoringServiceApiCaller;
 using Lykke.Logs.MsSql;
 using Lykke.Logs.MsSql.Repositories;
 using Lykke.Logs.Serilog;
+using Microsoft.Extensions.Logging;
+using Lykke.Snow.Common.Startup.Log;
+using Lykke.Snow.Common.Startup.Hosting;
 
 namespace Lykke.Job.CandlesHistoryWriter
 {
     [UsedImplicitly]
     public class Startup
     {
+        private IHostingEnvironment Environment { get; set; }
         private IContainer ApplicationContainer { get; set; }
         private IConfigurationRoot Configuration { get; }
         private ILog Log { get; set; }
@@ -48,6 +52,7 @@ namespace Lykke.Job.CandlesHistoryWriter
                 .AddSerilogJson(env)
                 .AddEnvironmentVariables();
             Configuration = builder.Build();
+            Environment = env;
         }
 
         [UsedImplicitly]
@@ -81,6 +86,8 @@ namespace Lykke.Job.CandlesHistoryWriter
                 
                 Log = CreateLogWithSlack(Configuration, services, candlesHistoryWriter, 
                     settings.CurrentValue.SlackNotifications);
+
+                services.AddSingleton<ILoggerFactory>(x => new WebHostLoggerFactory(Log));
 
                 builder.RegisterModule(new JobModule(
                     marketType,
@@ -145,7 +152,9 @@ namespace Lykke.Job.CandlesHistoryWriter
                 await ApplicationContainer.Resolve<IStartupManager>().StartAsync();
 
                 var monitoringServiceClientSettings =
-                    ApplicationContainer.ResolveOptional<MonitoringServiceClientSettings>(); 
+                    ApplicationContainer.ResolveOptional<MonitoringServiceClientSettings>();
+
+                await Program.Host.WriteLogsAsync(Environment, Log);
 
                 if (monitoringServiceClientSettings != null &&
                     !string.IsNullOrEmpty(monitoringServiceClientSettings.MonitoringServiceUrl))

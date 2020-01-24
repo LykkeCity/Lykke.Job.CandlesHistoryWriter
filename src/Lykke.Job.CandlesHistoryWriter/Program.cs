@@ -12,6 +12,8 @@ namespace Lykke.Job.CandlesHistoryWriter
     [UsedImplicitly]
     internal class Program
     {
+        internal static IWebHost Host { get; private set; }
+
         public static string EnvInfo => Environment.GetEnvironmentVariable("ENV_INFO");
 
         // ReSharper disable once UnusedParameter.Local
@@ -37,7 +39,7 @@ namespace Lykke.Job.CandlesHistoryWriter
 
             try
             {
-                var host = new WebHostBuilder()
+                Host = new WebHostBuilder()
                     .UseKestrel()
                     .UseUrls("http://*:5000")
                     .UseContentRoot(Directory.GetCurrentDirectory())
@@ -45,7 +47,7 @@ namespace Lykke.Job.CandlesHistoryWriter
                     .UseApplicationInsights()
                     .Build();
 
-                host.Run();
+                Host.Run();
             }
             catch (Exception ex)
             {
