@@ -35,19 +35,30 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             _settings = settings;
         }
 
+        private RabbitMqSubscriptionSettings _subscriptionSettings;
+        public RabbitMqSubscriptionSettings SubscriptionSettings
+        {
+            get
+            {
+                if (_subscriptionSettings == null)
+                {
+                    _subscriptionSettings = RabbitMqSubscriptionSettings
+                        .CreateForSubscriber(_settings.ConnectionString, _settings.Namespace, "candles-v2", _settings.Namespace, "candleshistory")
+                        .MakeDurable();
+                }
+                return _subscriptionSettings;
+            }
+        }
+
         public void Start()
         {
-            var settings = RabbitMqSubscriptionSettings
-                .CreateForSubscriber(_settings.ConnectionString, _settings.Namespace, "candles-v2", _settings.Namespace, "candleshistory")
-                .MakeDurable();
-
             try
             {
-                _subscriber = new RabbitMqSubscriber<CandlesUpdatedEvent>(settings,
-                        new ResilientErrorHandlingStrategy(_log, settings,
+                _subscriber = new RabbitMqSubscriber<CandlesUpdatedEvent>(SubscriptionSettings,
+                        new ResilientErrorHandlingStrategy(_log, SubscriptionSettings,
                             retryTimeout: TimeSpan.FromSeconds(10),
                             retryNum: 10,
-                            next: new DeadQueueErrorHandlingStrategy(_log, settings)))
+                            next: new DeadQueueErrorHandlingStrategy(_log, SubscriptionSettings)))
                     .SetMessageDeserializer(new MessagePackMessageDeserializer<CandlesUpdatedEvent>())
                     .SetMessageReadStrategy(new MessageReadQueueStrategy())
                     .Subscribe(ProcessCandlesUpdatedEventAsync)
