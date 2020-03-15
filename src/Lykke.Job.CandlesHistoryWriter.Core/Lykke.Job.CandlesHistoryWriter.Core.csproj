@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netcoreapp2.2</TargetFramework>
-    <Version>1.4.9</Version>
+    <Version>1.4.10</Version>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
