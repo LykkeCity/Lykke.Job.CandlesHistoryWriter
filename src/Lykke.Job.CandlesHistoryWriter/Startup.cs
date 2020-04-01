@@ -2,6 +2,7 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
@@ -33,14 +34,16 @@ using Lykke.Logs.Serilog;
 using Microsoft.Extensions.Logging;
 using Lykke.Snow.Common.Startup.Log;
 using Lykke.Snow.Common.Startup.Hosting;
+using Microsoft.OpenApi.Models;
 
 namespace Lykke.Job.CandlesHistoryWriter
 {
     [UsedImplicitly]
     public class Startup
     {
+        private IReloadingManager<AppSettings> _mtSettingsManager;
         private IHostingEnvironment Environment { get; set; }
-        private IContainer ApplicationContainer { get; set; }
+        private ILifetimeScope ApplicationContainer { get; set; }
         private IConfigurationRoot Configuration { get; }
         private ILog Log { get; set; }
 
@@ -56,12 +59,13 @@ namespace Lykke.Job.CandlesHistoryWriter
         }
 
         [UsedImplicitly]
-        public IServiceProvider ConfigureServices(IServiceCollection services)
+        public void ConfigureServices(IServiceCollection services)
         {
             try
             {
-                services.AddMvc()
-                    .AddJsonOptions(options =>
+                services
+                    .AddControllers()
+                    .AddNewtonsoftJson(options =>
                     {
                         options.SerializerSettings.Converters.Add(new StringEnumConverter());
                         options.SerializerSettings.ContractResolver =
@@ -73,35 +77,19 @@ namespace Lykke.Job.CandlesHistoryWriter
                     options.DefaultLykkeConfiguration("v1", "Candles History Writer Job");
                 });
                 
-                var settings = Configuration.LoadSettings<AppSettings>();
+                _mtSettingsManager = Configuration.LoadSettings<AppSettings>();
+                
 
-                var builder = new ContainerBuilder();
-                var marketType = settings.CurrentValue.CandlesHistoryWriter != null
-                    ? MarketType.Spot
-                    : MarketType.Mt;
-
-                var candlesHistoryWriter = settings.CurrentValue.CandlesHistoryWriter != null
-                    ? settings.Nested(x => x.CandlesHistoryWriter)
-                    : settings.Nested(x => x.MtCandlesHistoryWriter);
+                var candlesHistoryWriter = _mtSettingsManager.CurrentValue.CandlesHistoryWriter != null
+                    ? _mtSettingsManager.Nested(x => x.CandlesHistoryWriter)
+                    : _mtSettingsManager.Nested(x => x.MtCandlesHistoryWriter);
                 
                 Log = CreateLogWithSlack(Configuration, services, candlesHistoryWriter, 
-                    settings.CurrentValue.SlackNotifications);
+                    _mtSettingsManager.CurrentValue.SlackNotifications);
 
                 services.AddSingleton<ILoggerFactory>(x => new WebHostLoggerFactory(Log));
-
-                builder.RegisterModule(new JobModule(
-                    marketType,
-                    candlesHistoryWriter.CurrentValue,
-                    settings.CurrentValue.Assets,
-                    settings.CurrentValue.RedisSettings,
-                    settings.CurrentValue.MonitoringServiceClient,
-                    candlesHistoryWriter.Nested(x => x.Db),
-                    Log));
-                builder.RegisterModule(new CqrsModule(settings.CurrentValue.MtCandlesHistoryWriter.Cqrs, Log));
-                builder.Populate(services);
-                ApplicationContainer = builder.Build();
-
-                return new AutofacServiceProvider(ApplicationContainer);
+                
+                services.AddApplicationInsightsTelemetry();
             }
             catch (Exception ex)
             {
@@ -110,11 +98,35 @@ namespace Lykke.Job.CandlesHistoryWriter
             }
         }
 
+        public void ConfigureContainer(ContainerBuilder builder)
+        {
+            var marketType = _mtSettingsManager.CurrentValue.CandlesHistoryWriter != null
+                ? MarketType.Spot
+                : MarketType.Mt;
+            
+            var candlesHistoryWriter = _mtSettingsManager.CurrentValue.CandlesHistoryWriter != null
+                ? _mtSettingsManager.Nested(x => x.CandlesHistoryWriter)
+                : _mtSettingsManager.Nested(x => x.MtCandlesHistoryWriter);
+            
+            builder.RegisterModule(new JobModule(
+                marketType,
+                candlesHistoryWriter.CurrentValue,
+                _mtSettingsManager.CurrentValue.Assets,
+                _mtSettingsManager.CurrentValue.RedisSettings,
+                _mtSettingsManager.CurrentValue.MonitoringServiceClient,
+                candlesHistoryWriter.Nested(x => x.Db),
+                Log));
+            
+            builder.RegisterModule(new CqrsModule(_mtSettingsManager.CurrentValue.MtCandlesHistoryWriter.Cqrs, Log));
+        }
+
         [UsedImplicitly]
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, IApplicationLifetime appLifetime)
         {
             try
             {
+                ApplicationContainer = app.ApplicationServices.GetAutofacRoot();
+                
                 if (env.IsDevelopment())
                 {
                     app.UseDeveloperExceptionPage();
@@ -122,14 +134,24 @@ namespace Lykke.Job.CandlesHistoryWriter
 
                 app.UseLykkeMiddleware(nameof(Startup), ex => ErrorResponse.Create("Technical problem"));
 
-                app.UseMvc();
+                app.UseRouting();
+                app.UseEndpoints(endpoints => {
+                    endpoints.MapControllers();
+                });
                 app.UseSwagger(c =>
                 {
-                    c.PreSerializeFilters.Add((swagger, httpReq) => swagger.Host = httpReq.Host.Value);
+                    c.PreSerializeFilters.Add((swagger, httpReq) => 
+                        swagger.Servers =
+                            new List<OpenApiServer>
+                            {
+                                new OpenApiServer
+                                {
+                                    Url = $"{httpReq.Scheme}://{httpReq.Host.Value}"
+                                }
+                            });
                 });
                 app.UseSwaggerUI(x =>
                 {
-                    x.RoutePrefix = "swagger/ui";
                     x.SwaggerEndpoint("/swagger/v1/swagger.json", "v1");
                 });
                 app.UseStaticFiles();
@@ -154,7 +176,7 @@ namespace Lykke.Job.CandlesHistoryWriter
                 var monitoringServiceClientSettings =
                     ApplicationContainer.ResolveOptional<MonitoringServiceClientSettings>();
 
-                await Program.Host.WriteLogsAsync(Environment, Log);
+                Program.AppHost.WriteLogs(Environment, Log);
 
                 if (monitoringServiceClientSettings != null &&
                     !string.IsNullOrEmpty(monitoringServiceClientSettings.MonitoringServiceUrl))
