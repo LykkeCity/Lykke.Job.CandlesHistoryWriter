@@ -1,20 +1,20 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp2.2</TargetFramework>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
     <Version>1.4.11</Version>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Lykke.MarginTrading.BookKeeper.Contracts" Version="1.0.9" />
-    <PackageReference Include="Lykke.MarginTrading.SettingsService.Contracts" Version="1.3.1" />
+    <PackageReference Include="Lykke.MarginTrading.SettingsService.Contracts" Version="1.4.2" />
     <PackageReference Include="Lykke.RabbitMqBroker" Version="7.13.1" />
     <PackageReference Include="Lykke.SettingsReader" Version="5.2.0" />
     <PackageReference Include="Lykke.Cqrs" Version="4.6.0" />
     <PackageReference Include="morelinq" Version="2.10.0" />
     <PackageReference Include="Polly" Version="6.1.0" />
-    <PackageReference Include="StackExchange.Redis" Version="1.2.6" />
+    <PackageReference Include="StackExchange.Redis" Version="2.1.28" />
     <PackageReference Include="System.Runtime.Extensions" Version="4.3.0" />
   </ItemGroup>
 
