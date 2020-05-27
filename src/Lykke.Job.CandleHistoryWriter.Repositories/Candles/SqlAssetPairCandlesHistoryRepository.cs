@@ -7,6 +7,7 @@ using System.Data;
 using Microsoft.Data.SqlClient;
 using System.Linq;
 using System.Threading.Tasks;
+using Common;
 using Common.Log;
 using Dapper;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
@@ -61,10 +62,17 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                 try { conn.CreateTableIfDoesntExists(createTableScript, justTableName, schemaName); }
                 catch (Exception ex)
                 {
-                    log?.WriteErrorAsync(nameof(SqlAssetPairCandlesHistoryRepository), "CreateTableIfDoesntExists", null, ex);
+                    log?.WriteErrorAsync(nameof(SqlAssetPairCandlesHistoryRepository), 
+                        "CreateTableIfDoesntExists",
+                        new {createTableScript, justTableName, schemaName}.ToJson(), 
+                        ex);
                     throw;
                 }
             }
+            
+            log?.WriteInfoAsync(nameof(SqlAssetPairCandlesHistoryRepository),
+                nameof(SqlAssetPairCandlesHistoryRepository), 
+                $"New table has been created successfully: {_tableName}");
         }
 
         public async Task InsertOrMergeAsync(IEnumerable<ICandle> candles)
