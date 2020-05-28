@@ -122,8 +122,16 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
 
                 catch (Exception ex)
                 {
-                    _log?.WriteErrorAsync(nameof(SqlCandlesHistoryRepository), nameof(GetCandlesAsync),
-                        "Failed to get an candle list", ex);
+                    _log?.WriteErrorAsync(nameof(SqlCandlesHistoryRepository),
+                        nameof(GetCandlesAsync),
+                        new
+                        {
+                            message = "Failed to get an candle list",
+                            priceType,
+                            interval,
+                            to,
+                            _tableName
+                        }.ToJson(), ex);
                     return Enumerable.Empty<ICandle>();
                 }
             }
@@ -146,7 +154,15 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                 catch (Exception ex)
                 {
                     _log?.WriteErrorAsync(nameof(SqlCandlesHistoryRepository), nameof(GetLastCandlesAsync),
-                        "Failed to get an candle list", ex);
+                        new
+                        {
+                            message = "Failed to get an candle list",
+                            priceType,
+                            interval,
+                            to,
+                            number,
+                            _tableName
+                        }.ToJson(), ex);
                     return Enumerable.Empty<ICandle>();
                 }
             }
