@@ -135,7 +135,7 @@ namespace Lykke.Job.CandlesHistoryWriter
                     app.UseDeveloperExceptionPage();
                 }
                 
-                app.UseLykkeMiddleware(ex => ErrorResponse.Create("Technical problem"));
+                app.UseLykkeMiddleware(nameof(Startup), ex => ErrorResponse.Create("Technical problem"));
 
                 app.UseRouting();
                 app.UseEndpoints(endpoints => {

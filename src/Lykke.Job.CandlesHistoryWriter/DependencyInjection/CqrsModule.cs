@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Autofac;
 using BookKeeper.Client.Workflow.Events;
 using Common.Log;
@@ -11,12 +10,12 @@ using Lykke.Cqrs;
 using Lykke.Cqrs.Configuration;
 using Lykke.Cqrs.Configuration.BoundedContext;
 using Lykke.Cqrs.Configuration.Routing;
-using Lykke.Cqrs.Configuration.Saga;
 using Lykke.Job.CandlesHistoryWriter.Services.Settings;
 using Lykke.Job.CandlesHistoryWriter.Services.Workflow;
 using Lykke.Messaging;
 using Lykke.Messaging.Contract;
 using Lykke.Messaging.RabbitMq;
+using Lykke.Messaging.Serialization;
 
 namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
 {
@@ -65,7 +64,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
         private CqrsEngine CreateEngine(IComponentContext ctx, IMessagingEngine messagingEngine)
         {
             var rabbitMqConventionEndpointResolver =
-                new RabbitMqConventionEndpointResolver("RabbitMq", "messagepack",
+                new RabbitMqConventionEndpointResolver("RabbitMq", SerializationFormat.MessagePack,
                     environment: _settings.EnvironmentName);
 
             var registrations = new List<IRegistration>
