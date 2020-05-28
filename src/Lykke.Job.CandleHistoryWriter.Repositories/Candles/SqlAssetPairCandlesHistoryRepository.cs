@@ -69,10 +69,6 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Candles
                     throw;
                 }
             }
-            
-            log?.WriteInfoAsync(nameof(SqlAssetPairCandlesHistoryRepository),
-                nameof(SqlAssetPairCandlesHistoryRepository), 
-                $"New table has been created successfully: {_tableName}");
         }
 
         public async Task InsertOrMergeAsync(IEnumerable<ICandle> candles)
