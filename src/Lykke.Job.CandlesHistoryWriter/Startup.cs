@@ -10,7 +10,6 @@ using AzureStorage.Tables;
 using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Common.ApiLibrary.Middleware;
-using Lykke.Common.ApiLibrary.Swagger;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain;
 using Lykke.Logs;
 using Lykke.Logs.Slack;
@@ -34,6 +33,7 @@ using Lykke.Logs.Serilog;
 using Microsoft.Extensions.Logging;
 using Lykke.Snow.Common.Startup.Log;
 using Lykke.Snow.Common.Startup.Hosting;
+using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
 
 namespace Lykke.Job.CandlesHistoryWriter
@@ -42,16 +42,19 @@ namespace Lykke.Job.CandlesHistoryWriter
     public class Startup
     {
         private IReloadingManager<AppSettings> _mtSettingsManager;
-        private IHostingEnvironment Environment { get; set; }
+        private IWebHostEnvironment Environment { get; }
         private ILifetimeScope ApplicationContainer { get; set; }
         private IConfigurationRoot Configuration { get; }
         private ILog Log { get; set; }
 
-        public Startup(IHostingEnvironment env)
+        private const string ApiVersion = "v1";
+        private const string ApiTitle = "Candles History Writer Job";
+
+        public Startup(IWebHostEnvironment env)
         {
             var builder = new ConfigurationBuilder()
                 .SetBasePath(env.ContentRootPath)
-                .AddJsonFile("env.json", optional: true)
+                .AddJsonFile("env.json", true)
                 .AddSerilogJson(env)
                 .AddEnvironmentVariables();
             Configuration = builder.Build();
@@ -74,11 +77,10 @@ namespace Lykke.Job.CandlesHistoryWriter
 
                 services.AddSwaggerGen(options =>
                 {
-                    options.DefaultLykkeConfiguration("v1", "Candles History Writer Job");
+                    options.SwaggerDoc(ApiVersion, new OpenApiInfo {Version = ApiVersion, Title = ApiTitle});
                 });
                 
                 _mtSettingsManager = Configuration.LoadSettings<AppSettings>();
-                
 
                 var candlesHistoryWriter = _mtSettingsManager.CurrentValue.CandlesHistoryWriter != null
                     ? _mtSettingsManager.Nested(x => x.CandlesHistoryWriter)
@@ -98,6 +100,7 @@ namespace Lykke.Job.CandlesHistoryWriter
             }
         }
 
+        [UsedImplicitly]
         public void ConfigureContainer(ContainerBuilder builder)
         {
             var marketType = _mtSettingsManager.CurrentValue.CandlesHistoryWriter != null
@@ -121,7 +124,7 @@ namespace Lykke.Job.CandlesHistoryWriter
         }
 
         [UsedImplicitly]
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env, IApplicationLifetime appLifetime)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IHostApplicationLifetime appLifetime)
         {
             try
             {
@@ -131,7 +134,7 @@ namespace Lykke.Job.CandlesHistoryWriter
                 {
                     app.UseDeveloperExceptionPage();
                 }
-
+                
                 app.UseLykkeMiddleware(nameof(Startup), ex => ErrorResponse.Create("Technical problem"));
 
                 app.UseRouting();
