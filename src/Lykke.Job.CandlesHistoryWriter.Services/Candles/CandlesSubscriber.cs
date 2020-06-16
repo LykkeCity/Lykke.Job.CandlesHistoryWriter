@@ -24,15 +24,19 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         private readonly ICandlesManager _candlesManager;
         private readonly ICandlesChecker _candlesChecker;
         private readonly RabbitEndpointSettings _settings;
+        private readonly ushort _prefetch;
+
+        private const int DefaultPrefetch = 100;
 
         private RabbitMqSubscriber<CandlesUpdatedEvent> _subscriber;
 
-        public CandlesSubscriber(ILog log, ICandlesManager candlesManager, ICandlesChecker checker, RabbitEndpointSettings settings)
+        public CandlesSubscriber(ILog log, ICandlesManager candlesManager, ICandlesChecker checker, RabbitEndpointSettings settings, ushort? prefetch)
         {
             _log = log;
             _candlesManager = candlesManager;
             _candlesChecker = checker;
             _settings = settings;
+            _prefetch = prefetch ?? DefaultPrefetch;
         }
 
         private RabbitMqSubscriptionSettings _subscriptionSettings;
@@ -61,6 +65,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
                             next: new DeadQueueErrorHandlingStrategy(_log, SubscriptionSettings)))
                     .SetMessageDeserializer(new MessagePackMessageDeserializer<CandlesUpdatedEvent>())
                     .SetMessageReadStrategy(new MessageReadQueueStrategy())
+                    .SetPrefetchCount(_prefetch)
                     .Subscribe(ProcessCandlesUpdatedEventAsync)
                     .CreateDefaultBinding()
                     .SetLogger(_log)
