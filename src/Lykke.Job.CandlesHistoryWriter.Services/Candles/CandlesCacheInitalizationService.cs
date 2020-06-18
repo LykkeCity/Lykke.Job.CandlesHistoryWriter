@@ -57,21 +57,32 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
         private async Task CacheAssetPairCandlesAsync(AssetPair assetPair, DateTime now)
         {
-            await _log.WriteInfoAsync(nameof(CandlesCacheInitalizationService), nameof(InitializeCacheAsync), null, $"Caching {assetPair.Id} candles history...");
+            await _log.WriteInfoAsync(nameof(CandlesCacheInitalizationService), nameof(CacheAssetPairCandlesAsync), null, $"Caching {assetPair.Id} candles history...");
 
-            foreach (var priceType in Constants.StoredPriceTypes)
+            try
             {
-                foreach (var timeInterval in Constants.StoredIntervals)
+                foreach (var priceType in Constants.StoredPriceTypes)
                 {
-                    var alignedToDate = now.TruncateTo(timeInterval).AddIntervalTicks(1, timeInterval);
-                    var candlesAmountToStore = _candlesAmountManager.GetCandlesAmountToStore(timeInterval);
-                    var candles = await _candlesHistoryRepository.GetLastCandlesAsync(assetPair.Id, timeInterval, priceType, alignedToDate, candlesAmountToStore);
+                    foreach (var timeInterval in Constants.StoredIntervals)
+                    {
+                        var alignedToDate = now.TruncateTo(timeInterval).AddIntervalTicks(1, timeInterval);
+                        var candlesAmountToStore = _candlesAmountManager.GetCandlesAmountToStore(timeInterval);
+                        var candles = await _candlesHistoryRepository.GetLastCandlesAsync(assetPair.Id, timeInterval, priceType, alignedToDate, candlesAmountToStore);
 
-                    await _candlesCacheService.InitializeAsync(assetPair.Id, priceType, timeInterval, candles.ToArray());
+                        await _candlesCacheService.InitializeAsync(assetPair.Id, priceType, timeInterval, candles.ToArray());
+                    }
                 }
             }
-
-            await _log.WriteInfoAsync(nameof(CandlesCacheInitalizationService), nameof(InitializeCacheAsync), null, $"{assetPair.Id} candles history is cached");
+            catch (Exception e)
+            {
+                await _log.WriteErrorAsync(nameof(CandlesCacheInitalizationService), nameof(CacheAssetPairCandlesAsync),
+                    $"Couldn't cache candles history for asset pair [{assetPair.Id}]", e);
+            }
+            finally
+            {
+                await _log.WriteInfoAsync(nameof(CandlesCacheInitalizationService), nameof(CacheAssetPairCandlesAsync), null,
+                    $"{assetPair.Id} candles history caching finished");
+            }
         }
     }
 }
