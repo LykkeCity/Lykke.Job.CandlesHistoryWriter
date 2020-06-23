@@ -10,6 +10,7 @@ using Lykke.Cqrs;
 using Lykke.Cqrs.Configuration;
 using Lykke.Cqrs.Configuration.BoundedContext;
 using Lykke.Cqrs.Configuration.Routing;
+using Lykke.Cqrs.Middleware.Logging;
 using Lykke.Job.CandlesHistoryWriter.Services.Settings;
 using Lykke.Job.CandlesHistoryWriter.Services.Workflow;
 using Lykke.Messaging;
@@ -57,7 +58,9 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
 
             builder.RegisterType<EodStartedProjection>().AsSelf();
 
-            builder.Register(ctx => CreateEngine(ctx, messagingEngine)).As<ICqrsEngine>().SingleInstance()
+            builder.Register(ctx => CreateEngine(ctx, messagingEngine))
+                .As<ICqrsEngine>()
+                .SingleInstance()
                 .AutoActivate();
         }
 
@@ -70,6 +73,8 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
             var registrations = new List<IRegistration>
             {
                 Register.DefaultEndpointResolver(rabbitMqConventionEndpointResolver),
+                Register.CommandInterceptors(new DefaultCommandLoggingInterceptor(_log)),
+                Register.EventInterceptors(new DefaultEventLoggingInterceptor(_log)),
                 RegisterContext(),
             };
 
