@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Common.Log;
 using JetBrains.Annotations;
+using Lykke.Cqrs;
 using Lykke.Job.CandleHistoryWriter.Repositories.HistoryMigration.HistoryProviders.TradesSQLHistory;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services;
@@ -24,6 +25,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
         private readonly ICandlesPersistenceQueue _persistenceQueue;
         private readonly ICandlesPersistenceManager _persistenceManager;
         private readonly bool _migrationEnabled;
+        private readonly ICqrsEngine _cqrsEngine;
 
         public StartupManager(
             ILog log,
@@ -33,7 +35,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
             ICandlesPersistenceQueueSnapshotRepository persistenceQueueSnapshotRepository,
             ICandlesPersistenceQueue persistenceQueue,
             ICandlesPersistenceManager persistenceManager,
-            bool migrationEnabled)
+            bool migrationEnabled, 
+            ICqrsEngine cqrsEngine)
         {
             if (log == null)
                 throw new ArgumentNullException(nameof(log));
@@ -46,6 +49,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
             _persistenceQueue = persistenceQueue ?? throw new ArgumentNullException(nameof(persistenceQueue));
             _persistenceManager = persistenceManager ?? throw new ArgumentNullException(nameof(persistenceManager));
             _migrationEnabled = migrationEnabled;
+            _cqrsEngine = cqrsEngine ?? throw new ArgumentNullException(nameof(cqrsEngine));
         }
 
         public async Task StartAsync()
@@ -83,6 +87,10 @@ namespace Lykke.Job.CandlesHistoryWriter.Services
 
                 _candlesSubscriber.Start();
             }
+            
+            await _log.WriteInfoAsync(nameof(StartAsync), "", "Starting cqrs engine subscribers...");
+            
+            _cqrsEngine.StartSubscribers();
 
             await _log.WriteInfoAsync(nameof(StartAsync), "", "Started up");
         }
