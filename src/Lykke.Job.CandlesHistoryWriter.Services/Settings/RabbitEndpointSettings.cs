@@ -10,5 +10,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Settings
         [AmqpCheck]
         public string ConnectionString { get; set; }
         public string Namespace { get; set; }
+        [Optional]
+        public string ShardName { get; set; }
     }
 }
