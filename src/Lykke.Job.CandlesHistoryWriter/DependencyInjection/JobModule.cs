@@ -238,6 +238,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
             builder.RegisterType<CandlesSubscriber>()
                 .As<ICandlesSubscriber>()
                 .WithParameter(TypedParameter.From(_settings.Rabbit.CandlesSubscription))
+                .WithParameter(TypedParameter.From(_settings.Rabbit.Prefetch))
                 .SingleInstance();
 
             builder.RegisterType<CandlesManager>()
