@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using Common.Log;
 using Lykke.Job.CandlesProducer.Contract;
 using Lykke.Service.Assets.Client.Models;
-using Lykke.Service.Assets.Client.Models;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Assets;
@@ -48,6 +47,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
         private Mock<ICandlesHistoryRepository> _historyRepositoryMock;
         private Mock<ICandlesAmountManager> _candlesAmountManagerMock;
         private Mock<IAssetPairsManager> _assetPairsManagerMock;
+        private Mock<ICandlesShardValidator> _candlesShardValidator;
         private List<AssetPair> _assetPairs;
 
         [TestInitialize]
@@ -60,6 +60,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
             _historyRepositoryMock = new Mock<ICandlesHistoryRepository>();
             _candlesAmountManagerMock = new Mock<ICandlesAmountManager>();
             _assetPairsManagerMock = new Mock<IAssetPairsManager>();
+            _candlesShardValidator = new Mock<ICandlesShardValidator>();
 
             _assetPairs = new List<AssetPair>
             {
@@ -81,7 +82,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
                 _dateTimeProviderMock.Object,
                 _cacheServiceMock.Object,
                 _historyRepositoryMock.Object,
-                _candlesAmountManagerMock.Object);
+                _candlesAmountManagerMock.Object,
+                _candlesShardValidator.Object);
         }
 
         [TestMethod]
