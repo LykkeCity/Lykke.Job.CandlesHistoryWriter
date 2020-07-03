@@ -109,6 +109,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Tests
 
             _candlesAmountManagerMock.Setup(x => x.GetCandlesAmountToStore(It.IsAny<CandleTimeInterval>())).Returns(AmountOfCandlesToStore);
 
+            _candlesShardValidator.Setup(x => x.CanHandle(It.IsAny<string>())).Returns(true);
+
             // Act
             await _service.InitializeCacheAsync();
 
