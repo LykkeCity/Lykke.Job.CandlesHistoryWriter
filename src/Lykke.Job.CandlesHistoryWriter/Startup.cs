@@ -87,11 +87,9 @@ namespace Lykke.Job.CandlesHistoryWriter
                 
                 LoadConfiguration();
 
-                var candlesHistoryWriter = _mtSettingsManager.CurrentValue.CandlesHistoryWriter != null
-                    ? _mtSettingsManager.Nested(x => x.CandlesHistoryWriter)
-                    : _mtSettingsManager.Nested(x => x.MtCandlesHistoryWriter);
-                
-                Log = CreateLogWithSlack(Configuration, services, candlesHistoryWriter, 
+                Log = CreateLogWithSlack(Configuration, 
+                    services, 
+                    GetRelevantCandlesHistoryWriterSettings(), 
                     _mtSettingsManager.CurrentValue.SlackNotifications);
 
                 services.AddSingleton<ILoggerFactory>(x => new WebHostLoggerFactory(Log));
@@ -103,6 +101,13 @@ namespace Lykke.Job.CandlesHistoryWriter
                 Log?.WriteFatalErrorAsync(nameof(Startup), nameof(ConfigureServices), "", ex).Wait();
                 throw;
             }
+        }
+
+        private IReloadingManager<CandlesHistoryWriterSettings> GetRelevantCandlesHistoryWriterSettings()
+        {
+            return _mtSettingsManager.CurrentValue.CandlesHistoryWriter != null
+                ? _mtSettingsManager.Nested(x => x.CandlesHistoryWriter)
+                : _mtSettingsManager.Nested(x => x.MtCandlesHistoryWriter);
         }
 
         private void LoadConfiguration()
@@ -126,7 +131,7 @@ namespace Lykke.Job.CandlesHistoryWriter
                 .Generate<ICandlesSettingsApi>();
 
             var remoteSettings = candlesSettingsClient
-                .GetConsumerSettingsAsync(_mtSettingsManager.CurrentValue.CandlesHistoryWriter.Rabbit.CandlesSubscription.ShardName)
+                .GetConsumerSettingsAsync(GetRelevantCandlesHistoryWriterSettings().CurrentValue.Rabbit.CandlesSubscription.ShardName)
                 .GetAwaiter()
                 .GetResult();
 
