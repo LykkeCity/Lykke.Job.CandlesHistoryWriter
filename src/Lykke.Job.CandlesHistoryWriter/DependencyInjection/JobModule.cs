@@ -50,6 +50,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
         private readonly IReloadingManager<DbSettings> _dbSettings;
         private readonly ILog _log;
         private readonly MonitoringServiceClientSettings _monitoringServiceClient;
+        private readonly CandlesShardRemoteSettings _candlesShardRemoteSettings;
 
         public JobModule(
             MarketType marketType,
@@ -58,6 +59,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
             RedisSettings redisSettings,
             MonitoringServiceClientSettings monitoringServiceClient,
             IReloadingManager<DbSettings> dbSettings,
+            CandlesShardRemoteSettings candlesShardRemoteSettings,
             ILog log)
         {
             _services = new ServiceCollection();
@@ -67,6 +69,7 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
             _redisSettings = redisSettings;
             _monitoringServiceClient = monitoringServiceClient;
             _dbSettings = dbSettings;
+            _candlesShardRemoteSettings = candlesShardRemoteSettings;
             _log = log;
         }
 
@@ -168,6 +171,10 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
 
         private void RegisterCandles(ContainerBuilder builder)
         {
+            builder.RegisterInstance(_candlesShardRemoteSettings)
+                .AsSelf()
+                .SingleInstance();
+            
             builder.RegisterType<HealthService>()
                 .As<IHealthService>()
                 .SingleInstance();
@@ -302,6 +309,10 @@ namespace Lykke.Job.CandlesHistoryWriter.DependencyInjection
                 .WithParameter(TypedParameter.From(_marketType))
                 .WithParameter(TypedParameter.From(_settings.CacheCleanupPeriod))
                 .AutoActivate();
+
+            builder.RegisterType<CandlesShardValidator>()
+                .As<ICandlesShardValidator>()
+                .SingleInstance();
 
             RegisterCandlesMigration(builder);
 

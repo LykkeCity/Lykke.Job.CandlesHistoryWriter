@@ -23,6 +23,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         private readonly ICandlesCacheService _candlesCacheService;
         private readonly ICandlesHistoryRepository _candlesHistoryRepository;
         private readonly ICandlesAmountManager _candlesAmountManager;
+        private readonly ICandlesShardValidator _candlesShardValidator;
 
         public CandlesCacheInitalizationService(
             ILog log,
@@ -30,7 +31,8 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             IClock clock,
             ICandlesCacheService candlesCacheService,
             ICandlesHistoryRepository candlesHistoryRepository,
-            ICandlesAmountManager candlesAmountManager)
+            ICandlesAmountManager candlesAmountManager, 
+            ICandlesShardValidator candlesShardValidator)
         {
             _log = log;
             _assetPairsManager = assetPairsManager;
@@ -38,6 +40,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             _candlesCacheService = candlesCacheService;
             _candlesHistoryRepository = candlesHistoryRepository;
             _candlesAmountManager = candlesAmountManager;
+            _candlesShardValidator = candlesShardValidator;
         }
 
         public async Task InitializeCacheAsync()
@@ -57,7 +60,15 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
 
         private async Task CacheAssetPairCandlesAsync(AssetPair assetPair, DateTime now)
         {
-            await _log.WriteInfoAsync(nameof(CandlesCacheInitalizationService), nameof(CacheAssetPairCandlesAsync), null, $"Caching {assetPair.Id} candles history...");
+            if (!_candlesShardValidator.CanHandle(assetPair.Id))
+            {
+                await _log.WriteInfoAsync(nameof(CandlesCacheInitalizationService), nameof(InitializeCacheAsync), null,
+                    $"Skipping {assetPair.Id} caching, since it doesn't meet sharding condition");
+                
+                return;
+            }
+            
+            await _log.WriteInfoAsync(nameof(CandlesCacheInitalizationService), nameof(InitializeCacheAsync), null, $"Caching {assetPair.Id} candles history...");
 
             try
             {

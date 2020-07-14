@@ -4,12 +4,14 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain.Candles;
 using Lykke.Job.CandlesHistoryWriter.Core.Services.Candles;
+using Lykke.Job.CandlesHistoryWriter.Services.Settings;
 using MarginTrading.SettingsService.Contracts;
 using StackExchange.Redis;
 
@@ -22,6 +24,7 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
         private readonly IDatabase _database;
         private readonly MarketType _market;
         private readonly ICandlesAmountManager _candlesAmountManager;
+        private readonly ICandlesShardValidator _candlesShardValidator;
 
         public RedisCacheTruncator(
             IAssetPairsApi assetPairsApi,
@@ -29,19 +32,24 @@ namespace Lykke.Job.CandlesHistoryWriter.Services.Candles
             MarketType market,
             TimeSpan cacheCleanupPeriod,
             ICandlesAmountManager candlesAmountManager,
-            ILog log)
+            ILog log, 
+            ICandlesShardValidator candlesShardValidator)
             : base(nameof(RedisCacheTruncator), (int)cacheCleanupPeriod.TotalMilliseconds, log)
         {
             _assetPairsApi = assetPairsApi;
             _database = database;
             _market = market;
             _candlesAmountManager = candlesAmountManager;
+            _candlesShardValidator = candlesShardValidator;
         }
 
         public override async Task Execute()
         {
             foreach (var assetId in (await _assetPairsApi.List()).Select(x => x.Id))
             {
+                if (!_candlesShardValidator.CanHandle(assetId))
+                    continue;
+
                 foreach (var priceType in Constants.StoredPriceTypes)
                 {
                     foreach (var timeInterval in Constants.StoredIntervals)

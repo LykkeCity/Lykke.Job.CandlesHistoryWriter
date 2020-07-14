@@ -10,6 +10,7 @@ using AzureStorage.Tables;
 using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Common.ApiLibrary.Middleware;
+using Lykke.HttpClientGenerator.Infrastructure;
 using Lykke.Job.CandlesHistoryWriter.Core.Domain;
 using Lykke.Logs;
 using Lykke.Logs.Slack;
@@ -33,6 +34,8 @@ using Lykke.Logs.Serilog;
 using Microsoft.Extensions.Logging;
 using Lykke.Snow.Common.Startup.Log;
 using Lykke.Snow.Common.Startup.Hosting;
+using MarginTrading.SettingsService.Contracts;
+using MarginTrading.SettingsService.Contracts.Candles;
 using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
 
@@ -42,6 +45,8 @@ namespace Lykke.Job.CandlesHistoryWriter
     public class Startup
     {
         private IReloadingManager<AppSettings> _mtSettingsManager;
+        
+        private CandlesShardRemoteSettings _candlesShardSettings;
         private IWebHostEnvironment Environment { get; }
         private ILifetimeScope ApplicationContainer { get; set; }
         private IConfigurationRoot Configuration { get; }
@@ -80,13 +85,11 @@ namespace Lykke.Job.CandlesHistoryWriter
                     options.SwaggerDoc(ApiVersion, new OpenApiInfo {Version = ApiVersion, Title = ApiTitle});
                 });
                 
-                _mtSettingsManager = Configuration.LoadSettings<AppSettings>();
+                LoadConfiguration();
 
-                var candlesHistoryWriter = _mtSettingsManager.CurrentValue.CandlesHistoryWriter != null
-                    ? _mtSettingsManager.Nested(x => x.CandlesHistoryWriter)
-                    : _mtSettingsManager.Nested(x => x.MtCandlesHistoryWriter);
-                
-                Log = CreateLogWithSlack(Configuration, services, candlesHistoryWriter, 
+                Log = CreateLogWithSlack(Configuration, 
+                    services, 
+                    GetRelevantCandlesHistoryWriterSettings(), 
                     _mtSettingsManager.CurrentValue.SlackNotifications);
 
                 services.AddSingleton<ILoggerFactory>(x => new WebHostLoggerFactory(Log));
@@ -98,6 +101,42 @@ namespace Lykke.Job.CandlesHistoryWriter
                 Log?.WriteFatalErrorAsync(nameof(Startup), nameof(ConfigureServices), "", ex).Wait();
                 throw;
             }
+        }
+
+        private IReloadingManager<CandlesHistoryWriterSettings> GetRelevantCandlesHistoryWriterSettings()
+        {
+            return _mtSettingsManager.CurrentValue.CandlesHistoryWriter != null
+                ? _mtSettingsManager.Nested(x => x.CandlesHistoryWriter)
+                : _mtSettingsManager.Nested(x => x.MtCandlesHistoryWriter);
+        }
+
+        private void LoadConfiguration()
+        {
+            // load service settings
+            _mtSettingsManager = Configuration.LoadSettings<AppSettings>();
+
+            // load candles sharding settings from settings service
+            var candlesSettingsClientBuilder = HttpClientGenerator.HttpClientGenerator
+                .BuildForUrl(_mtSettingsManager.CurrentValue.Assets.ServiceUrl)
+                .WithAdditionalCallsWrapper(new ExceptionHandlerCallsWrapper());
+
+            if (!string.IsNullOrWhiteSpace(_mtSettingsManager.CurrentValue.Assets.ApiKey))
+            {
+                candlesSettingsClientBuilder =
+                    candlesSettingsClientBuilder.WithApiKey(_mtSettingsManager.CurrentValue.Assets.ApiKey);
+            }
+
+            var candlesSettingsClient = candlesSettingsClientBuilder
+                .Create()
+                .Generate<ICandlesSettingsApi>();
+
+            var remoteSettings = candlesSettingsClient
+                .GetConsumerSettingsAsync(GetRelevantCandlesHistoryWriterSettings().CurrentValue.Rabbit.CandlesSubscription.ShardName)
+                .GetAwaiter()
+                .GetResult();
+
+            _candlesShardSettings =
+                new CandlesShardRemoteSettings {Name = remoteSettings.Name, Pattern = remoteSettings.Pattern};
         }
 
         [UsedImplicitly]
@@ -118,6 +157,7 @@ namespace Lykke.Job.CandlesHistoryWriter
                 _mtSettingsManager.CurrentValue.RedisSettings,
                 _mtSettingsManager.CurrentValue.MonitoringServiceClient,
                 candlesHistoryWriter.Nested(x => x.Db),
+                _candlesShardSettings,
                 Log));
             
             builder.RegisterModule(new CqrsModule(_mtSettingsManager.CurrentValue.MtCandlesHistoryWriter.Cqrs, Log));
