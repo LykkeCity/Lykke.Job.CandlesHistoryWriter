@@ -1,4 +1,4 @@
-// Copyright (c) 2019 Lykke Corp.
+﻿// Copyright (c) 2019 Lykke Corp.
 // See the LICENSE file in the project root for more information.
 
 using System;
@@ -48,14 +48,14 @@ namespace Lykke.Job.CandleHistoryWriter.Repositories.Cleanup
                 
                 try
                 {
-                    var procedureBody = "01_Candles.SP_Cleanup.sql".GetFileContent();
+                    var procedureBody = "01_Candles.Cleanup.sql".GetFileContent();
                     await conn.ExecuteAsync(string.Format(procedureBody, _cleanupSettings.GetFormatParams()));
 
                     await _log.WriteInfoAsync(nameof(ICandlesCleanup), nameof(Invoke), "Starting candles cleanup.");
                     var sw = new Stopwatch();
                     sw.Start();
 
-                    await conn.ExecuteAsync("EXEC Candles.SP_Cleanup", commandTimeout: 24 * 60 * 60);
+                    await conn.ExecuteAsync("EXEC Candles.Cleanup", commandTimeout: 24 * 60 * 60);
 
                     await _log.WriteInfoAsync(nameof(ICandlesCleanup), nameof(Invoke),
                         $"Candles cleanup finished in {sw.Elapsed:G}.");

@@ -1,4 +1,4 @@
-CREATE OR ALTER PROCEDURE Candles.SP_Cleanup
+CREATE OR ALTER PROCEDURE Candles.Cleanup
 AS
     BEGIN
         DECLARE
